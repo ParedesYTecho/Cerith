@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.Core", "src\Cerith.Core\Cerith.Core.csproj", "{A22EF30D-06A5-4195-BC80-87B1FC18928C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.TelemetryService", "src\Cerith.TelemetryService\Cerith.TelemetryService.csproj", "{52A1EE93-B15E-4A72-BD80-6F8010A72E9F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.WidgetHost", "src\Cerith.WidgetHost\Cerith.WidgetHost.csproj", "{A4ED0F4C-84DC-4822-A46E-CA494D54E7EA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.ControlCenter", "src\Cerith.ControlCenter\Cerith.ControlCenter.csproj", "{E198DF0A-311A-4E30-992F-1E0A3BC97407}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.Core.Tests", "tests\Cerith.Core.Tests\Cerith.Core.Tests.csproj", "{22B36EEF-DFC5-4DF7-8408-03AC11B1C1A9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.Telemetry.Tests", "tests\Cerith.Telemetry.Tests\Cerith.Telemetry.Tests.csproj", "{44CCD935-B9C7-452C-820D-A7708091AC2D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cerith.Integration.Tests", "tests\Cerith.Integration.Tests\Cerith.Integration.Tests.csproj", "{93230864-1065-4D84-9DAB-0D0F2B49D0BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A22EF30D-06A5-4195-BC80-87B1FC18928C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A22EF30D-06A5-4195-BC80-87B1FC18928C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A22EF30D-06A5-4195-BC80-87B1FC18928C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A22EF30D-06A5-4195-BC80-87B1FC18928C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52A1EE93-B15E-4A72-BD80-6F8010A72E9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52A1EE93-B15E-4A72-BD80-6F8010A72E9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52A1EE93-B15E-4A72-BD80-6F8010A72E9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52A1EE93-B15E-4A72-BD80-6F8010A72E9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4ED0F4C-84DC-4822-A46E-CA494D54E7EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4ED0F4C-84DC-4822-A46E-CA494D54E7EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4ED0F4C-84DC-4822-A46E-CA494D54E7EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4ED0F4C-84DC-4822-A46E-CA494D54E7EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E198DF0A-311A-4E30-992F-1E0A3BC97407}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E198DF0A-311A-4E30-992F-1E0A3BC97407}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E198DF0A-311A-4E30-992F-1E0A3BC97407}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E198DF0A-311A-4E30-992F-1E0A3BC97407}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22B36EEF-DFC5-4DF7-8408-03AC11B1C1A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22B36EEF-DFC5-4DF7-8408-03AC11B1C1A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22B36EEF-DFC5-4DF7-8408-03AC11B1C1A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22B36EEF-DFC5-4DF7-8408-03AC11B1C1A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44CCD935-B9C7-452C-820D-A7708091AC2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44CCD935-B9C7-452C-820D-A7708091AC2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44CCD935-B9C7-452C-820D-A7708091AC2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44CCD935-B9C7-452C-820D-A7708091AC2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93230864-1065-4D84-9DAB-0D0F2B49D0BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93230864-1065-4D84-9DAB-0D0F2B49D0BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93230864-1065-4D84-9DAB-0D0F2B49D0BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93230864-1065-4D84-9DAB-0D0F2B49D0BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

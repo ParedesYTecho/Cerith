@@ -28,4 +28,4 @@ jobs:
         run: dotnet build Cerith.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test Cerith.sln --configuration Release --no-build --verbosity normal
+        run: dotnet test Cerith.sln --configuration Release --no-build --verbosity normal -- --ignore-exit-code 8
