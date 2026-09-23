@@ -1,0 +1,54 @@
+name: Repository Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reject obvious private artifacts
+        shell: pwsh
+        run: |
+          $bad = @(
+            '\.env$',
+            '\.pfx$',
+            '\.p12$',
+            '\.pem$',
+            '\.key$',
+            '\.har$',
+            'credentials\.json$',
+            'auth\.json$'
+          )
+
+          $tracked = git ls-files
+          $matches = @()
+
+          foreach ($file in $tracked) {
+            foreach ($pattern in $bad) {
+              if ($file -match $pattern) {
+                $matches += $file
+              }
+            }
+          }
+
+          if ($matches.Count -gt 0) {
+            Write-Error ("Tracked private/sensitive-looking artifacts:`n" + ($matches -join "`n"))
+          }
+
+      - name: Show tracked-file count
+        shell: pwsh
+        run: |
+          $count = (git ls-files | Measure-Object).Count
+          Write-Host "Tracked files: $count"

@@ -1,0 +1,84 @@
+# Build
+bin/
+obj/
+out/
+dist/
+artifacts/
+TestResults/
+coverage/
+*.trx
+
+# IDE / editor
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.secrets.json
+secrets.json
+appsettings.Local.json
+appsettings.*.local.json
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+
+# Provider / browser / credential material
+**/auth.json
+**/credentials.json
+**/*cookie*
+**/*token*
+browser-profile/
+profiles/
+
+# Logs and captures
+logs/
+*.log
+captures/
+screenshots/
+diagnostics-private/
+provider-dumps/
+*.har
+
+# Agent private/transient state
+.agent/private/
+.agent/cache/
+.agent/context/
+.agent/sessions/
+graphify-out/
+.graphify/
+.claude/
+.codex/
+.antigravity/
+.cursor/
+
+# Local databases unless explicitly fixture/test data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+~$*
