@@ -3,26 +3,21 @@
 Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
-Rama: `feat/CER-M0-001-bootstrap`
-Estado: CER-M0-001 completada; no hay funciones de producto implementadas.
+Rama canónica: `main`
+Estado: CER-M0-001 completada y mergeada; no hay trabajo de producto activo.
 
 ## Listo
 
-- documentación de producto, arquitectura, seguridad y flujo de trabajo;
-- inicio limpio, sin reutilizar la implementación de cuotas de WidgetOSD;
-- solución con cuatro proyectos de producto y tres proyectos de pruebas;
-- referencias entre proyectos conforme a `docs/ARCHITECTURE.md`;
-- SDK .NET 10.0.401 disponible; Graphify 0.9.57 ya estaba instalado y el grafo se actualizó.
+- Esqueleto de solución y referencias entre proyectos conforme a `docs/ARCHITECTURE.md`.
+- No hay funciones de producto implementadas.
 
-## Verificación
+## Verificación posterior al merge
 
-- `dotnet build Cerith.sln`: exit 0; 0 advertencias y 0 errores.
-- `dotnet test Cerith.sln`: exit 1; MTP devuelve `ZeroTests` (8), con 0 pruebas descubiertas o ejecutadas. No hubo pruebas fallidas.
-- El comando de pruebas de CI termina con exit 0 solo porque la excepción temporal `--ignore-exit-code 8` tolera `ZeroTests` durante el esqueleto; ver D-012.
+- Build and Test: success.
+- Repository Quality: success.
+- CodeQL: skipped porque el repositorio sigue siendo privado.
 
-## Bloqueado
-
-- ninguno.
+La política temporal de `ZeroTests` está registrada en D-012.
 
 ## Siguiente
 
