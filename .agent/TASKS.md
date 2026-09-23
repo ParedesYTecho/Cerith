@@ -2,9 +2,10 @@
 
 ## CER-M0-001 — Repository and solution skeleton
 
-Status: IN_PROGRESS
+Status: DONE
 Owner: Codex
 Priority: P0
+Resultado: solución compilada; el runner de pruebas está configurado y el resumen confirma cero casos, intencionadamente. La revisión de seguridad y Graphify se completaron.
 
 Scope:
 
@@ -49,6 +50,7 @@ Acceptance:
 - MetricState;
 - MetricConfidence;
 - meaningful unit tests.
+- En el mismo cambio que añada la primera prueba ejecutable real, retirar `--ignore-exit-code 8` de CI; desde entonces, cero pruebas debe fallar CI.
 
 ## CER-M0-003 — MetricRegistry
 
