@@ -50,7 +50,7 @@ Acceptance:
 - MetricState;
 - MetricConfidence;
 - meaningful unit tests.
-- En el mismo cambio que añada la primera prueba ejecutable real, retirar `--ignore-exit-code 8` de CI; desde entonces, cero pruebas debe fallar CI.
+- Al añadir la primera prueba real, retirar la tolerancia global `--ignore-exit-code 8`: CI debe fallar si un proyecto con tests reales descubre o ejecuta cero inesperadamente. Solo los proyectos intencionadamente vacíos pueden tolerar `ZeroTests` de forma temporal y acotada; retirar esa tolerancia al añadir su primer test. Elegir la solución más simple, sin tests dummy.
 
 ## CER-M0-003 — MetricRegistry
 

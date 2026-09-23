@@ -22,7 +22,7 @@ Crear la solución y los siete proyectos acordados, validar las referencias y el
 
 ## Archivos cambiados
 
-- `Cerith.sln`, `global.json`, `.github/workflows/build.yml`.
+- `Cerith.sln`, `global.json`, `.github/workflows/build.yml`, `.github/workflows/codeql.yml`.
 - `src/Cerith.Core/Cerith.Core.csproj`.
 - `src/Cerith.TelemetryService/Cerith.TelemetryService.csproj`.
 - `src/Cerith.WidgetHost/Cerith.WidgetHost.csproj`.
@@ -36,7 +36,8 @@ Crear la solución y los siete proyectos acordados, validar las referencias y el
 
 - OK: `dotnet build Cerith.sln`; exit 0, cero advertencias y cero errores.
 - LIMITACIÓN: `dotnet test Cerith.sln` directo termina con exit 1; MTP devuelve `ZeroTests` (código 8) en los tres proyectos, total 0. No se descubrieron ni ejecutaron pruebas; esto no son pruebas fallidas.
-- OK CON EXCEPCIÓN TEMPORAL: el comando de pruebas de CI termina con exit 0 únicamente porque incluye `--ignore-exit-code 8` para este esqueleto sin pruebas. D-012 y CER-M0-002 registran cuándo retirarlo.
+- OK CON EXCEPCIÓN TEMPORAL: el comando de pruebas de CI termina con exit 0 únicamente porque incluye `--ignore-exit-code 8` para este esqueleto sin pruebas. D-012 y CER-M0-002 exigen sustituir la tolerancia global cuando lleguen los primeros tests reales.
+- CodeQL: el workflow se omite en este repositorio privado sin code scanning y se activa automáticamente al hacerlo público; usa `github/codeql-action@v4` y `actions: read`.
 - PASS: solución, XML de proyectos, rutas y referencias validados.
 - PASS: `git diff --check` y escaneo de archivos nuevos/modificados para secretos y rutas personales.
 - PASS: Graphify detectó 46 archivos (9 código, 37 documentos, 0 sensibles omitidos) y generó `graphify-out/GRAPH_REPORT.md`, `graphify-out/graph.html` y `graphify-out/graph.json`. Son salidas ignoradas por Git.
@@ -46,7 +47,8 @@ Crear la solución y los siete proyectos acordados, validar las referencias y el
 ## Decisiones
 
 - D-011: MSTest SDK 4.4.1 con perfil `None`, limitado a pruebas.
-- D-012: política temporal de `ZeroTests`; la retirada está ligada a la primera prueba ejecutable en CER-M0-002 (detalle en `DECISIONS.md`).
+- D-012: los proyectos con tests reales no deben tolerar `ZeroTests`; los aún vacíos pueden hacerlo temporalmente por proyecto.
+- D-013: CodeQL condicionado a la visibilidad pública (detalle en `DECISIONS.md`).
 - No se añadieron pruebas vacías ni código de producto.
 
 ## Bloqueos

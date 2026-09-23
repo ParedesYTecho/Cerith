@@ -48,3 +48,10 @@ Event: corrección y verificación
 Summary: D-012 limita la tolerancia de ZeroTests al bootstrap y CER-M0-002 obliga a retirarla al añadir la primera prueba ejecutable.
 Files: `.agent/DECISIONS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: OK — build exit 0, 0 advertencias/errores; `dotnet test` directo exit 1 con ZeroTests y 0 pruebas; comando de CI exit 0 únicamente por `--ignore-exit-code 8`; `git diff --check` sin errores.
+
+## 2026-09-23 — Codex — CER-M0-001 / PR #1
+
+Event: corrección de review
+Summary: D-012 y CER-M0-002 exigen detección de cero tests por proyecto cuando existan pruebas reales; CodeQL queda condicionado a visibilidad pública, con acciones v4 y permisos mínimos.
+Files: `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `.github/workflows/codeql.yml`.
+Result: build Debug/Release exit 0 sin advertencias; MTP directo exit 1 (ZeroTests en 3 proyectos); test CI exit 0 por excepción temporal; CodeQL anterior falló por code scanning privado no disponible y acceso al workflow run.
