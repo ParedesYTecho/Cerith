@@ -37,10 +37,12 @@ Acceptance:
 
 ## CER-M0-002 — Metric contracts
 
-Status: IN_PROGRESS
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-001
+
+Resultado: contratos y 17 pruebas reales implementados en `feat/CER-M0-002-metric-contracts`; commit de implementación `f0b318d92052378b206328dad6257ce17b0fcf78`. Pendiente de review del Advisor; no mergeado.
 
 Acceptance:
 
@@ -50,7 +52,7 @@ Acceptance:
 - MetricState;
 - MetricConfidence;
 - meaningful unit tests.
-- Al añadir la primera prueba real, retirar la tolerancia global `--ignore-exit-code 8`: CI debe fallar si un proyecto con tests reales descubre o ejecuta cero inesperadamente. Solo los proyectos intencionadamente vacíos pueden tolerar `ZeroTests` de forma temporal y acotada; retirar esa tolerancia al añadir su primer test. Elegir la solución más simple, sin tests dummy.
+- CI ejecuta `Cerith.Core.Tests` sin tolerar `ZeroTests`; solo los proyectos vacíos toleran temporalmente el código 8 en invocaciones propias, y pierden esa excepción al incorporar su primer test real. Sin tests dummy.
 
 ## CER-M0-003 — MetricRegistry
 
