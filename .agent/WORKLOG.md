@@ -61,11 +61,18 @@ Result: build Debug/Release exit 0 sin advertencias; MTP directo exit 1 (ZeroTes
 Event: handoff
 Summary: PR #1 se integró mediante squash en `main`; STATE y HANDOFF reflejan el estado posterior y DEVELOPMENT_WORKFLOW define el ciclo de sesión.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `DEVELOPMENT_WORKFLOW.md`.
-Result: Build and Test y Repository Quality success; CodeQL skipped por repositorio privado. CER-M0-002 sigue TODO y unclaimed.
+Result: Build and Test y Repository Quality success; CodeQL skipped por repositorio privado. En esa reconciliación previa, CER-M0-002 aún no había sido reclamada; se completó posteriormente en PR #6.
 
 ## 2026-09-23 — Codex — CER-M0-002
 
 Event: implementación
 Summary: contratos tipados de métricas, invariantes y pruebas unitarias; D-014 separa estado/confianza y ZeroTests queda acotado a proyectos vacíos.
 Files: `src/Cerith.Core/`, `tests/Cerith.Core.Tests/`, `.github/workflows/build.yml`, `docs/METRICS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`.
-Result: PASS — build Release sin warnings/errores; 17/17 pruebas Core; tolerancias individuales de Telemetry/Integration verificadas; cero tests en Core falla con código 8; diff e higiene privada limpios. Graphify code-only actualizado a 222 nodos; reextracción semántica de docs pendiente por falta de clave LLM. CI remota no ejecutada porque la branch sigue local.
+Result: PASS — build Release sin warnings/errores; 17/17 pruebas Core; tolerancias individuales de Telemetry/Integration verificadas; cero tests en Core falla con código 8; diff e higiene privada limpios. Graphify code-only actualizado a 222 nodos; reextracción semántica de docs pendiente por falta de clave LLM. CI del PR #6: Build and Test y Repository Quality success; CodeQL skipped según D-013.
+
+## 2026-09-23 — Codex — CER-M0-002 post-merge
+
+Event: handoff
+Summary: PR #6 pasó review del Advisor y se mergeó mediante squash en `main`; memoria operativa reconciliada y CER-M0-003 permanece sin reclamar.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` se sincronizó en `e895e1666d376a22c15a31d6b809c5a6b716307d`; Build and Test y Repository Quality success; CodeQL skipped según D-013; `git diff --check` limpio. Los PR Dependabot #3/#4 continúan separados.
