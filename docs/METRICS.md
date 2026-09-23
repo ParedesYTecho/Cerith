@@ -44,6 +44,10 @@ Unit?
 ValueKind
 ```
 
+## Registry
+
+`MetricRegistry` keeps one in-memory `MetricDescriptor` per `MetricId`. The first registration wins; duplicate IDs do not replace it. Lookup returns the stored descriptor, and catalog enumeration returns a read-only point-in-time snapshot. Operations are thread-safe. The registry stores descriptors only, not measurements or snapshots.
+
 ## Snapshot
 
 Snapshots are immutable. `Value` is optional and uses a typed value kind, not an arbitrary object or JSON value. Supported kinds are `double`, `long`, `decimal`, `bool`, `string`, `DateTimeOffset`, and `TimeSpan`.

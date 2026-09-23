@@ -56,8 +56,8 @@ Acceptance:
 
 ## CER-M0-003 — MetricRegistry
 
-Status: TODO
-Owner: unclaimed
+Status: IN PROGRESS
+Owner: Codex
 Priority: P0
 Depends on: CER-M0-002
 
