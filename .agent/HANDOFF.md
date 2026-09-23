@@ -1,28 +1,28 @@
-# Handoff — CER-M0-003 MetricRegistry
+# Handoff post-merge — CER-M0-003 MetricRegistry
 
 Fecha: 2026-09-23
-Estado: implementación lista; PR #8 pendiente de review/merge del Advisor.
-Branch: `feat/CER-M0-003-metric-registry`
+Estado: completada y mergeada en `main` mediante squash, tras review PASS del Advisor.
+Commit de merge: `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`.
 PR: https://github.com/ParedesYTecho/Cerith/pull/8
 
 ## Implementado
 
 - `MetricRegistry` concreto en `Cerith.Core`, indexado por `MetricId` con `ConcurrentDictionary`.
-- La primera registración gana; lookup devuelve la misma instancia; el catálogo se obtiene como snapshot read-only.
-- `Count`, validación explícita de null y operaciones thread-safe.
-- Ocho tests de contrato, incluidos casing, duplicados, snapshot y registros concurrentes.
-- Sección breve del contrato añadida a `docs/METRICS.md`; sin interfaces, paquetes ni proyectos nuevos.
+- Primera registración gana; lookup devuelve la misma instancia; el catálogo es un snapshot read-only.
+- `Count`, rechazo explícito de null y operaciones thread-safe.
+- Ocho tests de contrato, incluidos casing, duplicados, snapshots y registros concurrentes.
+- Contrato documentado en `docs/METRICS.md`, sin paquetes, proyectos ni interfaces nuevos.
 
 ## Verificación
 
-- PASS — `dotnet build Cerith.sln --configuration Release`, 0 warnings/errores.
-- PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build --verbosity normal`, 25/25.
-- PASS — `git diff --cached --check` y chequeo de artefactos privados de Repository Quality.
-- PASS — Graphify code-only: 248 nodos y 330 aristas; `MetricRegistry` y sus tests aparecen en el grafo.
-- GitHub Actions: consultar el estado actual del PR #8.
+- PASS — Release build, 0 warnings/errores; `Cerith.Core.Tests`, 25/25.
+- PASS — GitHub Actions Build and Test y Repository Quality.
+- SKIPPED — CodeQL según D-013.
+- PASS — `main` local y `origin/main` coinciden con el SHA indicado; working tree limpio.
+- PASS — `git diff --check` en la reconciliación.
 
-## Límites y siguiente paso
+Graphify code-only se actualizó a 248 nodos y 330 aristas; la reextracción semántica documental permanece pendiente según el registro previo.
 
-La reextracción semántica de documentos de Graphify no se ejecutó; el handoff previo la dejaba pendiente por falta de clave LLM. No afecta al grafo de código actualizado.
+## Siguiente
 
-El Advisor revisa y mergea el PR. El owner de implementación no lo mergea. Tras el merge, sincronizar `main` y reconciliar `.agent/STATE.md`; no comenzar CER-M0-004 ni CER-M0-005 antes.
+CER-M0-004 — MetricBus y CER-M0-005 — SyntheticProvider permanecen `TODO` / `unclaimed`; no se iniciaron durante esta reconciliación. Los PR Dependabot #3 y #4 siguen siendo mantenimiento separado.

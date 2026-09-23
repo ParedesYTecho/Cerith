@@ -4,13 +4,13 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 y CER-M0-002 completadas y mergeadas en `main`. CER-M0-003 está implementada en PR #8 y pendiente de review/merge del Advisor. No se han iniciado CER-M0-004 ni CER-M0-005.
+Estado: CER-M0-001, CER-M0-002 y CER-M0-003 completadas y mergeadas en `main`. CER-M0-003 pasó review del Advisor con PASS y se integró mediante squash en `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`. CER-M0-004 y CER-M0-005 siguen sin reclamar.
 
 ## Listo
 
 - Esqueleto de solución y referencias entre proyectos conforme a `docs/ARCHITECTURE.md`.
 - Contratos fundamentales de métricas y sus pruebas integrados en `main`.
-- `MetricRegistry` y sus pruebas están en la branch `feat/CER-M0-003-metric-registry`, PR #8.
+- `MetricRegistry` y sus pruebas están integrados en `main` mediante PR #8.
 
 ## Verificación de CER-M0-002
 
@@ -24,6 +24,13 @@ Estado: CER-M0-001 y CER-M0-002 completadas y mergeadas en `main`. CER-M0-003 es
 
 La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
+## Verificación de CER-M0-003
+
+- PR #8: review del Advisor PASS; merge mediante squash en `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`.
+- Build and Test: success; Repository Quality: success; CodeQL: skipped según D-013.
+- `main` local y `origin/main` coinciden en el SHA del merge; working tree limpio durante la reconciliación.
+- Los PR Dependabot #3 y #4 siguen siendo mantenimiento separado.
+
 ## Siguiente
 
-El Advisor revisa y mergea PR #8. Después, sincronizar `main` y reconciliar la memoria del repo. No iniciar CER-M0-004 ni CER-M0-005 antes de ese cierre.
+CER-M0-004 — MetricBus y CER-M0-005 — SyntheticProvider siguen `TODO` / `unclaimed`. No se iniciaron ni reclamaron durante esta reconciliación.

@@ -56,10 +56,11 @@ Acceptance:
 
 ## CER-M0-003 — MetricRegistry
 
-Status: IN REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-002
+Resultado: implementación completada; PR #8 pasó review del Advisor con PASS y se integró mediante squash en `main` (`00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`). Build and Test y Repository Quality success; CodeQL skipped según D-013.
 
 ## CER-M0-004 — MetricBus
 
