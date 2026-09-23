@@ -37,8 +37,8 @@ Acceptance:
 
 ## CER-M0-002 — Metric contracts
 
-Status: TODO
-Owner: unclaimed
+Status: IN_PROGRESS
+Owner: Codex
 Priority: P0
 Depends on: CER-M0-001
 
