@@ -60,6 +60,14 @@ For true parallel writing use separate Git worktrees/branches.
 
 No two agents should simultaneously mutate the same files.
 
+## Ciclo de sesión
+
+- Una sesión de escritura suele acompañar una task desde su claim hasta el merge y la reconciliación post-merge.
+- Mantén la sesión durante implementación, debugging, correcciones de review y cambios sobre el mismo working tree.
+- Tras mergear y reconciliar la memoria del repo, prefiere una sesión nueva para la siguiente task. La continuidad local o el debugging pueden justificar reutilizarla; no abras chats nuevos mecánicamente.
+- Para reviews realmente independientes, prefiere otra sesión o modelo.
+- Una sesión nueva reconstruye el contexto desde `AGENTS.md` → `STATE.md` → `HANDOFF.md` → `TASKS.md` → Git/Graphify, no desde el historial del chat anterior.
+
 ## Model routing
 
 Model routing is operational and may change.

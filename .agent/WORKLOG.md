@@ -55,3 +55,10 @@ Event: corrección de review
 Summary: D-012 y CER-M0-002 exigen detección de cero tests por proyecto cuando existan pruebas reales; CodeQL queda condicionado a visibilidad pública, con acciones v4 y permisos mínimos.
 Files: `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `.github/workflows/codeql.yml`.
 Result: build Debug/Release exit 0 sin advertencias; MTP directo exit 1 (ZeroTests en 3 proyectos); test CI exit 0 por excepción temporal; CodeQL anterior falló por code scanning privado no disponible y acceso al workflow run.
+
+## 2026-09-23 — Codex — reconciliación post-merge
+
+Event: handoff
+Summary: PR #1 se integró mediante squash en `main`; STATE y HANDOFF reflejan el estado posterior y DEVELOPMENT_WORKFLOW define el ciclo de sesión.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `DEVELOPMENT_WORKFLOW.md`.
+Result: Build and Test y Repository Quality success; CodeQL skipped por repositorio privado. CER-M0-002 sigue TODO y unclaimed.
