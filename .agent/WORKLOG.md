@@ -62,3 +62,10 @@ Event: handoff
 Summary: PR #1 se integró mediante squash en `main`; STATE y HANDOFF reflejan el estado posterior y DEVELOPMENT_WORKFLOW define el ciclo de sesión.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `DEVELOPMENT_WORKFLOW.md`.
 Result: Build and Test y Repository Quality success; CodeQL skipped por repositorio privado. CER-M0-002 sigue TODO y unclaimed.
+
+## 2026-09-23 — Codex — CER-M0-002
+
+Event: implementación
+Summary: contratos tipados de métricas, invariantes y pruebas unitarias; D-014 separa estado/confianza y ZeroTests queda acotado a proyectos vacíos.
+Files: `src/Cerith.Core/`, `tests/Cerith.Core.Tests/`, `.github/workflows/build.yml`, `docs/METRICS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`.
+Result: PASS — build Release sin warnings/errores; 17/17 pruebas Core; tolerancias individuales de Telemetry/Integration verificadas; cero tests en Core falla con código 8; diff e higiene privada limpios. Graphify code-only actualizado a 222 nodos; reextracción semántica de docs pendiente por falta de clave LLM. CI remota no ejecutada porque la branch sigue local.

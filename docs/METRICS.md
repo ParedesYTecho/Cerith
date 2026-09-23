@@ -6,7 +6,9 @@ Every measurement in Cerith must be representable through one core metric model.
 
 ## Metric IDs
 
-Use hierarchical strings.
+Metric IDs are immutable, open-ended strings. Preserve their exact text and compare them ordinally and case-sensitively. Reject null, empty, whitespace-only, and leading/trailing whitespace; do not lowercase IDs or impose a speculative grammar.
+
+Use hierarchical strings as a convention:
 
 Examples:
 
@@ -25,60 +27,51 @@ ai.codex.session.remaining
 ai.antigravity.gemini.weekly.remaining
 ```
 
-Do not use a closed enum because plugins need to add metrics without recompiling Core.
+Do not use a closed enum because metrics need to be addable without recompiling Core.
 
 ## Descriptor
 
-Conceptual fields:
+Descriptors are provider-independent. A descriptor identifies the semantic metric; concrete source information belongs to each snapshot.
+
+Current fields:
 
 ```text
-id
-display_name
-description
-semantic_type
-unit
-value_type
-range if meaningful
-tags
-provider_id
+Id
+DisplayName
+Description?
+SemanticType
+Unit?
+ValueKind
 ```
 
 ## Snapshot
 
-Conceptual fields:
+Snapshots are immutable. `Value` is optional and uses a typed value kind, not an arbitrary object or JSON value. Supported kinds are `double`, `long`, `decimal`, `bool`, `string`, `DateTimeOffset`, and `TimeSpan`.
 
 ```text
-metric_id
-value
-observed_at
-state
-source
-confidence
-age
-metadata
-error
+MetricId
+Value?
+ObservedAt: DateTimeOffset
+State: Fresh | Stale | Unavailable | Stopped | Error | Unlimited
+Confidence: Unknown | Measured | Estimated
+Source?
+ErrorCode? (sanitized code only)
 ```
 
-## Required states
+`MetricState` describes availability/freshness; `MetricConfidence` describes whether the value is measured or estimated. These dimensions are independent, so stale values retain either measured or estimated confidence.
 
-```text
-measured
-estimated
-stale
-unavailable
-stopped
-error
-unlimited
-```
+Age is derived as `reference_time - ObservedAt`; it is not stored in the snapshot. A stale snapshot retains its observation timestamp so callers can determine its age.
 
-Rules:
+## Value and state rules
 
-- zero is a real value;
-- missing is not zero;
-- unlimited is not 100%;
-- an HTTP error is not 0%;
-- stale exposes age;
-- estimated stays visibly estimated when relevant.
+- `Fresh` and `Stale` require a value.
+- `Unavailable`, `Stopped`, and `Error` contain no value.
+- `Unlimited` contains no value; the state represents the absence of a finite limit.
+- A snapshot without a usable value has `Unknown` confidence.
+- Zero is a real value; absence is represented separately.
+- Unlimited is not 100%, and an error is not 0%.
+- Estimated remains visible when the value becomes stale.
+- Error details use a short sanitized code, never an exception or raw provider message.
 
 ## Semantic types
 

@@ -20,7 +20,7 @@ Legacy quota logic is not ported.
 
 ## D-005 — Truthful states
 
-Missing, stale, estimated, unlimited and error states remain distinct.
+Availability/freshness, confidence, unlimited and error semantics remain distinct. State and confidence are orthogonal; see D-014.
 
 ## D-006 — Development workflow separate from product
 
@@ -54,10 +54,14 @@ Los proyectos de pruebas usan `MSTest.Sdk` con Microsoft.Testing.Platform y perf
 
 `global.json` selecciona Microsoft.Testing.Platform (MTP) para `dotnet test`, requerido por `MSTest.Sdk` con .NET 10.
 
-`--ignore-exit-code 8` en CI es una excepción temporal de CER-M0-001: existen proyectos de pruebas, pero todavía no hay pruebas ejecutables. El comando directo `dotnet test Cerith.sln` termina con exit code 1 porque MTP devuelve `ZeroTests` (código 8); no se descubre ni ejecuta ninguna prueba. Esto no representa pruebas fallidas: no se ejecutó ninguna.
+MTP devuelve `ZeroTests` (código 8) cuando un proyecto no descubre ni ejecuta pruebas. La tolerancia global usada durante CER-M0-001 fue retirada al añadirse las primeras pruebas reales.
 
-Al aparecer el primer test ejecutable real, DEBE retirarse la tolerancia global. Todo proyecto que ya contenga tests reales debe hacer fallar CI si descubre o ejecuta cero inesperadamente. Los proyectos intencionadamente vacíos pueden tolerar `ZeroTests` solo de forma temporal y acotada a cada proyecto; esa tolerancia se retira al incorporar su primer test real. CER-M0-002 elegirá el mecanismo más simple para cumplirlo, sin tests dummy.
+`Cerith.Core.Tests` se ejecuta sin tolerancia. Solo `Cerith.Telemetry.Tests` y `Cerith.Integration.Tests`, mientras sigan vacíos, pueden ignorar el código 8 en sus invocaciones individuales. Retirar cada excepción al añadir su primer test real; no añadir tests dummy.
 
 ## D-013 — CodeQL según visibilidad
 
 El repositorio privado actual no dispone de code scanning. CodeQL se omite mientras sea privado y se ejecuta automáticamente cuando `github.event.repository.visibility == 'public'`. El job conserva solo los permisos necesarios: `actions: read`, `contents: read` y `security-events: write`.
+
+## D-014 — Contrato fundamental de métricas
+
+`MetricId` conserva texto no vacío exacto con igualdad ordinal case-sensitive y sin gramática cerrada. `MetricState` (freshness/disponibilidad) y `MetricConfidence` (unknown/measured/estimated) son dimensiones ortogonales. Los snapshots usan `MetricValue` tipado y `DateTimeOffset ObservedAt`; la edad se deriva de una hora de referencia. `Unlimited` no contiene `Value` y usa confidence `Unknown`. `MetricDescriptor` es provider-independent; source y error code sanitizado pertenecen al snapshot.
