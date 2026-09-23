@@ -79,7 +79,14 @@ Result: PASS — `main` se sincronizó en `e895e1666d376a22c15a31d6b809c5a6b7163
 
 ## 2026-09-23 — Codex — CER-M0-003
 
-Event: PR para review
-Summary: `MetricRegistry` thread-safe con registro first-wins, lookup y snapshots read-only; tests de contrato; documentación canónica actualizada. PR #8 queda para review/merge del Advisor.
+Event: implementación y merge
+Summary: `MetricRegistry` thread-safe con registro first-wins, lookup y snapshots read-only; tests de contrato; documentación canónica actualizada. PR #8 pasó review del Advisor con PASS y se integró mediante squash.
 Files: `src/Cerith.Core/MetricRegistry.cs`, `tests/Cerith.Core.Tests/MetricRegistryTests.cs`, `docs/METRICS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
-Result: PASS — build Release sin warnings/errores; 25/25 Core tests; `git diff --check`; Repository Quality sin artefactos privados. Graphify code-only: 248 nodos/330 aristas. La reextracción semántica documental continúa pendiente por falta de clave LLM según el handoff previo.
+Result: PASS — build Release sin warnings/errores; 25/25 Core tests; Build and Test y Repository Quality success; CodeQL skipped según D-013. Graphify code-only: 248 nodos/330 aristas. La reextracción semántica documental continúa pendiente según el handoff previo.
+
+## 2026-09-23 — Codex — CER-M0-003 post-merge
+
+Event: reconciliación
+Summary: `main` se sincronizó con `origin/main` en `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`; STATE, HANDOFF y TASKS reflejan el merge. M0-004 y M0-005 siguen TODO/unclaimed; Dependabot #3/#4 continúa separado.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` exacta y limpia al inicio; `git diff --check` sin errores.
