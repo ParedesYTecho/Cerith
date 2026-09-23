@@ -42,7 +42,7 @@ Owner: Codex
 Priority: P0
 Depends on: CER-M0-001
 
-Resultado: contratos y 17 pruebas reales implementados en `feat/CER-M0-002-metric-contracts`; commit de implementación `f0b318d92052378b206328dad6257ce17b0fcf78`. Pendiente de review del Advisor; no mergeado.
+Resultado: contratos y 17 pruebas reales completados; review del Advisor aprobada en PR #6 y merge mediante squash en `main` (`e895e1666d376a22c15a31d6b809c5a6b716307d`). Build and Test y Repository Quality pasaron; CodeQL se omitió según D-013. Los PR Dependabot #3 y #4 siguen siendo mantenimiento separado.
 
 Acceptance:
 
