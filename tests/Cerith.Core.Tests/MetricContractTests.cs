@@ -144,22 +144,18 @@ public sealed class MetricSnapshotTests
     }
 
     [TestMethod]
-    public void UnlimitedRejectsNumericValuesButCanCarryNonNumericContext()
+    public void UnlimitedRequiresNoValueAndUnknownConfidence()
     {
         Assert.Throws<ArgumentException>(() =>
-            Create(MetricState.Unlimited, MetricValue.From(0d), MetricConfidence.Measured));
+            Create(MetricState.Unlimited, MetricValue.From(0d)));
         Assert.Throws<ArgumentException>(() =>
-            Create(MetricState.Unlimited, MetricValue.From(0L), MetricConfidence.Measured));
-        Assert.Throws<ArgumentException>(() =>
-            Create(MetricState.Unlimited, MetricValue.From(0m), MetricConfidence.Measured));
+            Create(MetricState.Unlimited, MetricValue.From("no finite limit")));
 
-        var snapshot = Create(
-            MetricState.Unlimited,
-            MetricValue.From("no finite limit"),
-            MetricConfidence.Measured);
+        var snapshot = Create(MetricState.Unlimited, null);
 
         Assert.AreEqual(MetricState.Unlimited, snapshot.State);
-        Assert.AreEqual("no finite limit", snapshot.Value!.Value.AsString());
+        Assert.IsFalse(snapshot.Value.HasValue);
+        Assert.AreEqual(MetricConfidence.Unknown, snapshot.Confidence);
     }
 
     [TestMethod]

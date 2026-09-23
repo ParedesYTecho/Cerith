@@ -106,16 +106,10 @@ public sealed class MetricSnapshot
             case MetricState.Unavailable:
             case MetricState.Stopped:
             case MetricState.Error:
+            case MetricState.Unlimited:
                 if (hasValue)
                 {
                     throw new ArgumentException($"{state} metrics cannot contain a value.", nameof(value));
-                }
-
-                break;
-            case MetricState.Unlimited:
-                if (value is MetricValue unlimitedValue && IsNumeric(unlimitedValue.Kind))
-                {
-                    throw new ArgumentException("Unlimited metrics cannot contain a numeric value.", nameof(value));
                 }
 
                 break;
@@ -126,9 +120,6 @@ public sealed class MetricSnapshot
             throw new ArgumentException("Metrics without a value must have unknown confidence.", nameof(confidence));
         }
     }
-
-    private static bool IsNumeric(MetricValueKind kind) => kind is
-        MetricValueKind.Double or MetricValueKind.Int64 or MetricValueKind.Decimal;
 
     private static bool IsSafeErrorCode(string value)
     {

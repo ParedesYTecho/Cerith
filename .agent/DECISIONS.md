@@ -64,4 +64,4 @@ El repositorio privado actual no dispone de code scanning. CodeQL se omite mient
 
 ## D-014 — Contrato fundamental de métricas
 
-`MetricId` conserva texto no vacío exacto con igualdad ordinal case-sensitive y sin gramática cerrada. `MetricState` (freshness/disponibilidad) y `MetricConfidence` (unknown/measured/estimated) son dimensiones ortogonales. Los snapshots usan `MetricValue` tipado y `DateTimeOffset ObservedAt`; la edad se deriva de una hora de referencia. `MetricDescriptor` es provider-independent; source y error code sanitizado pertenecen al snapshot.
+`MetricId` conserva texto no vacío exacto con igualdad ordinal case-sensitive y sin gramática cerrada. `MetricState` (freshness/disponibilidad) y `MetricConfidence` (unknown/measured/estimated) son dimensiones ortogonales. Los snapshots usan `MetricValue` tipado y `DateTimeOffset ObservedAt`; la edad se deriva de una hora de referencia. `Unlimited` no contiene `Value` y usa confidence `Unknown`. `MetricDescriptor` es provider-independent; source y error code sanitizado pertenecen al snapshot.

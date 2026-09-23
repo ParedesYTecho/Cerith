@@ -66,7 +66,7 @@ Age is derived as `reference_time - ObservedAt`; it is not stored in the snapsho
 
 - `Fresh` and `Stale` require a value.
 - `Unavailable`, `Stopped`, and `Error` contain no value.
-- `Unlimited` has no numeric value; the state represents the absence of a finite limit.
+- `Unlimited` contains no value; the state represents the absence of a finite limit.
 - A snapshot without a usable value has `Unknown` confidence.
 - Zero is a real value; absence is represented separately.
 - Unlimited is not 100%, and an error is not 0%.
