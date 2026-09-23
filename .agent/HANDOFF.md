@@ -1,25 +1,28 @@
-# Handoff post-merge — CER-M0-002
+# Handoff — CER-M0-003 MetricRegistry
 
 Fecha: 2026-09-23
-Estado: completada y mergeada en `main` mediante squash en PR #6, tras review aprobada del Advisor.
-Commit de merge: `e895e1666d376a22c15a31d6b809c5a6b716307d`.
-PR: https://github.com/ParedesYTecho/Cerith/pull/6
+Estado: implementación lista; PR #8 pendiente de review/merge del Advisor.
+Branch: `feat/CER-M0-003-metric-registry`
+PR: https://github.com/ParedesYTecho/Cerith/pull/8
 
 ## Implementado
 
-- `MetricId`, `MetricValue`, `MetricSnapshot` y `MetricDescriptor` viven en `Cerith.Core`; state/confidence son ortogonales, la edad deriva de `ObservedAt` y el descriptor es provider-independent.
-- 17 pruebas unitarias de contratos e invariantes.
-- D-014 registra el contrato; D-012 limita ZeroTests por proyecto.
+- `MetricRegistry` concreto en `Cerith.Core`, indexado por `MetricId` con `ConcurrentDictionary`.
+- La primera registración gana; lookup devuelve la misma instancia; el catálogo se obtiene como snapshot read-only.
+- `Count`, validación explícita de null y operaciones thread-safe.
+- Ocho tests de contrato, incluidos casing, duplicados, snapshot y registros concurrentes.
+- Sección breve del contrato añadida a `docs/METRICS.md`; sin interfaces, paquetes ni proyectos nuevos.
 
 ## Verificación
 
 - PASS — `dotnet build Cerith.sln --configuration Release`, 0 warnings/errores.
-- PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build --verbosity normal`, 17/17 sin tolerancia.
-- PASS — Telemetry e Integration, con sus invocaciones individuales `-- --ignore-exit-code 8`; 0 tests en cada proyecto vacío.
-- PASS — Core filtrado deliberadamente a 0 tests falla con MTP `ZeroTests` (8), sin tolerancia.
-- CI en PR #6: Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013.
-- La reconciliación post-merge confirmó `main` en el commit de merge indicado y `git diff --check` sin errores.
+- PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build --verbosity normal`, 25/25.
+- PASS — `git diff --cached --check` y chequeo de artefactos privados de Repository Quality.
+- PASS — Graphify code-only: 248 nodos y 330 aristas; `MetricRegistry` y sus tests aparecen en el grafo.
+- GitHub Actions: consultar el estado actual del PR #8.
 
-## Decisiones y límites
+## Límites y siguiente paso
 
-Telemetry.Tests e Integration.Tests permanecen vacíos y conservan excepciones temporales individuales hasta que reciban tests reales. La reextracción semántica documental de Graphify quedó pendiente por falta de clave LLM y no bloqueó la entrega. Los PR Dependabot #3 y #4 son mantenimiento separado. CER-M0-003 — MetricRegistry sigue `TODO` / `unclaimed`; no se inició.
+La reextracción semántica de documentos de Graphify no se ejecutó; el handoff previo la dejaba pendiente por falta de clave LLM. No afecta al grafo de código actualizado.
+
+El Advisor revisa y mergea el PR. El owner de implementación no lo mergea. Tras el merge, sincronizar `main` y reconciliar `.agent/STATE.md`; no comenzar CER-M0-004 ni CER-M0-005 antes.
