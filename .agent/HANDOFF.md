@@ -20,7 +20,7 @@ Los dos archivos nuevos separan el comportamiento del bus de los contratos previ
 - PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build`: 39/39.
 - PASS — `git diff --check`.
 - PASS — Graphify code-only actualizado a 286 nodos y 463 aristas; actualización semántica documental pendiente.
-- CI remoto: pendiente de PR.
+- PASS — CI remoto del PR #10: Build and Test y Repository Quality; CodeQL SKIPPED según D-013.
 
 ## Siguiente
 

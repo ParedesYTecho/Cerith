@@ -96,4 +96,4 @@ Result: PASS — `main` exacta y limpia al inicio; `git diff --check` sin errore
 Event: implementación y handoff
 Summary: `MetricBus` concreto con fan-out exacto, Channels acotados por subscriber, backpressure, cancelación y disposal; D-015 y documentación canónica actualizadas. Base `main` verificada en `95643d2e08d4149f1260776bdbe6bc7882d9fdef`.
 Files: `src/Cerith.Core/MetricBus.cs`, `tests/Cerith.Core.Tests/MetricBusTests.cs`, `docs/METRICS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`.
-Result: PASS — Release build sin warnings/errores; Core 39/39; `git diff --check`; Graphify code-only 286 nodos/463 aristas. CI remoto y review del Advisor pendientes.
+Result: PASS — Release build sin warnings/errores; Core 39/39; `git diff --check`; Graphify code-only 286 nodos/463 aristas; CI remoto del PR #10 Build and Test y Repository Quality PASS. CodeQL SKIPPED según D-013; review del Advisor pendiente.

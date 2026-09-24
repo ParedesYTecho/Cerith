@@ -33,7 +33,7 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 ## CER-M0-004
 
-`MetricBus` distribuye snapshots por `MetricId` exacto a múltiples suscriptores con buffers acotados y backpressure. Cancelación y disposal cierran las suscripciones; no hay replay ni dependencia de `MetricRegistry`. D-015 y `docs/METRICS.md` recogen el contrato. Verificación local: Release build PASS (0 advertencias/errores), Core 39/39 PASS, `git diff --check` PASS. Graphify code-only actualizado a 286 nodos y 463 aristas; la reextracción semántica documental sigue pendiente. CI remoto y review del Advisor pendientes.
+`MetricBus` distribuye snapshots por `MetricId` exacto a múltiples suscriptores con buffers acotados y backpressure. Cancelación y disposal cierran las suscripciones; no hay replay ni dependencia de `MetricRegistry`. D-015 y `docs/METRICS.md` recogen el contrato. Verificación local: Release build PASS (0 advertencias/errores), Core 39/39 PASS, `git diff --check` PASS. Graphify code-only actualizado a 286 nodos y 463 aristas; la reextracción semántica documental sigue pendiente. En PR #10, Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. Review del Advisor pendiente.
 
 ## Siguiente
 
