@@ -111,3 +111,10 @@ Event: implementación y PR
 Summary: `SyntheticProvider` determinista publica únicamente `synthetic.counter` con MetricRegistry, MetricBus y TimeProvider. Confidence `Unknown` deja claro que el valor no mide ni estima telemetría real. Siete pruebas reales; Telemetry.Tests perdió la tolerancia ZeroTests y solo Integration.Tests conserva la excepción temporal. Commit de implementación `11575ded86d94fb3567cccf0f6c91990b2930f48`; PR #12 abierto, sin merge.
 Files: `src/Cerith.TelemetryService/SyntheticProvider.cs`, `tests/Cerith.Telemetry.Tests/SyntheticProviderTests.cs`, `.github/workflows/build.yml`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
 Result: PASS — Release build 0 warnings/errors; Core 39/39; Telemetry 7/7 sin tolerancia; Integration 0 tests con tolerancia temporal; `git diff --check`; chequeo de nombres sensibles del workflow sin coincidencias. CI de PR #12: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Graphify code-only: 317 nodos y 546 aristas; reportó etiquetas desfasadas (64 comunidades, 62 etiquetas guardadas). No iniciar CER-M0-006; esperar review independiente y merge solo con PASS.
+
+## 2026-09-25 — Codex — CER-M0-005 post-merge
+
+Event: reconciliación
+Summary: `main` se sincronizó con `origin/main` en `729075dcfcef1ae849b9339a96b438d234e7ff37`. PR #12 pasó review independiente del Advisor con PASS y se integró mediante squash; CER-M0-005 queda DONE. `SyntheticProvider` y `synthetic.counter` están en `main`.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` exacta en el SHA de merge y working tree limpio antes de la reconciliación; `git diff --check`. CI: Build and Test success, Repository Quality success, CodeQL skipped según D-013. Core.Tests y Telemetry.Tests sin tolerancia ZeroTests; solo Integration.Tests conserva temporalmente su excepción. CER-M0-006 sigue TODO/unclaimed; no hay task WidgetHost reclamada; Dependabot #3/#4 sigue separado. Graphify label drift queda como tooling pendiente, sin task de producto.

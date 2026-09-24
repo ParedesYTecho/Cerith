@@ -1,32 +1,26 @@
-# Handoff — CER-M0-005 SyntheticProvider
+# Handoff post-merge — CER-M0-005 SyntheticProvider
 
 Fecha: 2026-09-25
-Estado: implementación enviada en PR #12 contra `main`; abierta y sin merge, a la espera de review independiente del Advisor.
-Branch: `feat/CER-M0-005-synthetic-provider`
-Base verificada: `e79be08b342a8123748a98bf4da05723728f535b`
-Commit de implementación: `11575ded86d94fb3567cccf0f6c91990b2930f48`
+Estado: DONE; PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `main`.
+Merge SHA: `729075dcfcef1ae849b9339a96b438d234e7ff37`
 PR: https://github.com/ParedesYTecho/Cerith/pull/12
 
 ## Cambio
 
-- `src/Cerith.TelemetryService/SyntheticProvider.cs`: descriptor único `synthetic.counter`, registro first-wins y publicaciones Int64 `0, 1, 2, ...` con `MetricBus` y `TimeProvider`. Usa `MetricConfidence.Unknown` porque el valor generado no mide ni estima telemetría real.
-- `tests/Cerith.Telemetry.Tests/SyntheticProviderTests.cs`: siete pruebas de contrato/comportamiento, incluidas secuencia, timestamp controlado, ausencia de replay, cancelación y dependencias nulas.
-- `.github/workflows/build.yml`: Telemetry.Tests ya corre sin tolerancia ZeroTests; Integration.Tests mantiene la excepción temporal.
-- `.agent/TASKS.md`: CER-M0-005 en IN REVIEW; M0-006 permanece TODO/unclaimed.
-
-No se implementaron loop, timer, hosted service, scheduling, IPC, WidgetHost ni abstracciones genéricas.
+- `SyntheticProvider` y el descriptor `synthetic.counter` están integrados en `Cerith.TelemetryService`; registra con `MetricRegistry` y publica snapshots por `MetricBus` usando `TimeProvider`.
+- `Core.Tests` y `Telemetry.Tests` se ejecutan sin tolerancia ZeroTests. Solo `Integration.Tests`, mientras permanezca vacío, conserva la excepción temporal.
+- No se implementaron scheduling, IPC ni integración WidgetHost.
 
 ## Verificación
 
-- PASS — `dotnet build Cerith.sln --configuration Release`: 0 advertencias y 0 errores.
-- PASS — `Cerith.Core.Tests`: 39/39 sin tolerancia ZeroTests.
-- PASS — `Cerith.Telemetry.Tests`: 7/7 sin tolerancia ZeroTests.
-- PASS — `Cerith.Integration.Tests`: cero pruebas, salida 0 con la excepción temporal existente.
-- PASS — `git diff --cached --check` antes del commit.
-- PASS — chequeo Repository Quality de nombres de artefactos privados: 61 archivos tracked, sin coincidencias.
-- PASS — CI del PR #12: Build and Test y Repository Quality; CodeQL SKIPPED según D-013.
-- PASS — Graphify code-only: 317 nodos y 546 aristas. Reportó 64 comunidades frente a 62 etiquetas guardadas; etiquetas pendientes de refresh semántico.
+- PASS — CI Build and Test.
+- PASS — CI Repository Quality.
+- SKIPPED — CodeQL según D-013.
+- PASS — Release build local sin warnings/errores; Core 39/39 y Telemetry 7/7.
+- PASS — Integration.Tests conserva temporalmente ZeroTests; ejecución local: 0 pruebas.
+- PASS — `git diff --check` en la reconciliación post-merge.
+- Graphify code-only: 317 nodos y 546 aristas; 64 comunidades y 62 etiquetas guardadas. La desincronización queda como tooling pendiente, sin abrir task de producto.
 
 ## Siguiente
 
-Esperar la review independiente; merge únicamente con PASS. No iniciar CER-M0-006 ni integración WidgetHost. Dependabot #3/#4 sigue separado.
+CER-M0-006 permanece TODO/unclaimed y no hay task de integración WidgetHost reclamada. Dependabot #3/#4 sigue separado.
