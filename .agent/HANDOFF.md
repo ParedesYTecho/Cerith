@@ -3,7 +3,7 @@
 Fecha: 2026-09-25
 Estado: implementada en `feat/CER-M0-004-metric-bus`; pendiente de review independiente y merge por el Advisor.
 Base verificada: `origin/main` = `95643d2e08d4149f1260776bdbe6bc7882d9fdef`, árbol limpio antes del claim.
-PR: pendiente de creación.
+PR: https://github.com/ParedesYTecho/Cerith/pull/10
 
 ## Cambio
 
