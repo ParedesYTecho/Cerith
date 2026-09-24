@@ -30,8 +30,8 @@ jobs:
       - name: Test Core contracts
         run: dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build --verbosity normal
 
-      - name: Test empty Telemetry project (temporary ZeroTests allowance)
-        run: dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build --verbosity normal -- --ignore-exit-code 8
+      - name: Test Telemetry providers
+        run: dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build --verbosity normal
 
       - name: Test empty Integration project (temporary ZeroTests allowance)
         run: dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build --verbosity normal -- --ignore-exit-code 8
