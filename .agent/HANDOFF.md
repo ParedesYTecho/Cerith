@@ -1,30 +1,32 @@
-# Handoff post-merge — CER-M0-004 MetricBus
+# Handoff — CER-M0-005 SyntheticProvider
 
 Fecha: 2026-09-25
-Estado: DONE y mergeada en `main` mediante squash tras review independiente del Advisor con PASS.
-Commit de merge: `bd305ae1b2975c8d3a81125688ec21639ab90817`.
-PR: https://github.com/ParedesYTecho/Cerith/pull/10
+Estado: implementación enviada en PR #12 contra `main`; abierta y sin merge, a la espera de review independiente del Advisor.
+Branch: `feat/CER-M0-005-synthetic-provider`
+Base verificada: `e79be08b342a8123748a98bf4da05723728f535b`
+Commit de implementación: `11575ded86d94fb3567cccf0f6c91990b2930f48`
+PR: https://github.com/ParedesYTecho/Cerith/pull/12
 
 ## Cambio
 
-- `src/Cerith.Core/MetricBus.cs`: fan-out exacto por `MetricId`, suscripciones async independientes, capacidad explícita, `BoundedChannelFullMode.Wait`, cancelación y disposal. Sin cache, replay, Registry ni dependencias nuevas.
-- `tests/Cerith.Core.Tests/MetricBusTests.cs`: routing, orden, ausencia de replay, backpressure, cancelación y cierre observables.
-- `docs/METRICS.md` y `.agent/DECISIONS.md`: contrato canónico y D-015.
-- `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/WORKLOG.md`: estado operativo reconciliado tras el merge.
+- `src/Cerith.TelemetryService/SyntheticProvider.cs`: descriptor único `synthetic.counter`, registro first-wins y publicaciones Int64 `0, 1, 2, ...` con `MetricBus` y `TimeProvider`. Usa `MetricConfidence.Unknown` porque el valor generado no mide ni estima telemetría real.
+- `tests/Cerith.Telemetry.Tests/SyntheticProviderTests.cs`: siete pruebas de contrato/comportamiento, incluidas secuencia, timestamp controlado, ausencia de replay, cancelación y dependencias nulas.
+- `.github/workflows/build.yml`: Telemetry.Tests ya corre sin tolerancia ZeroTests; Integration.Tests mantiene la excepción temporal.
+- `.agent/TASKS.md`: CER-M0-005 en IN REVIEW; M0-006 permanece TODO/unclaimed.
 
-Los dos archivos nuevos separan el comportamiento del bus de los contratos previos y sus pruebas de los tests existentes; solo los proyectos Core y Core.Tests los usan. La única abstracción interna es la subscription privada que vincula ID y Channel. Sin paquetes ni proyectos nuevos.
+No se implementaron loop, timer, hosted service, scheduling, IPC, WidgetHost ni abstracciones genéricas.
 
 ## Verificación
 
-- PASS — `dotnet build Cerith.sln --configuration Release`: 0 advertencias, 0 errores.
-- PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build`: 39/39.
-- PASS — `git diff --check`.
-- PASS — Graphify code-only actualizado a 286 nodos y 463 aristas; actualización semántica documental pendiente.
-- PASS — review independiente del Advisor en PR #10.
-- PASS — GitHub Actions Build and Test y Repository Quality; CodeQL SKIPPED según D-013.
-- PASS — `main` y `origin/main` en `bd305ae1b2975c8d3a81125688ec21639ab90817`; árbol limpio al iniciar la reconciliación.
-- PASS — `git diff --check` en la reconciliación.
+- PASS — `dotnet build Cerith.sln --configuration Release`: 0 advertencias y 0 errores.
+- PASS — `Cerith.Core.Tests`: 39/39 sin tolerancia ZeroTests.
+- PASS — `Cerith.Telemetry.Tests`: 7/7 sin tolerancia ZeroTests.
+- PASS — `Cerith.Integration.Tests`: cero pruebas, salida 0 con la excepción temporal existente.
+- PASS — `git diff --cached --check` antes del commit.
+- PASS — chequeo Repository Quality de nombres de artefactos privados: 61 archivos tracked, sin coincidencias.
+- PASS — CI del PR #12: Build and Test y Repository Quality; CodeQL SKIPPED según D-013.
+- PASS — Graphify code-only: 317 nodos y 546 aristas. Reportó 64 comunidades frente a 62 etiquetas guardadas; etiquetas pendientes de refresh semántico.
 
 ## Siguiente
 
-CER-M0-005 y CER-M0-006 siguen `TODO` / `unclaimed`; no se inician aquí. Dependabot #3/#4 permanece separado.
+Esperar la review independiente; merge únicamente con PASS. No iniciar CER-M0-006 ni integración WidgetHost. Dependabot #3/#4 sigue separado.

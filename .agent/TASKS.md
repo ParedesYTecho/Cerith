@@ -80,7 +80,7 @@ Acceptance:
 
 ## CER-M0-005 — SyntheticProvider
 
-Status: IN PROGRESS
+Status: IN REVIEW
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-003, CER-M0-004

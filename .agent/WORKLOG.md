@@ -104,3 +104,10 @@ Event: reconciliación
 Summary: PR #10 pasó review independiente del Advisor con PASS y se integró mediante squash en `bd305ae1b2975c8d3a81125688ec21639ab90817`; CER-M0-004 queda DONE. D-015 y el contrato MetricBus están en `main`.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — Build and Test y Repository Quality success; CodeQL skipped según D-013; `main` sincronizada con `origin/main`; working tree limpio al iniciar; `git diff --check` limpio. CER-M0-005 y CER-M0-006 continúan TODO/unclaimed; Dependabot #3/#4 sigue separado.
+
+## 2026-09-25 — Codex — CER-M0-005
+
+Event: implementación y PR
+Summary: `SyntheticProvider` determinista publica únicamente `synthetic.counter` con MetricRegistry, MetricBus y TimeProvider. Confidence `Unknown` deja claro que el valor no mide ni estima telemetría real. Siete pruebas reales; Telemetry.Tests perdió la tolerancia ZeroTests y solo Integration.Tests conserva la excepción temporal. Commit de implementación `11575ded86d94fb3567cccf0f6c91990b2930f48`; PR #12 abierto, sin merge.
+Files: `src/Cerith.TelemetryService/SyntheticProvider.cs`, `tests/Cerith.Telemetry.Tests/SyntheticProviderTests.cs`, `.github/workflows/build.yml`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: PASS — Release build 0 warnings/errors; Core 39/39; Telemetry 7/7 sin tolerancia; Integration 0 tests con tolerancia temporal; `git diff --check`; chequeo de nombres sensibles del workflow sin coincidencias. CI de PR #12: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Graphify code-only: 317 nodos y 546 aristas; reportó etiquetas desfasadas (64 comunidades, 62 etiquetas guardadas). No iniciar CER-M0-006; esperar review independiente y merge solo con PASS.
