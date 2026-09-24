@@ -80,10 +80,11 @@ Acceptance:
 
 ## CER-M0-005 — SyntheticProvider
 
-Status: IN REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-003, CER-M0-004
+Resultado: PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. `SyntheticProvider` y `synthetic.counter` están integrados en `main`; Build and Test y Repository Quality success; CodeQL skipped según D-013. Core.Tests y Telemetry.Tests se ejecutan sin tolerancia ZeroTests; solo Integration.Tests conserva temporalmente su excepción.
 
 ## CER-M0-006 — IPC prototype
 

@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-004 completadas y mergeadas en `main`. CER-M0-005 está implementada en la branch `feat/CER-M0-005-synthetic-provider`; PR #12 está abierto para review independiente, sin merge. CER-M0-006 sigue TODO/unclaimed.
+Estado: CER-M0-001 a CER-M0-005 completadas y mergeadas en `main`. CER-M0-005 pasó review independiente del Advisor con PASS y PR #12 se integró mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. CER-M0-006 sigue TODO/unclaimed; no hay task de integración WidgetHost reclamada.
 
 ## Listo
 
@@ -37,8 +37,8 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 ## CER-M0-005
 
-`SyntheticProvider` publica `synthetic.counter` determinista mediante `MetricBus`, registra su descriptor en `MetricRegistry` y usa `TimeProvider`. Los valores generados usan confidence `Unknown` porque no son mediciones ni estimaciones de telemetría real. PR #12 está abierto contra `main`, esperando review independiente; no se ha mergeado. El commit de implementación es `11575ded86d94fb3567cccf0f6c91990b2930f48`. Verificación local: Release build PASS sin warnings/errores, Core 39/39, Telemetry 7/7 sin ZeroTests tolerance e Integration 0 tests con su tolerancia temporal. CI remoto: Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Graphify code-only: 317 nodos y 546 aristas; el refresco señaló etiquetas de comunidad desfasadas (64 comunidades, 62 etiquetas guardadas). No se inicia CER-M0-006.
+`SyntheticProvider` y `synthetic.counter` están integrados en `main`. PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. Build and Test: success; Repository Quality: success; CodeQL: skipped según D-013. `Core.Tests` y `Telemetry.Tests` se ejecutan sin tolerancia ZeroTests; solo `Integration.Tests` conserva la excepción temporal. La verificación local fue Release build PASS (0 warnings/errores), Core 39/39 y Telemetry 7/7; Integration 0 tests con tolerancia. Graphify code-only quedó en 317 nodos y 546 aristas; la desincronización de etiquetas (64 comunidades, 62 etiquetas) queda como tooling pendiente, sin task de producto.
 
 ## Siguiente
 
-Esperar la review independiente de PR #12 y el merge solo con PASS. No iniciar CER-M0-006 ni integración WidgetHost. Dependabot #3/#4 permanece separado.
+CER-M0-006 sigue TODO/unclaimed. No existe task de integración WidgetHost reclamada. Dependabot #3/#4 permanece separado.
