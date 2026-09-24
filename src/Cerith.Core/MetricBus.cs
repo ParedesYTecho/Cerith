@@ -64,6 +64,7 @@ public sealed class MetricBus : IDisposable
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            // ponytail: linear scan of active subscribers; index by MetricId if fan-out scale warrants it.
             targets = _subscriptions.Where(subscription => subscription.MetricId == snapshot.MetricId).ToArray();
         }
 
