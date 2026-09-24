@@ -97,3 +97,10 @@ Event: implementación y handoff
 Summary: `MetricBus` concreto con fan-out exacto, Channels acotados por subscriber, backpressure, cancelación y disposal; D-015 y documentación canónica actualizadas. Base `main` verificada en `95643d2e08d4149f1260776bdbe6bc7882d9fdef`.
 Files: `src/Cerith.Core/MetricBus.cs`, `tests/Cerith.Core.Tests/MetricBusTests.cs`, `docs/METRICS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`.
 Result: PASS — Release build sin warnings/errores; Core 39/39; `git diff --check`; Graphify code-only 286 nodos/463 aristas; CI remoto del PR #10 Build and Test y Repository Quality PASS. CodeQL SKIPPED según D-013; review del Advisor pendiente.
+
+## 2026-09-25 — Codex — CER-M0-004 post-merge
+
+Event: reconciliación
+Summary: PR #10 pasó review independiente del Advisor con PASS y se integró mediante squash en `bd305ae1b2975c8d3a81125688ec21639ab90817`; CER-M0-004 queda DONE. D-015 y el contrato MetricBus están en `main`.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — Build and Test y Repository Quality success; CodeQL skipped según D-013; `main` sincronizada con `origin/main`; working tree limpio al iniciar; `git diff --check` limpio. CER-M0-005 y CER-M0-006 continúan TODO/unclaimed; Dependabot #3/#4 sigue separado.

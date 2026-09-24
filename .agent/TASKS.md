@@ -64,11 +64,11 @@ Resultado: implementación completada; PR #8 pasó review del Advisor con PASS y
 
 ## CER-M0-004 — MetricBus
 
-Status: IN REVIEW
-Owner: Codex (feat/CER-M0-004-metric-bus)
+Status: DONE
+Owner: Codex
 Priority: P0
 Depends on: CER-M0-002
-Resultado: implementación y pruebas locales completas en PR #10; pendiente de review independiente del Advisor y merge.
+Resultado: PR #10 pasó review independiente del Advisor con PASS y se integró mediante squash en `main` (`bd305ae1b2975c8d3a81125688ec21639ab90817`). Build and Test y Repository Quality: success; CodeQL: skipped según D-013. D-015 y el contrato de `docs/METRICS.md` quedaron integrados. Dependabot #3/#4 permanece separado.
 
 Acceptance:
 
