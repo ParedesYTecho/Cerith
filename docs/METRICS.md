@@ -48,6 +48,10 @@ ValueKind
 
 `MetricRegistry` keeps one in-memory `MetricDescriptor` per `MetricId`. The first registration wins; duplicate IDs do not replace it. Lookup returns the stored descriptor, and catalog enumeration returns a read-only point-in-time snapshot. Operations are thread-safe. The registry stores descriptors only, not measurements or snapshots.
 
+## Bus
+
+`MetricBus` fans out snapshots to multiple independent subscribers by exact `MetricId`. A subscription receives only publications made after activation. Each subscriber has a bounded buffer; a full buffer applies backpressure rather than silently dropping snapshots. Cancellation or disposal ends a subscription, and disposing the bus completes active readers. The bus has no replay, latest-value cache, or dependency on `MetricRegistry`.
+
 ## Snapshot
 
 Snapshots are immutable. `Value` is optional and uses a typed value kind, not an arbitrary object or JSON value. Supported kinds are `double`, `long`, `decimal`, `bool`, `string`, `DateTimeOffset`, and `TimeSpan`.

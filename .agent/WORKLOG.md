@@ -90,3 +90,10 @@ Event: reconciliación
 Summary: `main` se sincronizó con `origin/main` en `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`; STATE, HANDOFF y TASKS reflejan el merge. M0-004 y M0-005 siguen TODO/unclaimed; Dependabot #3/#4 continúa separado.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — `main` exacta y limpia al inicio; `git diff --check` sin errores.
+
+## 2026-09-25 — Codex — CER-M0-004
+
+Event: implementación y handoff
+Summary: `MetricBus` concreto con fan-out exacto, Channels acotados por subscriber, backpressure, cancelación y disposal; D-015 y documentación canónica actualizadas. Base `main` verificada en `95643d2e08d4149f1260776bdbe6bc7882d9fdef`.
+Files: `src/Cerith.Core/MetricBus.cs`, `tests/Cerith.Core.Tests/MetricBusTests.cs`, `docs/METRICS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`.
+Result: PASS — Release build sin warnings/errores; Core 39/39; `git diff --check`; Graphify code-only 286 nodos/463 aristas. CI remoto y review del Advisor pendientes.
