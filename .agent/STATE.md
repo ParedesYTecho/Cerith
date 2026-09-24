@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001, CER-M0-002 y CER-M0-003 completadas y mergeadas en `main`. CER-M0-004 implementada en `feat/CER-M0-004-metric-bus`, pendiente de review independiente y merge. CER-M0-005 sigue sin reclamar.
+Estado: CER-M0-001 a CER-M0-004 completadas y mergeadas en `main`. CER-M0-004 pasó review independiente del Advisor con PASS y PR #10 se integró mediante squash en `bd305ae1b2975c8d3a81125688ec21639ab90817`.
 
 ## Listo
 
@@ -33,8 +33,8 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 ## CER-M0-004
 
-`MetricBus` distribuye snapshots por `MetricId` exacto a múltiples suscriptores con buffers acotados y backpressure. Cancelación y disposal cierran las suscripciones; no hay replay ni dependencia de `MetricRegistry`. D-015 y `docs/METRICS.md` recogen el contrato. Verificación local: Release build PASS (0 advertencias/errores), Core 39/39 PASS, `git diff --check` PASS. Graphify code-only actualizado a 286 nodos y 463 aristas; la reextracción semántica documental sigue pendiente. En PR #10, Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. Review del Advisor pendiente.
+`MetricBus` distribuye snapshots por `MetricId` exacto a múltiples suscriptores con buffers acotados y backpressure. Cancelación y disposal cierran las suscripciones; no hay replay ni dependencia de `MetricRegistry`. D-015 y `docs/METRICS.md` quedaron integrados. PR #10 pasó review del Advisor con PASS y se mergeó mediante squash en `bd305ae1b2975c8d3a81125688ec21639ab90817`. Build and Test: success; Repository Quality: success; CodeQL: skipped según D-013. Verificación local: Release build PASS (0 advertencias/errores), Core 39/39 PASS y `git diff --check` PASS. Graphify code-only: 286 nodos y 463 aristas; reextracción semántica documental pendiente.
 
 ## Siguiente
 
-Review independiente de CER-M0-004 y merge por el Advisor si obtiene PASS. CER-M0-005 permanece `TODO` / `unclaimed`. Dependabot #3/#4 sigue separado.
+CER-M0-005 y CER-M0-006 permanecen `TODO` / `unclaimed`; no se reclaman en esta reconciliación. Dependabot #3/#4 permanece separado.
