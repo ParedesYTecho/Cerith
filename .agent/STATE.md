@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001, CER-M0-002 y CER-M0-003 completadas y mergeadas en `main`. CER-M0-003 pasó review del Advisor con PASS y se integró mediante squash en `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`. CER-M0-004 y CER-M0-005 siguen sin reclamar.
+Estado: CER-M0-001, CER-M0-002 y CER-M0-003 completadas y mergeadas en `main`. CER-M0-004 implementada en `feat/CER-M0-004-metric-bus`, pendiente de review independiente y merge. CER-M0-005 sigue sin reclamar.
 
 ## Listo
 
@@ -31,6 +31,10 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 - `main` local y `origin/main` coinciden en el SHA del merge; working tree limpio durante la reconciliación.
 - Los PR Dependabot #3 y #4 siguen siendo mantenimiento separado.
 
+## CER-M0-004
+
+`MetricBus` distribuye snapshots por `MetricId` exacto a múltiples suscriptores con buffers acotados y backpressure. Cancelación y disposal cierran las suscripciones; no hay replay ni dependencia de `MetricRegistry`. D-015 y `docs/METRICS.md` recogen el contrato. Verificación local: Release build PASS (0 advertencias/errores), Core 39/39 PASS, `git diff --check` PASS. Graphify code-only actualizado a 286 nodos y 463 aristas; la reextracción semántica documental sigue pendiente. En PR #10, Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. Review del Advisor pendiente.
+
 ## Siguiente
 
-CER-M0-004 — MetricBus y CER-M0-005 — SyntheticProvider siguen `TODO` / `unclaimed`. No se iniciaron ni reclamaron durante esta reconciliación.
+Review independiente de CER-M0-004 y merge por el Advisor si obtiene PASS. CER-M0-005 permanece `TODO` / `unclaimed`. Dependabot #3/#4 sigue separado.

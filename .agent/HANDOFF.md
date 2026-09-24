@@ -1,28 +1,27 @@
-# Handoff post-merge — CER-M0-003 MetricRegistry
+# Handoff — CER-M0-004 MetricBus
 
-Fecha: 2026-09-23
-Estado: completada y mergeada en `main` mediante squash, tras review PASS del Advisor.
-Commit de merge: `00e8a9f1d35d9d96b754298a55ff4cfb416bcc71`.
-PR: https://github.com/ParedesYTecho/Cerith/pull/8
+Fecha: 2026-09-25
+Estado: implementada en `feat/CER-M0-004-metric-bus`; pendiente de review independiente y merge por el Advisor.
+Base verificada: `origin/main` = `95643d2e08d4149f1260776bdbe6bc7882d9fdef`, árbol limpio antes del claim.
+PR: https://github.com/ParedesYTecho/Cerith/pull/10
 
-## Implementado
+## Cambio
 
-- `MetricRegistry` concreto en `Cerith.Core`, indexado por `MetricId` con `ConcurrentDictionary`.
-- Primera registración gana; lookup devuelve la misma instancia; el catálogo es un snapshot read-only.
-- `Count`, rechazo explícito de null y operaciones thread-safe.
-- Ocho tests de contrato, incluidos casing, duplicados, snapshots y registros concurrentes.
-- Contrato documentado en `docs/METRICS.md`, sin paquetes, proyectos ni interfaces nuevos.
+- `src/Cerith.Core/MetricBus.cs`: fan-out exacto por `MetricId`, suscripciones async independientes, capacidad explícita, `BoundedChannelFullMode.Wait`, cancelación y disposal. Sin cache, replay, Registry ni dependencias nuevas.
+- `tests/Cerith.Core.Tests/MetricBusTests.cs`: routing, orden, ausencia de replay, backpressure, cancelación y cierre observables.
+- `docs/METRICS.md` y `.agent/DECISIONS.md`: contrato canónico y D-015.
+- `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/WORKLOG.md`: estado operativo de la task.
+
+Los dos archivos nuevos separan el comportamiento del bus de los contratos previos y sus pruebas de los tests existentes; solo los proyectos Core y Core.Tests los usan. La única abstracción interna es la subscription privada que vincula ID y Channel. Sin paquetes ni proyectos nuevos.
 
 ## Verificación
 
-- PASS — Release build, 0 warnings/errores; `Cerith.Core.Tests`, 25/25.
-- PASS — GitHub Actions Build and Test y Repository Quality.
-- SKIPPED — CodeQL según D-013.
-- PASS — `main` local y `origin/main` coinciden con el SHA indicado; working tree limpio.
-- PASS — `git diff --check` en la reconciliación.
-
-Graphify code-only se actualizó a 248 nodos y 330 aristas; la reextracción semántica documental permanece pendiente según el registro previo.
+- PASS — `dotnet build Cerith.sln --configuration Release`: 0 advertencias, 0 errores.
+- PASS — `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build`: 39/39.
+- PASS — `git diff --check`.
+- PASS — Graphify code-only actualizado a 286 nodos y 463 aristas; actualización semántica documental pendiente.
+- PASS — CI remoto del PR #10: Build and Test y Repository Quality; CodeQL SKIPPED según D-013.
 
 ## Siguiente
 
-CER-M0-004 — MetricBus y CER-M0-005 — SyntheticProvider permanecen `TODO` / `unclaimed`; no se iniciaron durante esta reconciliación. Los PR Dependabot #3 y #4 siguen siendo mantenimiento separado.
+Advisor: review independiente del PR y merge solo con PASS. No iniciar CER-M0-005 en esta branch. Dependabot #3/#4 permanece separado.

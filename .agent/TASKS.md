@@ -64,10 +64,11 @@ Resultado: implementación completada; PR #8 pasó review del Advisor con PASS y
 
 ## CER-M0-004 — MetricBus
 
-Status: TODO
-Owner: unclaimed
+Status: IN REVIEW
+Owner: Codex (feat/CER-M0-004-metric-bus)
 Priority: P0
 Depends on: CER-M0-002
+Resultado: implementación y pruebas locales completas en PR #10; pendiente de review independiente del Advisor y merge.
 
 Acceptance:
 

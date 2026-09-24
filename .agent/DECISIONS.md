@@ -65,3 +65,7 @@ El repositorio privado actual no dispone de code scanning. CodeQL se omite mient
 ## D-014 — Contrato fundamental de métricas
 
 `MetricId` conserva texto no vacío exacto con igualdad ordinal case-sensitive y sin gramática cerrada. `MetricState` (freshness/disponibilidad) y `MetricConfidence` (unknown/measured/estimated) son dimensiones ortogonales. Los snapshots usan `MetricValue` tipado y `DateTimeOffset ObservedAt`; la edad se deriva de una hora de referencia. `Unlimited` no contiene `Value` y usa confidence `Unknown`. `MetricDescriptor` es provider-independent; source y error code sanitizado pertenecen al snapshot.
+
+## D-015 — Distribución de snapshots
+
+`MetricBus` ofrece suscripciones async por `MetricId`, con buffer acotado por subscriber y backpressure cuando se llena, sin pérdidas silenciosas. Entrega solo publicaciones futuras; no guarda ni reproduce el último valor. Cancelación y disposal retiran suscripciones. `MetricRegistry` y `MetricBus` permanecen desacoplados.
