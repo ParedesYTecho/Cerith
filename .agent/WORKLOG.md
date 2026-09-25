@@ -118,3 +118,10 @@ Event: reconciliación
 Summary: `main` se sincronizó con `origin/main` en `729075dcfcef1ae849b9339a96b438d234e7ff37`. PR #12 pasó review independiente del Advisor con PASS y se integró mediante squash; CER-M0-005 queda DONE. `SyntheticProvider` y `synthetic.counter` están en `main`.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — `main` exacta en el SHA de merge y working tree limpio antes de la reconciliación; `git diff --check`. CI: Build and Test success, Repository Quality success, CodeQL skipped según D-013. Core.Tests y Telemetry.Tests sin tolerancia ZeroTests; solo Integration.Tests conserva temporalmente su excepción. CER-M0-006 sigue TODO/unclaimed; no hay task WidgetHost reclamada; Dependabot #3/#4 sigue separado. Graphify label drift queda como tooling pendiente, sin task de producto.
+
+## 2026-09-25 — Codex — CER-M0-006 IPC prototype
+
+Event: measured decision spike
+Summary: Windows BCL-only child-process harness compared Named Pipes, TCP loopback, and AF_UNIX twice at 256/4096-byte payloads. D-016 selects Named Pipes; the next implementation must prove remote-client rejection.
+Files: `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `docs/PERFORMANCE.md`.
+Result: PASS — all six measurement cells and functional reconnect/cancellation/cleanup checks ran twice; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 0 with the documented ZeroTests allowance; `git diff --check` PASS. No product code, package, or permanent benchmark project added.

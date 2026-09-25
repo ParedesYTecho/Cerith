@@ -88,9 +88,11 @@ Resultado: PR #12 pasó review independiente del Advisor con PASS y se mergeó m
 
 ## CER-M0-006 — IPC prototype
 
-Status: TODO
-Owner: unclaimed
+Status: IN PROGRESS
+Owner: Codex
 Priority: P0
+Branch: `spike/CER-M0-006-ipc-prototype`
+Resultado: benchmark real en Windows comparó Named Pipes, TCP loopback y AF_UNIX con dos runs, 5000 RTT medidos por candidato/payload y comprobaciones funcionales. D-016 y `docs/PERFORMANCE.md` registran resultados y recomiendan Named Pipes.
 
 Acceptance:
 

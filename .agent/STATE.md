@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-005 completadas y mergeadas en `main`. CER-M0-005 pasó review independiente del Advisor con PASS y PR #12 se integró mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. CER-M0-006 sigue TODO/unclaimed; no hay task de integración WidgetHost reclamada.
+Estado: CER-M0-001 a CER-M0-005 completadas y mergeadas en `main`. CER-M0-006 tiene benchmark y decisión documentados en la branch `spike/CER-M0-006-ipc-prototype`; PR #14 está abierto para review independiente. No hay una task de integración WidgetHost reclamada.
 
 ## Listo
 
@@ -39,6 +39,10 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 `SyntheticProvider` y `synthetic.counter` están integrados en `main`. PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. Build and Test: success; Repository Quality: success; CodeQL: skipped según D-013. `Core.Tests` y `Telemetry.Tests` se ejecutan sin tolerancia ZeroTests; solo `Integration.Tests` conserva la excepción temporal. La verificación local fue Release build PASS (0 warnings/errores), Core 39/39 y Telemetry 7/7; Integration 0 tests con tolerancia. Graphify code-only quedó en 317 nodos y 546 aristas; la desincronización de etiquetas (64 comunidades, 62 etiquetas) queda como tooling pendiente, sin task de producto.
 
+## CER-M0-006
+
+Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round trips por candidato/payload (256 y 4096 bytes), cada uno precedido por 200 warmups. Las tres opciones pasaron reconnect/cancellation/cleanup. D-016 recomienda Named Pipes por simplicidad y aislamiento por usuario; el rechazo de clientes remotos debe probarse en la implementación siguiente. No se implementó IPC de producto.
+
 ## Siguiente
 
-CER-M0-006 sigue TODO/unclaimed. No existe task de integración WidgetHost reclamada. Dependabot #3/#4 permanece separado.
+Esperar la review independiente del PR de CER-M0-006; no mergear sin PASS. La próxima task podrá implementar el IPC de Named Pipes, cerrando antes el rechazo de clientes remotos. Dependabot #3/#4 permanece separado.

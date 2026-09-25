@@ -69,3 +69,32 @@ El repositorio privado actual no dispone de code scanning. CodeQL se omite mient
 ## D-015 — Distribución de snapshots
 
 `MetricBus` ofrece suscripciones async por `MetricId`, con buffer acotado por subscriber y backpressure cuando se llena, sin pérdidas silenciosas. Entrega solo publicaciones futuras; no guarda ni reproduce el último valor. Cancelación y disposal retiran suscripciones. `MetricRegistry` y `MetricBus` permanecen desacoplados.
+
+## D-016 — IPC transport
+
+**Selected for the first implementation:** Windows Named Pipes using asynchronous byte streams and `PipeOptions.CurrentUserOnly`.
+
+The two measured runs put Named Pipes at 77.9–80.9 µs median / 121.4–127.9 µs p95 for 256-byte payloads, and 79.0–80.4 µs / 123.4–125.0 µs for 4096 bytes. TCP was in the same latency range. AF_UNIX was faster (44.1–45.6 µs median / 81.3–82.7 µs p95), but its Windows endpoint is a filesystem path that requires directory ACL policy and explicit stale-path/cleanup handling. Named Pipes need no port discovery or socket-file lifecycle, and their handle cleanup and reconnect behavior passed the prototype checks. The measured AF_UNIX advantage does not justify that extra runtime responsibility for the first same-machine desktop integration.
+
+| Payload | Transport | Median µs, runs 1/2 | p95 µs, runs 1/2 |
+| --- | --- | ---: | ---: |
+| 256 B | Named Pipes | 80.9 / 77.9 | 127.9 / 121.4 |
+| 256 B | TCP loopback | 80.6 / 79.3 | 119.5 / 114.7 |
+| 256 B | AF_UNIX | 44.1 / 44.9 | 81.3 / 82.7 |
+| 4096 B | Named Pipes | 79.0 / 80.4 | 125.0 / 123.4 |
+| 4096 B | TCP loopback | 78.5 / 85.7 | 127.7 / 124.6 |
+| 4096 B | AF_UNIX | 45.2 / 45.6 | 82.2 / 81.8 |
+
+| Responsibility | Named Pipes | TCP loopback | AF_UNIX on Windows |
+| --- | --- | --- | --- |
+| Endpoint discovery | Stable pipe name; no port lookup | Ephemeral port needs handoff; fixed ports can collide | Both processes need the same filesystem path |
+| Isolation | `CurrentUserOnly` checks user/elevation; remote-client rejection still required | `127.0.0.1` blocks external hosts, not local processes; no identity handshake | Local-only transport; access inherits the endpoint directory ACL |
+| Cleanup / reconnect | Handle disposal; recreate a server instance | Close listener/socket; accept next connection | Close socket and delete path; stale-path recovery must avoid deleting a live endpoint |
+| Framing / packaging | Byte stream; custom length prefix. BCL, no package | Same. BCL, no package | Same. BCL, no package; Windows 10/Server 2019+ |
+| Errors / operations | Pipe I/O errors/timeouts; named endpoint, no port/firewall diagnostics | Socket errors/port collisions; inspect port and process; protect the handshake | Socket errors plus path/ACL/stale-file cases; inspect endpoint and ACL |
+
+The prototype used identical length-prefix framing on all three. AF_UNIX's test path inherited five ACL rules and had no broad-group allow entry; production must create/use a per-user directory with a reviewed ACL and remove the endpoint safely. TCP bound strictly to `127.0.0.1`, but still needs an ephemeral-port handoff or fixed-port policy and has no process/user authentication; a later implementation would need a protected handshake.
+
+**Security condition for the next implementation:** use only the local pipe name and `CurrentUserOnly` for user/elevation isolation. Windows named pipes can also accept remote clients, and `CurrentUserOnly` is not a remote-client rejection option. Because architecture requires local-only IPC, the implementation task must prove remote clients are rejected using a supported Windows mechanism before exposing the endpoint. The prototype configured `CurrentUserOnly`, but cross-account rejection was not exercised under a second account. See [Named Pipes in .NET](https://learn.microsoft.com/en-us/dotnet/standard/io/how-to-use-named-pipes-for-network-interprocess-communication) and [PipeOptions](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes.pipeoptions?view=net-10.0). AF_UNIX's Windows support is documented for Windows 10 / Server 2019 and later ([Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/grpc/interprocess?view=aspnetcore-10.0#configure-unix-domain-sockets)).
+
+All candidates passed local echo, clean disconnect, reconnect, async-wait cancellation, and endpoint/handle cleanup. Full CPU figures and limitations are in `docs/PERFORMANCE.md`. This is a prototype decision, not a production protocol or performance guarantee.
