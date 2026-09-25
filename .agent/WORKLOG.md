@@ -123,5 +123,5 @@ Result: PASS — `main` exacta en el SHA de merge y working tree limpio antes de
 
 Event: measured decision spike
 Summary: Windows BCL-only child-process harness compared Named Pipes, TCP loopback, and AF_UNIX twice at 256/4096-byte payloads. D-016 selects Named Pipes; the next implementation must prove remote-client rejection.
-Files: `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `docs/PERFORMANCE.md`.
-Result: PASS — all six measurement cells and functional reconnect/cancellation/cleanup checks ran twice; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 0 with the documented ZeroTests allowance; `git diff --check` PASS. No product code, package, or permanent benchmark project added.
+Files: `.agent/DECISIONS.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/WORKLOG.md`, `docs/PERFORMANCE.md`.
+Result: PASS — all six measurement cells and functional reconnect/cancellation/cleanup checks ran twice; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 0 with the documented ZeroTests allowance; `git diff --check` PASS. PR #14: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED per D-013 on head b1b8550. No product code, package, or permanent benchmark project added.

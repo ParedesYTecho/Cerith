@@ -37,11 +37,11 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 ## CER-M0-005
 
-`SyntheticProvider` y `synthetic.counter` están integrados en `main`. PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. Build and Test: success; Repository Quality: success; CodeQL: skipped según D-013. `Core.Tests` y `Telemetry.Tests` se ejecutan sin tolerancia ZeroTests; solo `Integration.Tests` conserva la excepción temporal. La verificación local fue Release build PASS (0 warnings/errores), Core 39/39 y Telemetry 7/7; Integration 0 tests con tolerancia. Graphify code-only quedó en 317 nodos y 546 aristas; la desincronización de etiquetas (64 comunidades, 62 etiquetas) queda como tooling pendiente, sin task de producto.
+`SyntheticProvider` publica `synthetic.counter` determinista mediante `MetricBus`, registra su descriptor en `MetricRegistry` y usa `TimeProvider`. Los valores generados usan confidence `Unknown` porque no son mediciones ni estimaciones de telemetría real. PR #12 pasó review independiente del Advisor con PASS y se integró mediante squash en `main` (`729075dcfcef1ae849b9339a96b438d234e7ff37`). Build and Test y Repository Quality: success; CodeQL SKIPPED según D-013.
 
 ## CER-M0-006
 
-Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round trips por candidato/payload (256 y 4096 bytes), cada uno precedido por 200 warmups. Las tres opciones pasaron reconnect/cancellation/cleanup. D-016 recomienda Named Pipes por simplicidad y aislamiento por usuario; el rechazo de clientes remotos debe probarse en la implementación siguiente. No se implementó IPC de producto.
+Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round trips por candidato/payload (256 y 4096 bytes), cada uno precedido por 200 warmups. Las tres opciones pasaron reconnect/cancellation/cleanup. D-016 recomienda Named Pipes por simplicidad y aislamiento por usuario; el rechazo de clientes remotos debe probarse en la implementación siguiente. PR #14 está abierto para review independiente; no se implementó IPC de producto.
 
 ## Siguiente
 

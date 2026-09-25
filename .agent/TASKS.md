@@ -84,15 +84,15 @@ Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-003, CER-M0-004
-Resultado: PR #12 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `729075dcfcef1ae849b9339a96b438d234e7ff37`. `SyntheticProvider` y `synthetic.counter` están integrados en `main`; Build and Test y Repository Quality success; CodeQL skipped según D-013. Core.Tests y Telemetry.Tests se ejecutan sin tolerancia ZeroTests; solo Integration.Tests conserva temporalmente su excepción.
+Resultado: PR #12 pasó review independiente del Advisor con PASS y se integró mediante squash en `main` (`729075dcfcef1ae849b9339a96b438d234e7ff37`). Build and Test y Repository Quality: success; CodeQL: skipped según D-013.
 
 ## CER-M0-006 — IPC prototype
 
-Status: IN PROGRESS
+Status: IN REVIEW
 Owner: Codex
 Priority: P0
 Branch: `spike/CER-M0-006-ipc-prototype`
-Resultado: benchmark real en Windows comparó Named Pipes, TCP loopback y AF_UNIX con dos runs, 5000 RTT medidos por candidato/payload y comprobaciones funcionales. D-016 y `docs/PERFORMANCE.md` registran resultados y recomiendan Named Pipes.
+Resultado: benchmark real en Windows comparó Named Pipes, TCP loopback y AF_UNIX con dos runs, 5000 RTT medidos por candidato/payload y comprobaciones funcionales. D-016 y `docs/PERFORMANCE.md` registran resultados y recomiendan Named Pipes. PR #14 abierto para review independiente: https://github.com/ParedesYTecho/Cerith/pull/14.
 
 Acceptance:
 
