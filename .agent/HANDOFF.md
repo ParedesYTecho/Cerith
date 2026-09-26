@@ -1,9 +1,9 @@
 # Handoff — CER-M0-006 IPC prototype
 
-Fecha: 2026-09-25
-Estado: benchmark/decisión completados; PR #14 abierto, pendiente de review independiente. No mergear.
-Branch: spike/CER-M0-006-ipc-prototype
-Base: main / origin/main ba20313df364caae0e4b9daebddf4f3206dd0255
+Fecha: 2026-09-26
+Estado: CER-M0-006 DONE; PR #14 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`. No iniciar aún la implementación IPC/WidgetHost; no hay una task reclamada.
+Branch: docs/reconcile-CER-M0-006-post-merge
+Base: main / origin/main dc6c051f0734fc5eb8a301a16bda671d2ba94221
 HEAD SHA del commit de benchmark y decisión: f233106af2d9b7ac2ee79cd4e63e46ea476ecc97
 PR: https://github.com/ParedesYTecho/Cerith/pull/14
 
@@ -11,7 +11,7 @@ PR: https://github.com/ParedesYTecho/Cerith/pull/14
 
 Probados: Windows Named Pipes, TCP loopback en 127.0.0.1 y AF_UNIX. D-016 selecciona Named Pipes para la primera integración por su menor carga de discovery y lifecycle, endpoint sin puerto/ruta, aislamiento CurrentUserOnly y cleanup por handle. AF_UNIX fue más rápido, pero requiere ACL del directorio y limpieza/recuperación de endpoint. TCP loopback requiere entregar el puerto efímero o gestionar un puerto fijo; no autentica procesos locales.
 
-Condición para la implementación siguiente: Named Pipes admiten conexiones remotas; CurrentUserOnly no demuestra origen local. Antes de exponerlo, probar y aplicar un mecanismo que rechace clientes remotos. Cross-account no se probó con una segunda cuenta.
+Condición para la implementación siguiente: mantener el requisito local-only y demostrar el rechazo de clientes remotos. Named Pipes admiten conexiones remotas; `CurrentUserOnly` por sí solo no demuestra origen local ni satisface el requisito. Cross-account no se probó con una segunda cuenta.
 
 ## Harness y comando
 
@@ -60,4 +60,4 @@ CPU viene de Process.TotalProcessorTime en cada proceso durante la sección medi
 - Repository Quality filename scan: PASS (61 archivos tracked).
 - CI remoto del PR #14: Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013.
 
-Advisor review pendiente. Dependabot #3/#4 sigue separado.
+PR #14: review independiente del Advisor PASS; merge mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`. D-016 y el baseline medido están integrados en `.agent/DECISIONS.md` y `docs/PERFORMANCE.md`. CI remoto: Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Dependabot #3/#4 sigue separado. Graphify label drift continúa pendiente como tooling, no como task de producto.

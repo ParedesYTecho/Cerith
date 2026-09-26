@@ -88,11 +88,10 @@ Resultado: PR #12 pasó review independiente del Advisor con PASS y se integró 
 
 ## CER-M0-006 — IPC prototype
 
-Status: IN REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
-Branch: `spike/CER-M0-006-ipc-prototype`
-Resultado: benchmark real en Windows comparó Named Pipes, TCP loopback y AF_UNIX con dos runs, 5000 RTT medidos por candidato/payload y comprobaciones funcionales. D-016 y `docs/PERFORMANCE.md` registran resultados y recomiendan Named Pipes. PR #14 abierto para review independiente: https://github.com/ParedesYTecho/Cerith/pull/14.
+Resultado: benchmark real en Windows comparó Named Pipes, TCP loopback y AF_UNIX con dos runs, 5000 RTT medidos por candidato/payload y comprobaciones funcionales. D-016 y el baseline de `docs/PERFORMANCE.md` quedaron integrados. PR #14 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`. Named Pipes es el transporte elegido para la primera implementación; esta debe conservar local-only y demostrar rechazo de clientes remotos, porque `CurrentUserOnly` por sí solo no basta. No hay una task IPC/WidgetHost reclamada.
 
 Acceptance:
 

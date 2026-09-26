@@ -125,3 +125,10 @@ Event: measured decision spike
 Summary: Windows BCL-only child-process harness compared Named Pipes, TCP loopback, and AF_UNIX twice at 256/4096-byte payloads. D-016 selects Named Pipes; the next implementation must prove remote-client rejection.
 Files: `.agent/DECISIONS.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/WORKLOG.md`, `docs/PERFORMANCE.md`.
 Result: PASS — all six measurement cells and functional reconnect/cancellation/cleanup checks ran twice; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 0 with the documented ZeroTests allowance; `git diff --check` PASS. PR #14: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. No product code, package, or permanent benchmark project added.
+
+## 2026-09-26 — Codex — CER-M0-006 post-merge reconciliation
+
+Event: reconciliación
+Summary: PR #14 pasó review independiente del Advisor con PASS y se integró mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`; CER-M0-006 queda DONE. D-016 y el baseline están integrados; Named Pipes es el transporte elegido para la primera implementación.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` y `origin/main` coincidían en el merge SHA y la working tree estaba limpia antes de reconciliar. La implementación futura debe mantener local-only y probar rechazo de clientes remotos; `CurrentUserOnly` no basta. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. No hay task IPC/WidgetHost reclamada; Dependabot #3/#4 sigue separado; Graphify label drift es tooling pendiente, no una task de producto.

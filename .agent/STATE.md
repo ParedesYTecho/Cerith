@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-005 completadas y mergeadas en `main`. CER-M0-006 tiene benchmark y decisión documentados en la branch `spike/CER-M0-006-ipc-prototype`; PR #14 está abierto para review independiente. No hay una task de integración WidgetHost reclamada.
+Estado: CER-M0-001 a CER-M0-006 completadas y mergeadas en `main`. PR #14 pasó review independiente del Advisor con PASS y se integró mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`. No hay una task de implementación IPC/WidgetHost reclamada.
 
 ## Listo
 
@@ -41,8 +41,8 @@ La política temporal por proyecto de `ZeroTests` está registrada en D-012.
 
 ## CER-M0-006
 
-Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round trips por candidato/payload (256 y 4096 bytes), cada uno precedido por 200 warmups. Las tres opciones pasaron reconnect/cancellation/cleanup. D-016 recomienda Named Pipes por simplicidad y aislamiento por usuario; el rechazo de clientes remotos debe probarse en la implementación siguiente. PR #14 está abierto para review independiente; no se implementó IPC de producto.
+Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round trips por candidato/payload (256 y 4096 bytes), cada uno precedido por 200 warmups. Las tres opciones pasaron reconnect/cancellation/cleanup. D-016 quedó integrada y elige Windows Named Pipes para la primera implementación; los resultados están en `docs/PERFORMANCE.md`. PR #14 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`. No se implementó IPC de producto. La implementación futura debe conservar el requisito local-only y demostrar el rechazo de clientes remotos; `CurrentUserOnly` por sí solo no basta.
 
 ## Siguiente
 
-Esperar la review independiente del PR de CER-M0-006; no mergear sin PASS. La próxima task podrá implementar el IPC de Named Pipes, cerrando antes el rechazo de clientes remotos. Dependabot #3/#4 permanece separado.
+No iniciar aún la implementación IPC/WidgetHost: no hay una task reclamada. Cuando se cree, debe usar Named Pipes, conservar local-only y demostrar rechazo de clientes remotos; `CurrentUserOnly` por sí solo no satisface ese requisito. Dependabot #3/#4 permanece separado. Graphify label drift sigue pendiente como tooling, no como task de producto.
