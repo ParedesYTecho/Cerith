@@ -5,7 +5,6 @@ Estado: benchmark/decisión completados; PR #14 abierto, pendiente de review ind
 Branch: spike/CER-M0-006-ipc-prototype
 Base: main / origin/main ba20313df364caae0e4b9daebddf4f3206dd0255
 HEAD SHA del commit de benchmark y decisión: f233106af2d9b7ac2ee79cd4e63e46ea476ecc97
-HEAD SHA del PR probado por CI remoto: b1b8550ecf498252c3877e8a31346fa98b0f0e1b
 PR: https://github.com/ParedesYTecho/Cerith/pull/14
 
 ## Candidatos y decisión
@@ -59,6 +58,6 @@ CPU viene de Process.TotalProcessorTime en cada proceso durante la sección medi
 - Integration: PASS, 0 tests con la excepción ZeroTests existente.
 - git diff --check: PASS.
 - Repository Quality filename scan: PASS (61 archivos tracked).
-- CI remoto en b1b8550: Build and Test PASS; Repository Quality PASS; CodeQL Analyze C# SKIPPED según D-013. Copilot Code Review terminó success; review independiente del Advisor sigue pendiente.
+- CI remoto del PR #14: Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013.
 
 Advisor review pendiente. Dependabot #3/#4 sigue separado.
