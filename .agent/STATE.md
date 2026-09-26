@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-006 completadas y mergeadas en `main`. CER-M0-007 implementada en `feat/CER-M0-007-named-pipe-bridge` y PR #16 abierto; review independiente pendiente. No iniciar CER-M0-008.
+Estado: CER-M0-001 a CER-M0-007 completadas y mergeadas en `main`. CER-M0-007 pasó review independiente del Advisor con PASS; PR #16 se integró mediante squash en `192afc43632ea50fe92e6416e65431ce0bbe7da8`. CER-M0-008 todavía no está reclamada.
 
 ## Listo
 
@@ -45,4 +45,4 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M0-007 implementa el bridge Named Pipe M0 con protocolo versionado y frames de 64 KiB, ACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS`; tests verifican el flag efectivo frente a control sin rechazo. Core 39/39, Telemetry 7/7 e Integration 8/8; Release build 0 warnings/errors. PR #16 abierto; CI y review del Advisor pendientes. Dependabot #3/#4 permanece separado. Graphify label drift sigue pendiente como tooling, no como task de producto.
+CER-M0-007 DONE: PR #16 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `192afc43632ea50fe92e6416e65431ce0bbe7da8`. D-017 y el bridge Named Pipe real están integrados; SyntheticProvider → MetricBus → Named Pipe → WidgetHost client está demostrado. Protocolo v1, frames de hasta 64 KiB, ACL del servidor restringida al usuario actual y `PIPE_REJECT_REMOTE_CLIENTS` activo, verificado mediante `GetNamedPipeInfo`. No se ejecutó ni afirmó prueba desde otra máquina ni otra cuenta. Core.Tests 39/39, Telemetry.Tests 7/7 e Integration.Tests 8/8; los tres sin tolerancia ZeroTests. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. CER-M0-008 sigue sin reclamar. Dependabot #3/#4 permanece separado; Graphify label drift sigue pendiente como tooling.
