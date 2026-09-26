@@ -112,4 +112,4 @@ Scope: `Cerith.Core` wire contract; `Cerith.TelemetryService` local-only server;
 
 Acceptance: versioned bounded snapshots over a Windows Named Pipe with current-user isolation and effective remote rejection; deterministic lifecycle, cancellation, reconnect and protocol tests; Release build and all test projects pass.
 
-Resultado: bridge y pruebas reales completados; `GetNamedPipeInfo` comprobó `PIPE_REJECT_REMOTE_CLIENTS` frente a un control sin el flag. Sin nuevos paquetes ni proyectos. PR y CI remoto pendientes de publicación.
+Resultado: bridge y pruebas reales completados; `GetNamedPipeInfo` comprobó `PIPE_REJECT_REMOTE_CLIENTS` frente a un control sin el flag. Sin nuevos paquetes ni proyectos. PR #16 abierto contra `main`, sin merge; review independiente pendiente.

@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-006 completadas y mergeadas en `main`. CER-M0-007 implementada en `feat/CER-M0-007-named-pipe-bridge`, pendiente de PR/review independiente; no iniciar CER-M0-008.
+Estado: CER-M0-001 a CER-M0-006 completadas y mergeadas en `main`. CER-M0-007 implementada en `feat/CER-M0-007-named-pipe-bridge` y PR #16 abierto; review independiente pendiente. No iniciar CER-M0-008.
 
 ## Listo
 
@@ -45,4 +45,4 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M0-007 implementa el bridge Named Pipe M0 con protocolo versionado y frames de 64 KiB, ACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS`; tests verifican el flag efectivo frente a control sin rechazo. Core 39/39, Telemetry 7/7 e Integration 7/7; Release build 0 warnings/errors. Pendientes PR, CI y review del Advisor. Dependabot #3/#4 permanece separado. Graphify label drift sigue pendiente como tooling, no como task de producto.
+CER-M0-007 implementa el bridge Named Pipe M0 con protocolo versionado y frames de 64 KiB, ACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS`; tests verifican el flag efectivo frente a control sin rechazo. Core 39/39, Telemetry 7/7 e Integration 8/8; Release build 0 warnings/errors. PR #16 abierto; CI y review del Advisor pendientes. Dependabot #3/#4 permanece separado. Graphify label drift sigue pendiente como tooling, no como task de producto.
