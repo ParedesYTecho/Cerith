@@ -138,4 +138,11 @@ Result: PASS — `main` y `origin/main` coincidían en el merge SHA y la working
 Event: implementación y verificación local
 Summary: Named Pipe Win32 local-only con DACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS`; protocolo v1 acotado en Core; cliente WidgetHost y tests de integración reales. D-017 registrada; tolerancia ZeroTests de Integration.Tests retirada.
 Files: `MetricIpcProtocol.cs`, `NamedPipeMetricServer.cs`, `NamedPipeMetricClient.cs`, `NamedPipeMetricTests.cs`, workflow, arquitectura y memoria operativa.
-Result: PASS — Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8. `GetNamedPipeInfo` verificó bit `0x8` frente a control `0x0`; Graphify code-only 407 nodos/845 aristas. PR #16 abierto; CI del HEAD de código `f29c8d3` PASS; review independiente pendiente, sin merge.
+Result: PASS — Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8. `GetNamedPipeInfo` verificó bit `0x8` frente a control `0x0`; Graphify code-only 407 nodos/845 aristas. PR #16 y CI Build and Test/Repository Quality PASS; CodeQL SKIPPED según D-013.
+
+## 2026-09-26 — Codex — CER-M0-007 post-merge reconciliation
+
+Event: reconciliación post-merge
+Summary: PR #16 pasó review independiente del Advisor con PASS y se integró mediante squash. D-017 y el bridge Named Pipe están integrados; CER-M0-007 queda DONE. No iniciar CER-M0-008.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` local y `origin/main` verificadas en `192afc43632ea50fe92e6416e65431ce0bbe7da8`; working tree limpia antes de editar memoria. Solo memoria operativa modificada. PR #16 CI: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. `git diff --check` PASS.

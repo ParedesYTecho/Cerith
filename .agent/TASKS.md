@@ -102,8 +102,8 @@ Acceptance:
 
 ## CER-M0-007 — Named Pipe snapshot bridge
 
-Status: DONE (implementation; independent review pending)
-Owner: Codex (this branch)
+Status: DONE
+Owner: Codex
 Priority: P0
 Depends on: CER-M0-004, CER-M0-005, CER-M0-006
 Branch: `feat/CER-M0-007-named-pipe-bridge`
@@ -112,4 +112,4 @@ Scope: `Cerith.Core` wire contract; `Cerith.TelemetryService` local-only server;
 
 Acceptance: versioned bounded snapshots over a Windows Named Pipe with current-user isolation and effective remote rejection; deterministic lifecycle, cancellation, reconnect and protocol tests; Release build and all test projects pass.
 
-Resultado: bridge y pruebas reales completados; `GetNamedPipeInfo` comprobó `PIPE_REJECT_REMOTE_CLIENTS` frente a un control sin el flag. Sin nuevos paquetes ni proyectos. PR #16 abierto contra `main`, sin merge; review independiente pendiente.
+Resultado: PR #16 pasó review independiente del Advisor con PASS y se integró mediante squash en `main` (`192afc43632ea50fe92e6416e65431ce0bbe7da8`). D-017 y el bridge están integrados; SyntheticProvider → MetricBus → Named Pipe → WidgetHost client demostrado. Protocolo v1, máximo 64 KiB por frame, ACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS` verificado con `GetNamedPipeInfo`. No se probó desde otra máquina ni otra cuenta. Core.Tests 39/39, Telemetry.Tests 7/7, Integration.Tests 8/8; todos sin tolerancia ZeroTests. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Sin paquetes ni proyectos nuevos.
