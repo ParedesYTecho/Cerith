@@ -15,6 +15,10 @@ namespace Cerith.TelemetryService;
 
 public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
 {
+    private const uint PipeAccessDuplex = 0x00000003;
+    private const uint FileFlagOverlapped = 0x40000000;
+    private const uint PipeRejectRemoteClients = 0x00000008;
+
     private readonly string _pipeName = ValidateName(pipeName);
     private readonly MetricBus _bus = bus ?? throw new ArgumentNullException(nameof(bus));
 
@@ -23,14 +27,16 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
         while (!cancellationToken.IsCancellationRequested)
         {
             using var pipe = CreatePipe(_pipeName);
+            var connected = false;
             try
             {
                 await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
+                connected = true;
                 await ServeAsync(pipe, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
-            catch (IOException) when (pipe.IsConnected) { continue; }
-            catch (InvalidDataException) when (pipe.IsConnected) { continue; }
+            catch (IOException) when (connected) { continue; }
+            catch (InvalidDataException) when (connected) { continue; }
         }
     }
 
@@ -83,7 +89,8 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
         try
         {
             var security = new SecurityAttributes { Length = Marshal.SizeOf<SecurityAttributes>(), SecurityDescriptor = descriptor };
-            var handle = CreateNamedPipe($@"\\.\pipe\{pipeName}", 0x40000003, 0x00000008, 1,
+            var handle = CreateNamedPipe($@"\\.\pipe\{pipeName}",
+                PipeAccessDuplex | FileFlagOverlapped, PipeRejectRemoteClients, 1,
                 MetricIpcProtocol.MaxFrameSize, MetricIpcProtocol.MaxFrameSize, 0, ref security);
             if (handle.IsInvalid)
             {

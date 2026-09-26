@@ -191,6 +191,28 @@ public sealed class NamedPipeMetricTests
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await pending);
     }
 
+    [TestMethod]
+    public async Task BadSubscribeDoesNotStopServer()
+    {
+        using var bus = new MetricBus(1);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var name = Name();
+        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        await using (var invalid = new NamedPipeClientStream(".", name, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly))
+        {
+            await invalid.ConnectAsync(stop.Token);
+            using var frame = Frame("{\"Version\":2,\"Kind\":\"subscribe\",\"MetricId\":\"x\"}");
+            await invalid.WriteAsync(frame.ToArray(), stop.Token);
+        }
+        await using (var valid = new NamedPipeMetricClient(name))
+        {
+            await valid.ConnectAsync(new MetricId("x"), stop.Token);
+        }
+        stop.Cancel();
+        await server.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
     private static MetricSnapshot Snapshot(MetricId id) => new(id, MetricValue.From(1L),
         DateTimeOffset.UtcNow, MetricState.Fresh, MetricConfidence.Unknown);
 

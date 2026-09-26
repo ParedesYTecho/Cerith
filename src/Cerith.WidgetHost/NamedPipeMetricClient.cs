@@ -13,7 +13,7 @@ namespace Cerith.WidgetHost;
 
 public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
 {
-    private readonly string _pipeName = ValidateName(pipeName);
+    private readonly string _pipeName = pipeName;
     private NamedPipeClientStream? _pipe;
 
     public async Task ConnectAsync(MetricId metricId, CancellationToken cancellationToken = default)
@@ -49,12 +49,5 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
     {
         if (_pipe is not null) await _pipe.DisposeAsync().ConfigureAwait(false);
         _pipe = null;
-    }
-
-    private static string ValidateName(string pipeName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
-        if (pipeName.Contains('\\') || pipeName.Length > 200) throw new ArgumentException("Invalid pipe name.", nameof(pipeName));
-        return pipeName;
     }
 }
