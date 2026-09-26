@@ -99,3 +99,17 @@ Acceptance:
 - measure latency/CPU/complexity;
 - record decision;
 - do not overbuild.
+
+## CER-M0-007 — Named Pipe snapshot bridge
+
+Status: DONE (implementation; independent review pending)
+Owner: Codex (this branch)
+Priority: P0
+Depends on: CER-M0-004, CER-M0-005, CER-M0-006
+Branch: `feat/CER-M0-007-named-pipe-bridge`
+
+Scope: `Cerith.Core` wire contract; `Cerith.TelemetryService` local-only server; `Cerith.WidgetHost` client; integration tests; CI ZeroTests removal; compact architecture and decision updates.
+
+Acceptance: versioned bounded snapshots over a Windows Named Pipe with current-user isolation and effective remote rejection; deterministic lifecycle, cancellation, reconnect and protocol tests; Release build and all test projects pass.
+
+Resultado: bridge y pruebas reales completados; `GetNamedPipeInfo` comprobó `PIPE_REJECT_REMOTE_CLIENTS` frente a un control sin el flag. Sin nuevos paquetes ni proyectos. PR #16 abierto contra `main`, sin merge; review independiente pendiente.
