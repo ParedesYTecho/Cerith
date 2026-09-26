@@ -169,7 +169,7 @@ Requirements:
 - no raw secrets;
 - low overhead.
 
-Specific transport is decided after M0 benchmark/prototype.
+The first M0 implementation uses Windows Named Pipes (D-016): TelemetryService serves bounded, versioned snapshots and WidgetHost subscribes through a local-only client. This does not define the future public plugin protocol.
 
 ## Storage
 

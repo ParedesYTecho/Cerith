@@ -56,7 +56,7 @@ Los proyectos de pruebas usan `MSTest.Sdk` con Microsoft.Testing.Platform y perf
 
 MTP devuelve `ZeroTests` (código 8) cuando un proyecto no descubre ni ejecuta pruebas. La tolerancia global usada durante CER-M0-001 fue retirada al añadirse las primeras pruebas reales.
 
-`Cerith.Core.Tests` se ejecuta sin tolerancia. Solo `Cerith.Telemetry.Tests` y `Cerith.Integration.Tests`, mientras sigan vacíos, pueden ignorar el código 8 en sus invocaciones individuales. Retirar cada excepción al añadir su primer test real; no añadir tests dummy.
+Los tres proyectos de pruebas tienen casos reales y se ejecutan sin tolerancia `ZeroTests`. La excepción individual se retiró al incorporar las primeras pruebas de cada proyecto; no se añaden tests dummy.
 
 ## D-013 — CodeQL según visibilidad
 
@@ -98,3 +98,7 @@ The prototype used identical length-prefix framing on all three. AF_UNIX's test 
 **Security condition for the next implementation:** use only the local pipe name and `CurrentUserOnly` for user/elevation isolation. Windows named pipes can also accept remote clients, and `CurrentUserOnly` is not a remote-client rejection option. Because architecture requires local-only IPC, the implementation task must prove remote clients are rejected using a supported Windows mechanism before exposing the endpoint. The prototype configured `CurrentUserOnly`, but cross-account rejection was not exercised under a second account. See [Named Pipes in .NET](https://learn.microsoft.com/en-us/dotnet/standard/io/how-to-use-named-pipes-for-network-interprocess-communication) and [PipeOptions](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes.pipeoptions?view=net-10.0). AF_UNIX's Windows support is documented for Windows 10 / Server 2019 and later ([Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/grpc/interprocess?view=aspnetcore-10.0#configure-unix-domain-sockets)).
 
 All candidates passed local echo, clean disconnect, reconnect, async-wait cancellation, and endpoint/handle cleanup. Full CPU figures and limitations are in `docs/PERFORMANCE.md`. This is a prototype decision, not a production protocol or performance guarantee.
+
+## D-017 — M0 IPC snapshot protocol
+
+Following D-016, M0 uses Windows Named Pipes with remote-client rejection and current-user access. A byte stream carries length-prefixed frames bounded to 64 KiB, with an explicit protocol version and `subscribe`, `accepted`, and `snapshot` messages. One connection subscribes to one exact MetricId. `accepted` follows active bus subscription; snapshots are future publications only, with no replay. This is an internal M0 wire contract, not a stable public/plugin protocol.

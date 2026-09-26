@@ -132,3 +132,10 @@ Event: reconciliación
 Summary: PR #14 pasó review independiente del Advisor con PASS y se integró mediante squash en `dc6c051f0734fc5eb8a301a16bda671d2ba94221`; CER-M0-006 queda DONE. D-016 y el baseline están integrados; Named Pipes es el transporte elegido para la primera implementación.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — `main` y `origin/main` coincidían en el merge SHA y la working tree estaba limpia antes de reconciliar. La implementación futura debe mantener local-only y probar rechazo de clientes remotos; `CurrentUserOnly` no basta. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. No hay task IPC/WidgetHost reclamada; Dependabot #3/#4 sigue separado; Graphify label drift es tooling pendiente, no una task de producto.
+
+## 2026-09-26 — Codex — CER-M0-007 Named Pipe snapshot bridge
+
+Event: implementación y verificación local
+Summary: Named Pipe Win32 local-only con DACL del usuario actual y `PIPE_REJECT_REMOTE_CLIENTS`; protocolo v1 acotado en Core; cliente WidgetHost y tests de integración reales. D-017 registrada; tolerancia ZeroTests de Integration.Tests retirada.
+Files: `MetricIpcProtocol.cs`, `NamedPipeMetricServer.cs`, `NamedPipeMetricClient.cs`, `NamedPipeMetricTests.cs`, workflow, arquitectura y memoria operativa.
+Result: PASS — Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 7/7. `GetNamedPipeInfo` verificó bit `0x8` frente a control `0x0`; Graphify code-only 394 nodos/847 aristas. PR, CI remoto y review independiente pendientes; sin merge.
