@@ -2,7 +2,7 @@
 
 Fecha: 2026-09-27
 Estado: READY FOR ADVISOR REVIEW; M0 no está declarado DONE.
-Rama: `feat/CER-M0-009-m0-exit-diagnostics`, base `main` = `origin/main` = `4a5381c06cb99479e537197848eb15ccf1dba370` al iniciar, árbol limpio. Commit/PR: pendientes de publicación.
+Rama: `feat/CER-M0-009-m0-exit-diagnostics`, base `main` = `origin/main` = `4a5381c06cb99479e537197848eb15ccf1dba370` al iniciar, árbol limpio. Commit de implementación: `7bbd97d00a370d794bc3e3c2e9cb23076288c5bb`. PR: https://github.com/ParedesYTecho/Cerith/pull/20 (abierto; checks en curso al redactar).
 
 ## Resultado
 
