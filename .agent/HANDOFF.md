@@ -25,4 +25,4 @@ Deuda que sigue abierta:
 - `git diff --check`: PASS en la implementación; se vuelve a ejecutar para esta reconciliación.
 - Demo de consola: ready y stopped observados; segunda instancia falló por pipe ocupado sin anunciar ready. El PTY devolvió 1 tras Ctrl+C, por lo que no se confirmó aparte el exit code del ejecutable.
 
-Esta reconciliación cambia solo `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md` y `.agent/WORKLOG.md`. No toca Dependabot #3/#4 ni Graphify label drift. PR de reconciliación: pendiente de creación.
+Esta reconciliación cambia solo `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md` y `.agent/WORKLOG.md`. No toca Dependabot #3/#4 ni Graphify label drift. PR de reconciliación #21: https://github.com/ParedesYTecho/Cerith/pull/21, abierto y pendiente de revisión/merge.
