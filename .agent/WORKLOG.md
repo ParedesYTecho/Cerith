@@ -160,3 +160,5 @@ Event: implementación y verificación local
 Summary: TelemetryService ejecutable publica `synthetic.counter` cada segundo; WidgetHost WinUI 3 unpackaged/framework-dependent muestra snapshots del cliente Named Pipe existente. D-018 registra la dependencia Microsoft.WindowsAppSDK 2.5.1 y el alcance M0. Integration.Tests compila el mismo archivo cliente sin cargar el bootstrapper del ejecutable UI.
 Files: `Program.cs`, `App.xaml`, `App.xaml.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`, `MetricIpcProtocol.cs`, tres `.csproj`, `docs/ARCHITECTURE.md`, `.agent/DECISIONS.md` y memoria operativa.
 Result: PASS — restore; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8; UI Automation observó Connecting y valor cambiante; sin servidor mostró unavailable; WidgetHost cerró con exit 0 y TelemetryService respondió a Ctrl+C con exit 0. Graphify code-only actualizado; label drift existente no regenerado. Review independiente pendiente; sin merge.
+
+PR #18: https://github.com/ParedesYTecho/Cerith/pull/18 — commit de implementación `94bd93f3b8d7037cae9015123ea1404f569de574`; pendiente de checks y review independiente del Advisor. No merge.

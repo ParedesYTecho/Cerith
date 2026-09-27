@@ -5,7 +5,8 @@ Estado: CER-M0-008 lista para review independiente del Advisor; no está DONE ni
 Rama canónica: `main`
 `main` y `origin/main`: `9041314c32f42b9a026a09491fb91900eb6ef19c` (verificadas tras `git fetch origin main`)
 Rama de trabajo: `feat/CER-M0-008-native-visual-pipeline`
-PR de CER-M0-008: pendiente de apertura.
+PR de CER-M0-008: https://github.com/ParedesYTecho/Cerith/pull/18
+Commit de implementación: `94bd93f3b8d7037cae9015123ea1404f569de574`.
 
 ## Slice implementado
 
@@ -41,4 +42,4 @@ En el demo local, UI Automation leyó primero `synthetic.counter: Connecting…`
 - `dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build --verbosity normal`: 7/7 PASS.
 - `dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build --verbosity normal`: 8/8 PASS.
 
-Graphify code-only se actualizó (423 nodos, 840 aristas); su label drift previo queda fuera de esta task. El diff completo, los archivos nuevos y `git diff --check` pasaron revisión local. Pendiente: comprobar checks del PR y solicitar review independiente del Advisor. Dependabot #3/#4 permanece separado. No hacer merge ni declarar la task DONE.
+Graphify code-only se actualizó (423 nodos, 840 aristas); su label drift previo queda fuera de esta task. El diff completo, los archivos nuevos y `git diff --check` pasaron revisión local. `git diff --stat main...94bd93f`: 15 archivos, 233 inserciones y 28 eliminaciones. PR #18 abierto; comprobar checks y solicitar review independiente del Advisor. Dependabot #3/#4 permanece separado. No hacer merge ni declarar la task DONE.
