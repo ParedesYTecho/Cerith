@@ -16,7 +16,12 @@ internal sealed class HardwareTelemetryProvider : IDisposable
     private const string HardwareSource = "LibreHardwareMonitor";
     private const string MemorySource = "GlobalMemoryStatusEx";
     private const double Mebibyte = 1024d * 1024d;
-    private readonly Computer _computer = new() { IsCpuEnabled = true, IsGpuEnabled = true };
+    private const double Gibibyte = 1024d * 1024d * 1024d;
+    private const double Gigabyte = 1_000_000_000d;
+    private readonly Computer _computer = new()
+    {
+        IsCpuEnabled = true, IsGpuEnabled = true, IsStorageEnabled = true, IsNetworkEnabled = true
+    };
     private readonly MetricBus _bus;
     private readonly (IHardware Hardware, MetricDescriptor Descriptor, ISensor? Sensor, SensorType Type, bool Ambiguous)[] _sensors;
     private readonly MetricDescriptor[] _memory;
@@ -29,11 +34,12 @@ internal sealed class HardwareTelemetryProvider : IDisposable
         {
             _computer.Open();
             var bindings = new List<(IHardware, MetricDescriptor, ISensor?, SensorType, bool)>();
-            foreach (var cpu in _computer.Hardware.Where(h => h.HardwareType == HardwareType.Cpu))
+            var hardware = _computer.Hardware;
+            foreach (var cpu in hardware.Where(h => h.HardwareType == HardwareType.Cpu))
                 Add(cpu, "cpu.total.usage", "CPU Total Usage", "percentage", "%", MetricValueKind.Double,
                     SensorType.Load, "CPU Total");
 
-            var gpus = _computer.Hardware
+            var gpus = hardware
                 .Where(h => h.HardwareType is HardwareType.GpuAmd or HardwareType.GpuNvidia or HardwareType.GpuIntel)
                 .OrderBy(h => h.Identifier.ToString(), StringComparer.Ordinal)
                 .ToArray();
@@ -56,6 +62,42 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                     SensorType.SmallData, "GPU Memory Total");
                 Add(gpu, $"{prefix}.fan.rpm", $"GPU {index} Fan", "rate", "RPM", MetricValueKind.Double,
                     SensorType.Fan, null);
+            }
+
+            var storage = hardware.Where(h => h.HardwareType == HardwareType.Storage)
+                .OrderBy(h => h.Identifier.ToString(), StringComparer.Ordinal).ToArray();
+            var network = hardware.Where(h => h.HardwareType == HardwareType.Network)
+                .OrderBy(h => h.Identifier.ToString(), StringComparer.Ordinal).ToArray();
+            if (storage.Select(h => h.Identifier.ToString()).Distinct(StringComparer.Ordinal).Count() != storage.Length ||
+                network.Select(h => h.Identifier.ToString()).Distinct(StringComparer.Ordinal).Count() != network.Length)
+                throw new InvalidOperationException("Duplicate storage or network identifiers.");
+
+            for (var index = 0; index < storage.Length; index++)
+            {
+                var disk = storage[index];
+                var prefix = $"storage.{index}";
+                Add(disk, $"{prefix}.usage", $"Storage {index} Usage", "percentage", "%", MetricValueKind.Double,
+                    SensorType.Load, "Used Space");
+                Add(disk, $"{prefix}.read.bytes_per_second", $"Storage {index} Read Rate", "rate", "B/s", MetricValueKind.Double,
+                    SensorType.Throughput, "Read Rate");
+                Add(disk, $"{prefix}.write.bytes_per_second", $"Storage {index} Write Rate", "rate", "B/s", MetricValueKind.Double,
+                    SensorType.Throughput, "Write Rate");
+                Add(disk, $"{prefix}.total.bytes", $"Storage {index} Total", "bytes", "B", MetricValueKind.Double,
+                    SensorType.Data, "Total Space");
+                Add(disk, $"{prefix}.free.bytes", $"Storage {index} Free", "bytes", "B", MetricValueKind.Double,
+                    SensorType.Data, "Free Space");
+            }
+
+            for (var index = 0; index < network.Length; index++)
+            {
+                var nic = network[index];
+                var prefix = $"network.{index}";
+                Add(nic, $"{prefix}.download.bytes_per_second", $"Network {index} Download", "rate", "B/s", MetricValueKind.Double,
+                    SensorType.Throughput, "Download Speed");
+                Add(nic, $"{prefix}.upload.bytes_per_second", $"Network {index} Upload", "rate", "B/s", MetricValueKind.Double,
+                    SensorType.Throughput, "Upload Speed");
+                Add(nic, $"{prefix}.usage", $"Network {index} Usage", "percentage", "%", MetricValueKind.Double,
+                    SensorType.Load, "Network Utilization");
             }
 
             _sensors = bindings.ToArray();
@@ -86,13 +128,21 @@ internal sealed class HardwareTelemetryProvider : IDisposable
 
     public async ValueTask PublishNextAsync(CancellationToken cancellationToken = default)
     {
+        var present = _computer.Hardware.ToHashSet(ReferenceEqualityComparer.Instance);
         foreach (var group in _sensors.GroupBy(s => s.Hardware))
         {
             string? refreshError = null;
-            try { group.Key.Update(); }
+            var removed = group.Key.HardwareType is HardwareType.Storage or HardwareType.Network && !present.Contains(group.Key);
+            try { if (!removed) group.Key.Update(); }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
-                refreshError = group.Key.HardwareType == HardwareType.Cpu ? "cpu_refresh_failed" : "gpu_refresh_failed";
+                refreshError = group.Key.HardwareType switch
+                {
+                    HardwareType.Cpu => "cpu_refresh_failed",
+                    HardwareType.Storage => "storage_refresh_failed",
+                    HardwareType.Network => "network_refresh_failed",
+                    _ => "gpu_refresh_failed"
+                };
             }
             foreach (var binding in group)
             {
@@ -102,14 +152,16 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                 if (error is null && binding.Ambiguous) error = "ambiguous_sensor";
                 try
                 {
-                    if (error is null && binding.Sensor?.Value is float reading)
+                    // LHM 0.9.6 turns missing TotalFreeSize into a Free Space value of zero.
+                    var freeSpaceKnown = !binding.Descriptor.Id.Value.EndsWith(".free.bytes", StringComparison.Ordinal) ||
+                        binding.Hardware.Sensors.Any(s => s.SensorType == SensorType.Load && s.Name == "Used Space" && s.Value.HasValue);
+                    if (!removed && freeSpaceKnown && error is null && binding.Sensor?.Value is float reading)
                     {
-                        var valid = float.IsFinite(reading) && (binding.Type == SensorType.Load
-                            ? reading is >= 0 and <= 100
-                            : binding.Type == SensorType.Temperature || reading >= 0);
-                        if (valid)
+                        var positive = binding.Hardware.HardwareType == HardwareType.Storage &&
+                            binding.Descriptor.Id.Value.EndsWith(".total.bytes", StringComparison.Ordinal);
+                        if (TryNormalize(binding.Hardware.HardwareType, binding.Type, reading, positive, out var normalized))
                         {
-                            value = MetricValue.From(binding.Type == SensorType.SmallData ? reading * Mebibyte : (double)reading);
+                            value = MetricValue.From(normalized);
                             state = MetricState.Fresh;
                         }
                         else error = binding.Type == SensorType.Load ? "invalid_percentage" : "invalid_reading";
@@ -135,6 +187,24 @@ internal sealed class HardwareTelemetryProvider : IDisposable
             : [null, null, null, null];
         for (var index = 0; index < _memory.Length; index++)
             await Publish(_memory[index].Id, memoryValues[index], memoryState, MemorySource, memoryError, cancellationToken);
+    }
+
+    internal static bool TryNormalize(HardwareType hardwareType, SensorType type, float reading, bool positive, out double value)
+    {
+        value = 0;
+        if (!float.IsFinite(reading) || (type == SensorType.Load ? reading is < 0 or > 100 :
+            type != SensorType.Temperature && reading < 0) || (positive && reading <= 0))
+            return false;
+
+        var scale = type switch
+        {
+            SensorType.SmallData => Mebibyte,
+            SensorType.Data when hardwareType == HardwareType.Storage => Gigabyte,
+            SensorType.Data => Gibibyte,
+            _ => 1d
+        };
+        value = reading * scale;
+        return double.IsFinite(value);
     }
 
     private async ValueTask Publish(MetricId id, MetricValue? value, MetricState state, string source,

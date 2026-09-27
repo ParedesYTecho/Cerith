@@ -1,5 +1,17 @@
 # Tasks
 
+## CER-M1-003 — Storage and network telemetry baseline
+
+Status: READY FOR ADVISOR REVIEW (storage runtime unverified: LHM discovered zero devices without elevation)
+Owner: Codex (single writer)
+Priority: P0
+Depends on: CER-M1-002
+Branch: `codex/CER-M1-003-storage-network`
+
+Scope: probe local no elevado y mapping verificado de LibreHardwareMonitorLib 0.9.6 para almacenamiento y red; extender el único lifecycle hardware, métricas canónicas y demo compacta en WidgetHost. Sin diagnostics M1, paquetes nuevos ni framework de hotplug. M1 permanece INCOMPLETE.
+
+Result: LHM v0.9.6 upstream verified at `3d331e3370efb858411f19511373eff65a218701`. Non-elevated probe: Windows sees four disks, LHM Storage zero; LHM Network 19 (physical, virtual and filter interfaces), including measured positive Ethernet traffic. Storage mapping is implemented but cannot be runtime-validated on this host. One LHM `Computer` publishes eight selected storage/network suffixes for discovered devices; removed captured devices become unavailable, additions await restart. WidgetHost shows `storage.0` as unavailable and `network.0` as measured on this host. Release build PASS (0 warnings/errors); Core 39/39, Telemetry 8/8, Integration 9/9 PASS. No PR, merge, new package or M1 diagnostics. M1 INCOMPLETE.
+
 ## CER-M1-002 — Multi-metric hardware baseline
 
 Status: DONE
