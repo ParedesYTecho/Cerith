@@ -2,7 +2,7 @@
 
 ## CER-M1-002 — Multi-metric hardware baseline
 
-Status: READY FOR ADVISOR REVIEW
+Status: DONE
 Owner: Codex (single writer)
 Priority: P0
 Depends on: CER-M1-001
@@ -10,7 +10,7 @@ Branch: `codex/CER-M1-002-multi-metric-hardware`
 
 Scope: one LHM lifecycle for CPU/GPU, direct Windows RAM baseline, concurrent v1 Named Pipe sessions, minimal multi-metric WidgetHost, focused tests and canonical documentation. M1 remains incomplete.
 
-Result: local non-elevated CPU/GPU and pre-change IPC probes completed; 11 metrics published concurrently on the observed machine; Release build and Core 39/39, Telemetry 7/7, Integration 9/9 PASS; visible WidgetHost demo observed changing CPU/RAM/GPU/VRAM values and measured 0 RPM. No new packages or speculative layers. Awaiting independent review; no PR/merge. M1 remains incomplete.
+Result: PR #25 received independent Advisor PASS, Build and Test PASS, Repository Quality PASS and CodeQL SKIPPED under current policy; squash-merged into `main` at `6f442a2ecdf92d4368dce30ad55572950e52ccb2`. Local non-elevated CPU/GPU and pre-change IPC probes completed; 11 metrics published concurrently on one CPU and one AMD GPU; Release build and Core 39/39, Telemetry 7/7, Integration 9/9 PASS. CPU/RAM/GPU/VRAM/fan baseline and concurrent Named Pipe are integrated. NVIDIA/Intel/multi-GPU remain physically unvalidated; `gpu.N` has no proven persistent physical identity. M1 remains incomplete. CER-M1-003 is not defined or claimed.
 
 ## CER-M1-001 — LibreHardwareMonitor CPU usage vertical slice
 

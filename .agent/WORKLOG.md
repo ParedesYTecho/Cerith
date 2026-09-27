@@ -212,3 +212,9 @@ Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 
 
 Event: Advisor NEEDS FIXES, limitado a documentación/estado.
 Summary: reconciliar `.agent/HANDOFF.md` tras el commit `161c28160fcc721375a7e24446731bacd66af935` y su push; aclarar en `docs/METRICS.md` y el handoff que el orden de `gpu.N` es determinista solo para los identifiers descubiertos en ese arranque y que la identidad física persistente/multi-GPU no está validada. Sin cambios de producto; CER-M1-002 sigue READY FOR ADVISOR REVIEW y M1 incompleto.
+
+## 2026-09-27 — Codex — CER-M1-002 post-merge reconciliation
+
+Event: cierre de task tras Advisor PASS y squash merge de PR #25.
+Summary: PR #25 integró en `main` el baseline CPU/RAM/GPU/VRAM/fan y Named Pipe concurrente en `6f442a2ecdf92d4368dce30ad55572950e52ccb2`. En el PR y en el push del squash a `main`: Build and Test y Repository Quality PASS; CodeQL SKIPPED según política. `HEAD == main == origin/main`, working tree limpio y `git diff --check` PASS tras el fast-forward. CER-M1-002 DONE; M1 INCOMPLETE; CER-M1-003 no definida ni reclamada.
+Limits: hardware real validado con una CPU y una GPU AMD. NVIDIA/Intel/multi-GPU siguen sin validación física; `gpu.N` no demuestra identidad física persistente entre reinicios o reenumeración. Sin cambios de producto en la reconciliación.

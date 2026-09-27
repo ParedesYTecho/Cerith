@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP sigue siendo el hito actual. CER-M1-001 está DONE tras el PASS del Advisor y el squash merge de PR #22 en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. CER-M1-002 está READY FOR ADVISOR REVIEW en `codex/CER-M1-002-multi-metric-hardware`: CPU, RAM y GPU/VRAM/fan básicos, más sesiones IPC concurrentes y demo nativa. M1 no está completo. No comenzar CER-M1-003.
+M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP sigue siendo el hito actual. CER-M1-001 está DONE tras el PASS del Advisor y el squash merge de PR #22 en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. CER-M1-002 está DONE tras Advisor PASS y squash merge de PR #25 en `6f442a2ecdf92d4368dce30ad55572950e52ccb2`: baseline CPU/RAM/GPU/VRAM/fan y Named Pipe concurrente integrados. M1 sigue INCOMPLETE. CER-M1-003 aún no está definida ni reclamada.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
@@ -54,6 +54,6 @@ Deuda explícita:
 - Revisar la compatibilidad de Windows App SDK y sus transitivas con la licencia antes de fijar o publicar la licencia definitiva.
 - El linked source de `NamedPipeMetricClient` en Integration.Tests es un workaround limitado de M0, no un patrón permanente.
 - `Mono.Posix.NETStandard 1.0.0`: no se halló incompatibilidad conocida; la licencia/SPDX exacta sigue siendo una deuda de provenance/third-party-notice que debe resolverse o documentarse antes del public release.
-- CER-M1-002 se probó localmente con una CPU y una GPU AMD; hardware diverso, sensores ausentes y múltiples GPUs no están validados en máquina real. CI no depende de hardware.
+- CER-M1-002 se probó localmente con una CPU y una GPU AMD; NVIDIA/Intel, sensores ausentes y múltiples GPUs no están validados en máquina real. `gpu.N` no garantiza identidad física persistente entre reinicios o reenumeración. CI no depende de hardware.
 
 Dependabot #3/#4 y Graphify label drift permanecen separados.
