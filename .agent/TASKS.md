@@ -116,7 +116,7 @@ Resultado: PR #16 pasó review independiente del Advisor con PASS y se integró 
 
 ## CER-M0-008 — Native visual pipeline
 
-Status: READY FOR ADVISOR REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-007
@@ -124,4 +124,6 @@ Branch: `feat/CER-M0-008-native-visual-pipeline`
 
 Scope: TelemetryService publica `synthetic.counter` periódicamente; WidgetHost WinUI 3 unpackaged recibe snapshots por el cliente Named Pipe existente y muestra el valor cambiante. Sin widget engine ni supervisión de procesos.
 
-Acceptance: ventana inmediata con estado Connecting, valor real cambiante y estado unavailable ante fallo; cierre y cancelación limpios; restore, build Release y tres suites PASS; demo manual reproducible. Review independiente pendiente; no merge.
+Acceptance: ventana inmediata con estado Connecting, valor real cambiante y estado unavailable ante fallo; cierre y cancelación limpios; restore, build Release y tres suites PASS; demo manual reproducible.
+
+Resultado: Advisor independiente PASS; PR #18 integró el slice por squash en `main` (`15646293886e8951779c45d4bf894c3017c0bc7c`). Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. El linked source de `NamedPipeMetricClient.cs` en Integration.Tests queda aceptado solo para M0. Windows App SDK 2.5.1 queda aceptado para M0; la compatibilidad con la licencia GPL-3.0-or-later candidata debe cerrarse antes de fijar/publicar la licencia definitiva. Sin cambios de implementación tras la review.

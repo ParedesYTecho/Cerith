@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-007 completadas y mergeadas en `main`. CER-M0-008 implementada en `feat/CER-M0-008-native-visual-pipeline`; pendiente de review independiente del Advisor y sin merge.
+Estado: CER-M0-001 a CER-M0-008 completadas y mergeadas en `main`. CER-M0-008 pasó review independiente del Advisor con PASS; PR #18 se integró por squash en `15646293886e8951779c45d4bf894c3017c0bc7c`.
 
 ## Listo
 
@@ -45,4 +45,4 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M0-008 lista para review independiente: TelemetryService publica el contador sintético; WidgetHost WinUI 3 muestra snapshots reales por el Named Pipe. Build Release y Core/Telemetry/Integration PASS; demo local observó el valor cambiante. D-018 registra el alcance y la dependencia Windows App SDK 2.5.1. Sin widget engine, reconnect automático ni merge. Dependabot #3/#4 y Graphify label drift permanecen separados.
+CER-M0-008 DONE: TelemetryService publica el contador sintético; WidgetHost WinUI 3 muestra snapshots reales por el Named Pipe. PR #18 pasó review independiente del Advisor con PASS y se integró por squash en `15646293886e8951779c45d4bf894c3017c0bc7c`. CI Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. La compatibilidad de Windows App SDK y sus transitivas con la licencia GPL-3.0-or-later candidata sigue pendiente antes de fijar/publicar la licencia definitiva. El linked source del cliente en Integration.Tests es un workaround limitado de M0, no un patrón permanente. No se ha reclamado CER-M0-009 ni otra task. Dependabot #3/#4 y Graphify label drift permanecen separados.
