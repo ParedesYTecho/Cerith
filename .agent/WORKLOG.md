@@ -193,3 +193,10 @@ Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 
 
 Event: review técnica del Advisor PASS; inspección del artefacto transitivo exacto y registro D-019.
 Summary: `Mono.Posix.NETStandard 1.0.0` local pasó `dotnet nuget verify --all`; `.nuspec` sin SPDX ni licencia embebida, `.nupkg` sin LICENSE/NOTICE. No apareció evidencia de incompatibilidad/restricción; la licencia exacta sigue indeterminada y queda como deuda de provenance/notice previa al public release. D-019 registra la adopción de LHM 0.9.6. Sin cambios de código, paquetes o versiones; CER-M1-001 sigue READY FOR ADVISOR REVIEW.
+
+## 2026-09-27 — Codex — CER-M1-001 post-merge reconciliation
+
+Event: reconciliación post-merge.
+Summary: PR #22 recibió PASS del Advisor y se integró por squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, después de PR #23 (`94de88be841968be18fd6d3225bd184044347af6`). `cpu.total.usage` queda integrado; D-019 está en main. M1 sigue actual, no completa; la siguiente task queda sin definir ni reclamar. Mono.Posix 1.0.0 no presenta incompatibilidad conocida; conserva deuda de provenance/notice antes del public release.
+Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: PASS — main sincronizada a `b7e40447f48cd6afd2b015a94a49d825f28099f9`; PR #22 Advisor PASS; Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Límites: no hardware diverso probado; sin tests CI dependientes de hardware; solo `cpu.total.usage` implementada. CER-M1-002 no reclamada.
