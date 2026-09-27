@@ -130,7 +130,7 @@ Resultado: Advisor independiente PASS; PR #18 integró el slice por squash en `m
 
 ## CER-M0-009 — M0 exit diagnostics and scope closure
 
-Status: READY FOR ADVISOR REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: CER-M0-008
@@ -138,4 +138,4 @@ Branch: `feat/CER-M0-009-m0-exit-diagnostics`
 
 Scope: diagnóstico mínimo del ciclo de vida de TelemetryService y aclaración del alcance M0 de ControlCenter y diagnostics. Sin UI nueva, frameworks de logging ni diseño de M1.
 
-Resultado: `Program.cs` anuncia el pipe y `synthetic.counter` al quedar listo y el cierre normal; el roadmap acota ControlCenter shell y diagnostics de M0. Build Release 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS. Demo de consola observó ready, stopped y fallo del segundo proceso sin mensaje ready. Sin cambios de WidgetHost, proyectos, paquetes ni abstracciones. M0 no se declara DONE; review independiente pendiente.
+Resultado: Advisor PASS; PR #20 se integró por squash en `main` (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). Build Release 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS; CI Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. Demo manual observó ready, stopped y fallo del segundo proceso sin mensaje ready. Sin cambios de WidgetHost, proyectos, paquetes ni abstracciones. M0 — Foundation queda DONE tras satisfacer sus requisitos documentados.

@@ -176,3 +176,10 @@ Event: implementación y verificación local; READY FOR ADVISOR REVIEW.
 Summary: `Program.cs` anuncia disponibilidad del pipe `Cerith.Metrics.M0` y `synthetic.counter`, y el cierre normal. `docs/ROADMAP.md` delimita ControlCenter shell y diagnostics de M0 frente a M1. WidgetHost no cambió.
 Files: `src/Cerith.TelemetryService/Program.cs`, `docs/ROADMAP.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
 Result: PASS — `main` y `origin/main` coincidían en `4a5381c06cb99479e537197848eb15ccf1dba370` con árbol limpio; Graphify consultado. Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8; consola mostró ready y stopped; segundo proceso falló por pipe ocupado sin mostrar ready. Sin proyectos, dependencias ni abstracciones nuevos. M0 no declarado DONE; review independiente pendiente.
+
+## 2026-09-27 — Codex — CER-M0-009 post-merge reconciliation
+
+Event: cierre de M0 y reconciliación operativa.
+Summary: Advisor independiente PASS; PR #20 se integró por squash. CER-M0-009 y M0 — Foundation quedan DONE. M1 — Hardware MVP es el siguiente milestone, sin task definida ni reclamada. Se conservan explícitamente las deudas de licencia Windows App SDK y linked source de Integration.Tests.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — squash `40c0b82920a4b9ca797300bea16d8a1f506a97c7`; `HEAD == main == origin/main` en ese SHA y árbol limpio tras actualizar `main`. PR #20 CI Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. `git diff --check` PASS; no se tocó código, tests, Dependabot #3/#4 ni Graphify label drift.
