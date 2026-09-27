@@ -187,4 +187,4 @@ Result: PASS — squash `40c0b82920a4b9ca797300bea16d8a1f506a97c7`; `HEAD == mai
 
 Event: probe local sin elevación, implementación y verificación del vertical slice; READY FOR ADVISOR REVIEW.
 Summary: LibreHardwareMonitorLib 0.9.6 expuso un único CPU/Load/CPU Total con valor presente. TelemetryService publica `cpu.total.usage` medido por el bus y pipe existentes; WidgetHost lo muestra sin depender de LHM. Se auditó el grafo NuGet; la licencia exacta del artefacto Mono.Posix.NETStandard 1.0.0 queda por confirmar antes del merge.
-Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS. Demo UI observó 13.9 %, 15.1 % y 11.5 %; cierre de WidgetHost y mensaje de parada del servicio observados. CI y revisión del Advisor pendientes.
+Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS. Demo UI observó 13.9 %, 15.1 % y 11.5 %; cierre de WidgetHost y mensaje de parada del servicio observados. Commit `7c9e43b`, PR #22; CI Build and Test y Repository Quality PASS, CodeQL SKIPPED. Revisión del Advisor pendiente.

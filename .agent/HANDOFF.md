@@ -55,4 +55,4 @@ Demo sin elevación: (1) `dotnet run --project src/Cerith.TelemetryService/Cerit
 
 Zero-AI-slop: una clase concreta nueva, sin interfaces/managers/factories/DI/scheduler genérico; una métrica, CPU como único grupo LHM, sin cambios a Core, protocolo IPC, linked-source workaround ni otras áreas. No hay tests de hardware CI; la selección del sensor se verificó manualmente en esta máquina. No se ha validado hardware distinto ni ausencia persistente de sensor. Un porcentaje inválido se rechaza explícitamente, sin modificarlo.
 
-Diff stat, commit, PR y CI: pendientes de registrar al cerrar la rama y abrir el PR. Advisor review y resolución de licencia pendientes; no hacer merge todavía.
+Diff stat del commit de implementación: 11 archivos, 176 inserciones y 35 eliminaciones. Commit `7c9e43bf5ab9ff11a347a7ce00be044e33da80e2`. PR [#22](https://github.com/ParedesYTecho/Cerith/pull/22). CI para ese commit: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Advisor review y resolución de licencia pendientes; no hacer merge todavía.
