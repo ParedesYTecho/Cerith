@@ -1,12 +1,12 @@
 # Handoff — CER-M1-002 multi-metric hardware baseline
 
-Status: READY FOR ADVISOR REVIEW. First independent Advisor review: NEEDS FIXES, documentation/state only. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. No PR or merge; CER-M1-003 has not started.
+Status: CER-M1-002 DONE after independent Advisor PASS and squash merge of PR #25 into `main` at `6f442a2ecdf92d4368dce30ad55572950e52ccb2`. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. CER-M1-003 is not defined or claimed.
 
 ## Base and ownership
 
 - Base: `c153bddf73b44285e5bd3eef4572774a432d0900` (`main == origin/main` when the task started). The worktree was clean before the task.
-- Branch: `codex/CER-M1-002-multi-metric-hardware`. Single writer: Codex. Initial implementation/review commit: `161c28160fcc721375a7e24446731bacd66af935`, pushed to `origin`; the worktree was clean after commit/push. No PR has been opened and no merge has occurred.
-- Graphify was queried before selective source reads. The first Advisor review requested only this handoff reconciliation and a precise `gpu.N` identity limitation; product code remains unchanged.
+- Implementation branch: `codex/CER-M1-002-multi-metric-hardware`. Single writer: Codex. Initial review commit `161c28160fcc721375a7e24446731bacd66af935` and documentation correction `cb1ab2b39bf701533bd074f30ca9b5e7d314139c` were pushed to `origin`. PR #25 received Advisor PASS; Build and Test and Repository Quality passed, CodeQL was skipped per current policy; it was squash-merged at `6f442a2ecdf92d4368dce30ad55572950e52ccb2`.
+- Graphify was queried before selective source reads. The first Advisor review requested only handoff reconciliation and a precise `gpu.N` identity limitation; both were corrected before PASS. No product code changed after review.
 
 ## Required pre-change probes
 
@@ -31,4 +31,4 @@ Status: READY FOR ADVISOR REVIEW. First independent Advisor review: NEEDS FIXES,
 - Release build: PASS, 0 warnings/errors. Core tests: 39/39 PASS. Telemetry tests: 7/7 PASS. Integration tests: 9/9 PASS, including concurrent A/B isolation, bad third subscribe, A disconnect, B continuity and shutdown. CI still uses no real hardware.
 - Non-elevated demo: TelemetryService announced ready; 11 simultaneous subscriptions produced `Fresh/Measured` snapshots. UI Automation read the visible WidgetHost twice: CPU 24.7→5.0 %, GPU usage 12.0→4.0 %, RAM and VRAM changed, and fan displayed measured 0 RPM. WidgetHost closed normally. A subsequent service run printed `TelemetryService stopped.` after Ctrl+C; its PTY wrapper reported exit code 1, so the executable exit code is not separately verified.
 - Hardware limits: only one AMD GPU and one CPU were physically tested. NVIDIA/Intel variants, missing sensors, multiple fans/GPUs, hotplug and cross-machine/cross-account pipe attempts were not exercised. LHM can internally swallow some vendor refresh failures; a retained sensor value in that case is not independently detectable here.
-- Initial implementation review state: `git diff --check` PASS. Local Repository Quality filename check: PASS across 73 tracked/new paths. No configured preflight script exists. Graphify code graph refreshed (468 nodes, 925 edges); its documentary semantic graph and community labels were not refreshed. The worktree was clean after commit `161c28160fcc721375a7e24446731bacd66af935` and push. This documentation-only review correction is a separate commit on the same branch. PR: none.
+- Post-merge verification: `HEAD == main == origin/main == 6f442a2ecdf92d4368dce30ad55572950e52ccb2`, clean worktree and `git diff --check` PASS before the operational reconciliation branch. Local Repository Quality filename check previously passed across 73 tracked/new paths. No configured preflight script exists. Graphify code graph was refreshed (468 nodes, 925 edges); its documentary semantic graph and community labels were not refreshed. CPU/RAM/GPU/VRAM/fan baseline and concurrent Named Pipe are integrated. Only one CPU and one AMD GPU were physically validated; NVIDIA/Intel/multi-GPU and persistent `gpu.N` identity remain unverified.
