@@ -173,6 +173,8 @@ The first M0 implementation uses Windows Named Pipes (D-016): TelemetryService s
 
 For the M0 exit demo (D-018), TelemetryService runs the SyntheticProvider and pipe server in one console process. A minimal unpackaged WinUI 3 WidgetHost window reads that pipe through NamedPipeMetricClient and displays `synthetic.counter`. Start the two processes manually in that order. This window is not the widget engine.
 
+For CER-M1-001, TelemetryService instead reads CPU total usage from LibreHardwareMonitor once per second and publishes `cpu.total.usage` through the same bus and pipe. WidgetHost subscribes by MetricId and displays the percentage. SyntheticProvider remains available to foundation tests; this slice does not add other hardware metrics.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:

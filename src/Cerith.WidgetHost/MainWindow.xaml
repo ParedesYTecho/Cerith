@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="Root">
         <TextBlock x:Name="CounterText"
-                   Text="synthetic.counter: Connecting…"
+                   Text="cpu.total.usage: Connecting…"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center" />
     </Grid>

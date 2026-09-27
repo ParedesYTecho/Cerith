@@ -1,28 +1,58 @@
-# Handoff — CER-M0-009 post-merge reconciliation
+# Handoff — CER-M1-001
 
-Fecha: 2026-09-27
-Estado: CER-M0-009 DONE; M0 — Foundation DONE.
-PR de implementación: #20, Advisor PASS, squash merge completado.
-SHA squash y estado canónico: `40c0b82920a4b9ca797300bea16d8a1f506a97c7`; `HEAD == main == origin/main`. Working tree limpio tras sincronizar `main` y antes de esta reconciliación.
+Status: READY FOR ADVISOR REVIEW. CER-M1-001 no está DONE y no se ha mergeado. M0 — Foundation sigue DONE; M1 — Hardware MVP es el hito actual.
 
-## Cierre
+## Base, rama y probe previo
 
-El Advisor confirmó que CER-M0-009 satisface los requisitos documentados restantes de M0. El roadmap define el ControlCenter shell de M0 como el proyecto/dirección de dependencias ya existentes y limita diagnostics al baseline de runtime. WidgetHost conserva Connecting, valor y unavailable. No se requieren cambios adicionales de implementación.
+- Antes de editar, `main == origin/main == ebe504b3fd2b1c994da2bff1b62968f3229dd543` y `git status --short` no mostró cambios.
+- Rama: `feat/CER-M1-001-lhm-cpu-usage`. Owner único de escritura: Codex.
+- Probe fuera del repo, con `LibreHardwareMonitorLib 0.9.6`, `Computer.IsCpuEnabled = true`, sin elevación (`Elevated=False`): se observó un único hardware `Cpu` y exactamente un sensor `SensorType=Load`, `Name=CPU Total`, con `Value` presente. El Identifier se inspeccionó para descartar confusión con los sensores por core y `CPU Core Max`, pero no se persiste. No se capturaron seriales, paths de dispositivo ni inventario bruto.
+- Selector de producto: hardware `HardwareType.Cpu` + sensor `SensorType.Load` + nombre ordinal exacto `CPU Total`; más de un match falla explícitamente. No usa Identifier como MetricId ni heurísticas de fallback.
 
-M1 — Hardware MVP es el siguiente milestone. No se definió ni reclamó ninguna task de M1; no se inició trabajo de hardware.
+## Implementación
 
-Deuda que sigue abierta:
+`CpuUsageProvider` en TelemetryService abre LHM con solo CPU habilitada, localiza el sensor, refresca la CPU cada segundo, normaliza y publica por `MetricBus`; `Computer.Close()` se llama al disponer. Se mantienen `NamedPipeMetricServer`, protocolo y `NamedPipeMetricClient` existentes. `SyntheticProvider` permanece para foundation/tests, pero deja de publicarse en el runtime M1. WidgetHost solo se vincula a `cpu.total.usage`, muestra un decimal y conserva Connecting/unavailable.
 
-- Revisar compatibilidad de Windows App SDK y sus transitivas con la licencia antes de fijar o publicar la licencia definitiva.
-- El linked source de `NamedPipeMetricClient` en Integration.Tests es un workaround limitado de M0; no es un patrón permanente.
+Descriptor: `cpu.total.usage`, `CPU Total Usage`, `percentage`, `double`, `%`, sin datos de provider. Una lectura finita dentro de 0–100 produce `Fresh`, `Measured`, `Source=LibreHardwareMonitor` y `ObservedAt` tomado tras el refresh. `Value=null` produce `Unavailable`/`Unknown` sin valor. Fallo de refresh produce `Error`/`Unknown` con `cpu_refresh_failed`; NaN, Infinity o porcentaje fuera de 0–100 producen `Error`/`Unknown` con `invalid_percentage`. No se publica cero sustituto, no hay clamp y no se publica `exception.Message`.
 
-## Verificación de PR #20
+Archivo nuevo: `src/Cerith.TelemetryService/CpuUsageProvider.cs` posee únicamente el ciclo de vida LHM y la normalización de esta métrica; Program lo usa ahora. No existe otro archivo con esa responsabilidad. Su coste es una clase concreta acoplada solo a TelemetryService.
 
-- Advisor independiente: PASS.
-- Release build: PASS, 0 warnings/errors.
-- Core.Tests: 39/39; Telemetry.Tests: 7/7; Integration.Tests: 8/8 PASS.
-- CI Build and Test: PASS; Repository Quality: PASS; CodeQL: SKIPPED según D-013.
-- `git diff --check`: PASS en la implementación; se vuelve a ejecutar para esta reconciliación.
-- Demo de consola: ready y stopped observados; segunda instancia falló por pipe ocupado sin anunciar ready. El PTY devolvió 1 tras Ctrl+C, por lo que no se confirmó aparte el exit code del ejecutable.
+Archivos modificados: `src/Cerith.TelemetryService/{Cerith.TelemetryService.csproj,Program.cs}`, `src/Cerith.WidgetHost/{MainWindow.xaml,MainWindow.xaml.cs}`, `docs/{ARCHITECTURE.md,METRICS.md}` y memoria operativa `.agent/{STATE.md,TASKS.md,WORKLOG.md,HANDOFF.md}`. No se añadió ADR: no cambió la arquitectura del bus/IPC ni se adoptó una regla general de providers.
 
-Esta reconciliación cambia solo `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md` y `.agent/WORKLOG.md`. No toca Dependabot #3/#4 ni Graphify label drift. PR de reconciliación #21: https://github.com/ParedesYTecho/Cerith/pull/21, abierto y pendiente de revisión/merge.
+## Dependencia y licencias
+
+Única dependencia directa nueva: `LibreHardwareMonitorLib 0.9.6` en TelemetryService, [MPL-2.0](https://www.nuget.org/packages/LibreHardwareMonitorLib/0.9.6). El BCL no expone el sensor LHM verificado; usar la librería exigida evita código de adquisición de hardware propio. Core y WidgetHost no la referencian. El paquete trae bibliotecas transitivas y binarios nativos, con coste de tamaño y superficie de mantenimiento aunque solo se active CPU; restore no informó vulnerabilidades. No se vendorizó código ni se agregó otro paquete directo.
+
+Grafo transitivo resuelto por `dotnet list src/Cerith.TelemetryService/Cerith.TelemetryService.csproj package --include-transitive` para `net10.0-windows10.0.19041.0`:
+
+| Paquete | Versión | Licencia observada |
+| --- | --- | --- |
+| BlackSharp.Core | 1.0.7 | MPL-2.0 (nuspec) |
+| DiskInfoToolkit | 1.1.2 | MPL-2.0 (nuspec) |
+| HidSharp | 2.6.4 | Apache-2.0 (LICENSE.txt incluido en el paquete) |
+| Mono.Posix.NETStandard | 1.0.0 | **Sin SPDX/texto de licencia en el paquete.** Su `licenseUrl` redirige a [mono/mono LICENSE](https://github.com/mono/mono/blob/main/LICENSE), que describe bibliotecas generalmente MIT; la licencia exacta de este artefacto de 2018 queda por confirmar. |
+| RAMSPDToolkit-NDD | 1.4.2 | MPL-2.0 (nuspec) |
+| System.CodeDom | 10.0.2 | MIT (nuspec) |
+| System.IO.FileSystem.AccessControl | 5.0.0 | MIT (nuspec) |
+| System.IO.Ports | 10.0.3 | MIT (nuspec) |
+| System.Management | 10.0.2 | MIT (nuspec) |
+
+También se resolvieron 17 paquetes MIT `runtime.*.runtime.native.System.IO.Ports` versión `10.0.3`: `runtime.android-{arm,arm64,x64,x86}`, `runtime.linux-{arm,arm64,bionic-arm64,bionic-x64,musl-arm,musl-arm64,musl-x64,x64}`, `runtime.maccatalyst-{arm64,x64}`, `runtime.native`, `runtime.osx-{arm64,x64}` (todos con sufijo `.runtime.native.System.IO.Ports`, salvo `runtime.native.System.IO.Ports`). Son entradas del grafo NuGet, no afirmación de que todas se carguen en Windows.
+
+**Gate de licencia antes del merge:** el Advisor debe confirmar la licencia específica de `Mono.Posix.NETStandard 1.0.0` o resolver la duda. No hay licencia restrictiva confirmada. No se agregó un sistema general de THIRD-PARTY-NOTICES.
+
+## Verificación local
+
+- `dotnet build Cerith.sln --configuration Release`: PASS, 0 warnings/errors.
+- `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build`: PASS 39/39.
+- `dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build`: PASS 7/7.
+- `dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build`: PASS 8/8.
+- `git diff --check`: PASS.
+
+Demo sin elevación: (1) `dotnet run --project src/Cerith.TelemetryService/Cerith.TelemetryService.csproj --configuration Release --no-build`; (2) verificar `TelemetryService ready: pipe Cerith.Metrics.M0; cpu.total.usage Fresh`; (3) iniciar `src/Cerith.WidgetHost/bin/Release/net10.0-windows10.0.19041.0/Cerith.WidgetHost.exe`; (4) leer el TextBlock de la ventana; (5) cerrar WidgetHost desde la ventana; (6) Ctrl+C en el servicio y observar `TelemetryService stopped.`. UI Automation observó `cpu.total.usage: 13.9 %`, después `15.1 %` y `11.5 %`. No hizo falta carga artificial. Como WidgetHost únicamente recibe snapshots por NamedPipeMetricClient y TelemetryService únicamente publica este valor desde LHM por MetricBus, la lectura visible recorrió el pipeline solicitado. El cierre de WidgetHost y el mensaje de parada se observaron. El wrapper PTY devolvió exit code 1 tras Ctrl+C, por lo que el exit code del ejecutable no se confirmó por separado.
+
+## Revisión y pendientes
+
+Zero-AI-slop: una clase concreta nueva, sin interfaces/managers/factories/DI/scheduler genérico; una métrica, CPU como único grupo LHM, sin cambios a Core, protocolo IPC, linked-source workaround ni otras áreas. No hay tests de hardware CI; la selección del sensor se verificó manualmente en esta máquina. No se ha validado hardware distinto ni ausencia persistente de sensor. Un porcentaje inválido se rechaza explícitamente, sin modificarlo.
+
+Diff stat, commit, PR y CI: pendientes de registrar al cerrar la rama y abrir el PR. Advisor review y resolución de licencia pendientes; no hacer merge todavía.
