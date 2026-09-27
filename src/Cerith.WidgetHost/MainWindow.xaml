@@ -4,7 +4,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="Root">
         <TextBlock x:Name="CounterText"
-                   Text="cpu.total.usage: Connecting…"
+                   Text="Connecting…"
+                   FontFamily="Consolas"
+                   FontSize="16"
+                   TextWrapping="Wrap"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center" />
     </Grid>

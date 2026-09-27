@@ -1,5 +1,17 @@
 # Tasks
 
+## CER-M1-002 — Multi-metric hardware baseline
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex (single writer)
+Priority: P0
+Depends on: CER-M1-001
+Branch: `codex/CER-M1-002-multi-metric-hardware`
+
+Scope: one LHM lifecycle for CPU/GPU, direct Windows RAM baseline, concurrent v1 Named Pipe sessions, minimal multi-metric WidgetHost, focused tests and canonical documentation. M1 remains incomplete.
+
+Result: local non-elevated CPU/GPU and pre-change IPC probes completed; 11 metrics published concurrently on the observed machine; Release build and Core 39/39, Telemetry 7/7, Integration 9/9 PASS; visible WidgetHost demo observed changing CPU/RAM/GPU/VRAM values and measured 0 RPM. No new packages or speculative layers. Awaiting independent review; no PR/merge. M1 remains incomplete.
+
 ## CER-M1-001 — LibreHardwareMonitor CPU usage vertical slice
 
 Status: DONE

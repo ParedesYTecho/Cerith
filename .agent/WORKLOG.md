@@ -200,3 +200,15 @@ Event: reconciliación post-merge.
 Summary: PR #22 recibió PASS del Advisor y se integró por squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, después de PR #23 (`94de88be841968be18fd6d3225bd184044347af6`). `cpu.total.usage` queda integrado; D-019 está en main. M1 sigue actual, no completa; la siguiente task queda sin definir ni reclamar. Mono.Posix 1.0.0 no presenta incompatibilidad conocida; conserva deuda de provenance/notice antes del public release.
 Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
 Result: PASS — main sincronizada a `b7e40447f48cd6afd2b015a94a49d825f28099f9`; PR #22 Advisor PASS; Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Límites: no hardware diverso probado; sin tests CI dependientes de hardware; solo `cpu.total.usage` implementada. CER-M1-002 no reclamada.
+
+## 2026-09-27 — Codex — CER-M1-002 multi-metric hardware baseline
+
+Event: probes previos, implementación y demo local; READY FOR ADVISOR REVIEW.
+Summary: un LHM 0.9.6 para CPU/GPU, RAM física por GlobalMemoryStatusEx, 11 métricas simultáneas en esta máquina, sesiones pipe v1 concurrentes y WidgetHost mínimo. Probe IPC previo confirmó que B no recibía accepted mientras A seguía viva. El tag upstream corresponde a `3d331e3370efb858411f19511373eff65a218701`. Sin paquetes nuevos ni cambios a Core/MetricBus.
+Files: provider renombrado, server, Program, WidgetHost, Integration.Tests, docs/METRICS.md, docs/ARCHITECTURE.md y memoria operativa.
+Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 9/9 PASS. Demo UI Automation observó CPU 24.7→5.0 %, GPU 12.0→4.0 %, RAM/VRAM cambiantes y fan 0 RPM medido. Cierre de WidgetHost y mensaje `TelemetryService stopped.` observados; wrapper PTY devolvió código 1 tras Ctrl+C. Sin PR ni merge; M1 incompleto.
+
+## 2026-09-27 — Codex — CER-M1-002 primera review
+
+Event: Advisor NEEDS FIXES, limitado a documentación/estado.
+Summary: reconciliar `.agent/HANDOFF.md` tras el commit `161c28160fcc721375a7e24446731bacd66af935` y su push; aclarar en `docs/METRICS.md` y el handoff que el orden de `gpu.N` es determinista solo para los identifiers descubiertos en ese arranque y que la identidad física persistente/multi-GPU no está validada. Sin cambios de producto; CER-M1-002 sigue READY FOR ADVISOR REVIEW y M1 incompleto.
