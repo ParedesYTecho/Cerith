@@ -18,13 +18,16 @@ internal static class Program
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
+        if (server.IsCompleted) await server;
         var publisher = PublishAsync(provider, stop.Token);
+        Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; metric synthetic.counter");
 
         try { await Task.WhenAny(server, publisher); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        Console.WriteLine("TelemetryService stopped.");
     }
 
     private static async Task PublishAsync(SyntheticProvider provider, CancellationToken cancellationToken)

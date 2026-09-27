@@ -30,6 +30,8 @@
 - IPC prototype;
 - diagnostics.
 
+For M0, ControlCenter shell means the existing project and dependency direction; its functional UI waits for a concrete capability. Diagnostics means only the runtime baseline: TelemetryService reports ready with the pipe and `synthetic.counter`, then normal shutdown; WidgetHost shows Connecting, the value, or unavailable. Hardware/provider health diagnostics belong to M1.
+
 Exit:
 
 ```text
@@ -40,7 +42,7 @@ SyntheticProvider
 → visible value
 ```
 
-with tests and measured baseline.
+with tests, this runtime diagnostic baseline and the measured IPC baseline (D-016).
 
 ## M1 — Hardware MVP
 

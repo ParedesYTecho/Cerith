@@ -169,3 +169,10 @@ Event: reconciliación post-merge
 Summary: Advisor independiente PASS sin correcciones de implementación. PR #18 pasó Build and Test y Repository Quality (CodeQL SKIPPED según D-013) y se integró por squash en `15646293886e8951779c45d4bf894c3017c0bc7c`. `main` local y `origin/main` coincidieron en ese SHA; working tree limpio antes de editar. CER-M0-008 queda DONE.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — la licencia GPL candidata aún requiere revisión de compatibilidad con Windows App SDK antes de fijar/publicar la licencia; linked source aceptado solo para M0. Sin próxima task reclamada; Dependabot y Graphify label drift separados.
+
+## 2026-09-27 — Codex — CER-M0-009 M0 exit diagnostics
+
+Event: implementación y verificación local; READY FOR ADVISOR REVIEW.
+Summary: `Program.cs` anuncia disponibilidad del pipe `Cerith.Metrics.M0` y `synthetic.counter`, y el cierre normal. `docs/ROADMAP.md` delimita ControlCenter shell y diagnostics de M0 frente a M1. WidgetHost no cambió.
+Files: `src/Cerith.TelemetryService/Program.cs`, `docs/ROADMAP.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: PASS — `main` y `origin/main` coincidían en `4a5381c06cb99479e537197848eb15ccf1dba370` con árbol limpio; Graphify consultado. Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8; consola mostró ready y stopped; segundo proceso falló por pipe ocupado sin mostrar ready. Sin proyectos, dependencias ni abstracciones nuevos. M0 no declarado DONE; review independiente pendiente.

@@ -127,3 +127,15 @@ Scope: TelemetryService publica `synthetic.counter` periódicamente; WidgetHost 
 Acceptance: ventana inmediata con estado Connecting, valor real cambiante y estado unavailable ante fallo; cierre y cancelación limpios; restore, build Release y tres suites PASS; demo manual reproducible.
 
 Resultado: Advisor independiente PASS; PR #18 integró el slice por squash en `main` (`15646293886e8951779c45d4bf894c3017c0bc7c`). Build and Test y Repository Quality PASS; CodeQL SKIPPED según D-013. El linked source de `NamedPipeMetricClient.cs` en Integration.Tests queda aceptado solo para M0. Windows App SDK 2.5.1 queda aceptado para M0; la compatibilidad con la licencia GPL-3.0-or-later candidata debe cerrarse antes de fijar/publicar la licencia definitiva. Sin cambios de implementación tras la review.
+
+## CER-M0-009 — M0 exit diagnostics and scope closure
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex
+Priority: P0
+Depends on: CER-M0-008
+Branch: `feat/CER-M0-009-m0-exit-diagnostics`
+
+Scope: diagnóstico mínimo del ciclo de vida de TelemetryService y aclaración del alcance M0 de ControlCenter y diagnostics. Sin UI nueva, frameworks de logging ni diseño de M1.
+
+Resultado: `Program.cs` anuncia el pipe y `synthetic.counter` al quedar listo y el cierre normal; el roadmap acota ControlCenter shell y diagnostics de M0. Build Release 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS. Demo de consola observó ready, stopped y fallo del segundo proceso sin mensaje ready. Sin cambios de WidgetHost, proyectos, paquetes ni abstracciones. M0 no se declara DONE; review independiente pendiente.
