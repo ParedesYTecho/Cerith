@@ -15,9 +15,11 @@ It combines the best ideas from:
 - HWiNFO / LibreHardwareMonitor;
 - Rainmeter;
 - modern native widget systems;
-- AI quota monitors such as CodexBar, OpenUsage and TokenTracker.
+- AI quota monitors such as Gengchou, AI Limits, TokenTracker, CodexBar and OpenUsage.
 
 The goal is not to clone any of them.
+
+The external projects that materially informed Cerith, and what is or is not trusted from each, are recorded in `REFERENCE_PROJECTS.md`. Reference provenance is distinct from implementation authority.
 
 The goal is a universal system:
 
