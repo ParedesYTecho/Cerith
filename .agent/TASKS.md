@@ -2,7 +2,7 @@
 
 ## CER-M1-001 — LibreHardwareMonitor CPU usage vertical slice
 
-Status: READY FOR ADVISOR REVIEW
+Status: DONE
 Owner: Codex
 Priority: P0
 Depends on: M0 — Foundation
@@ -10,7 +10,9 @@ Branch: `feat/CER-M1-001-lhm-cpu-usage`
 
 Scope: probe local no elevado de LibreHardwareMonitorLib 0.9.6; si confirma inequívocamente CPU Total, publicar `cpu.total.usage` por el MetricBus y Named Pipe existentes y mostrarlo en WidgetHost. Sin otras métricas ni arquitectura de providers.
 
-Acceptance: Release build, tres suites, CI y demo local PASS; dependencia y licencias auditadas; PR abierto para Advisor. No declarar DONE antes de revisión.
+Acceptance: Release build, tres suites, CI y demo local PASS; revisión independiente del Advisor PASS; PR integrado por squash. M1 sigue abierto y no se declara completa.
+
+Resultado: PR #22 pasó review independiente del Advisor con PASS y se integró mediante squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. D-019 quedó integrada. `cpu.total.usage` es el único slice hardware implementado. No se probó hardware diverso ni se añadieron tests CI dependientes de hardware. La licencia exacta de Mono.Posix.NETStandard 1.0.0 continúa como deuda de provenance/third-party-notice previa al public release; no se conoce incompatibilidad.
 
 ## CER-M0-001 — Repository and solution skeleton
 

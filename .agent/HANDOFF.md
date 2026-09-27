@@ -1,11 +1,12 @@
-# Handoff — CER-M1-001
+# Handoff — post-merge CER-M1-001
 
-Status: READY FOR ADVISOR REVIEW. CER-M1-001 no está DONE y no se ha mergeado. M0 — Foundation sigue DONE; M1 — Hardware MVP es el hito actual.
+Status: CER-M1-001 DONE. PR #22 recibió PASS del Advisor y se integró por squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. M0 — Foundation sigue DONE; M1 — Hardware MVP continúa como milestone actual y no está completo. La siguiente task M1 queda sin definir/sin reclamar hasta que la defina el Advisor.
 
 ## Base, rama y probe previo
 
-- Antes de editar, `main == origin/main == ebe504b3fd2b1c994da2bff1b62968f3229dd543` y `git status --short` no mostró cambios.
-- Rama: `feat/CER-M1-001-lhm-cpu-usage`. Owner único de escritura: Codex.
+- Base de implementación verificada: `ebe504b3fd2b1c994da2bff1b62968f3229dd543`.
+- PR #23 se integró primero en `94de88be841968be18fd6d3225bd184044347af6`; luego PR #22 se integró por squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. Ambos están en el `main` actualizado; no hubo conflicto ni se integró `main` en la feature branch.
+- Rama de implementación: `feat/CER-M1-001-lhm-cpu-usage`. Owner único de escritura: Codex.
 - Probe fuera del repo, con `LibreHardwareMonitorLib 0.9.6`, `Computer.IsCpuEnabled = true`, sin elevación (`Elevated=False`): se observó un único hardware `Cpu` y exactamente un sensor `SensorType=Load`, `Name=CPU Total`, con `Value` presente. El Identifier se inspeccionó para descartar confusión con los sensores por core y `CPU Core Max`, pero no se persiste. No se capturaron seriales, paths de dispositivo ni inventario bruto.
 - Selector de producto: hardware `HardwareType.Cpu` + sensor `SensorType.Load` + nombre ordinal exacto `CPU Total`; más de un match falla explícitamente. No usa Identifier como MetricId ni heurísticas de fallback.
 
@@ -41,7 +42,7 @@ También se resolvieron 17 paquetes MIT `runtime.*.runtime.native.System.IO.Port
 
 Audit exacto de `Mono.Posix.NETStandard 1.0.0` en caché local: `.nuspec` con `id=Mono.Posix.NETStandard`, `version=1.0.0`, `authors/owners=Microsoft`, `requireLicenseAcceptance=true`, `licenseUrl=https://go.microsoft.com/fwlink/?linkid=869050` y `projectUrl=https://go.microsoft.com/fwlink/?linkid=869051`; sin `<license>`, SPDX ni `<repository>`. La carpeta contiene el `.nupkg` (SHA-256 `FC5EB593B318FDFBB615C7D6EC29328EE52BA0AC256005CF40555E0ECD509276`), `.nupkg.sha512`, `.nupkg.metadata`, `.signature.p7s` y DLLs/archivos nativos para net40, netstandard2.0, Linux, macOS y Windows. El `.nupkg` tiene 26 entradas: metadata/relaciones, `.nuspec`, assemblies por TFM/RID, helpers nativos por RID y firma; no incluye LICENSE/NOTICE. `.nupkg.metadata` registra `source=https://api.nuget.org/v3/index.json` y `contentHash`, coincidente con `project.assets.json`. El SHA-512 de los bytes del archivo coincide con `.nupkg.sha512` y difiere de ese `contentHash`; `dotnet nuget verify --all` pasó y mostró firma Repository de NuGet.org. No se atribuye causa a la diferencia de hashes ni se infiere una licencia de ella.
 
-**Resultado:** no hay evidencia de riesgo de incompatibilidad conocido para este transitivo; queda una ambigüedad de provenance/third-party-notice, incluida su licencia/SPDX exacta, para resolver o documentar en el audit de dependencias previo al public release. No se añadió un sistema general de THIRD-PARTY-NOTICES.
+**Resultado aceptado por el Advisor:** no hay incompatibilidad conocida demostrada para este transitivo; queda una ambigüedad de provenance/third-party-notice, incluida su licencia/SPDX exacta, para resolver o documentar en el audit de dependencias previo al public release. No se añadió un sistema general de THIRD-PARTY-NOTICES.
 
 ## Verificación local
 
@@ -57,4 +58,4 @@ Demo sin elevación: (1) `dotnet run --project src/Cerith.TelemetryService/Cerit
 
 Zero-AI-slop: una clase concreta nueva, sin interfaces/managers/factories/DI/scheduler genérico; una métrica, CPU como único grupo LHM, sin cambios a Core, protocolo IPC, linked-source workaround ni otras áreas. No hay tests de hardware CI; la selección del sensor se verificó manualmente en esta máquina. No se ha validado hardware distinto ni ausencia persistente de sensor. Un porcentaje inválido se rechaza explícitamente, sin modificarlo.
 
-Diff stat del commit de implementación: 11 archivos, 176 inserciones y 35 eliminaciones. Commit `7c9e43bf5ab9ff11a347a7ce00be044e33da80e2`. PR [#22](https://github.com/ParedesYTecho/Cerith/pull/22). CI anterior: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Review técnica del Advisor PASS; corrección de provenance/registro de dependencia pendiente de checks del nuevo SHA. No hacer merge todavía.
+Diff stat de implementación: 11 archivos, 176 inserciones y 35 eliminaciones. Commit de implementación `7c9e43bf5ab9ff11a347a7ce00be044e33da80e2`; corrección de provenance `3f3f3b550dff93f65d98aa6ffdc696839a07d06c`. PR [#22](https://github.com/ParedesYTecho/Cerith/pull/22): MERGED por squash en `b7e40447f48cd6afd2b015a94a49d825f28099f9`. Advisor PASS; Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. Limitaciones: no se ha probado hardware diverso, CI no prueba sensores reales y solo `cpu.total.usage` está implementada. D-019 está integrada; M1 no está completa. La deuda Mono.Posix de provenance/notice continúa antes del public release, sin incompatibilidad conocida.
