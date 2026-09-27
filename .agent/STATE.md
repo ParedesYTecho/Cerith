@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-007 completadas y mergeadas en `main`. CER-M0-007 pasó review independiente del Advisor con PASS; PR #16 se integró mediante squash en `192afc43632ea50fe92e6416e65431ce0bbe7da8`. CER-M0-008 todavía no está reclamada.
+Estado: CER-M0-001 a CER-M0-007 completadas y mergeadas en `main`. CER-M0-008 implementada en `feat/CER-M0-008-native-visual-pipeline`; pendiente de review independiente del Advisor y sin merge.
 
 ## Listo
 
@@ -45,4 +45,4 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M0-007 DONE: PR #16 pasó review independiente del Advisor con PASS y se mergeó mediante squash en `192afc43632ea50fe92e6416e65431ce0bbe7da8`. D-017 y el bridge Named Pipe real están integrados; SyntheticProvider → MetricBus → Named Pipe → WidgetHost client está demostrado. Protocolo v1, frames de hasta 64 KiB, ACL del servidor restringida al usuario actual y `PIPE_REJECT_REMOTE_CLIENTS` activo, verificado mediante `GetNamedPipeInfo`. No se ejecutó ni afirmó prueba desde otra máquina ni otra cuenta. Core.Tests 39/39, Telemetry.Tests 7/7 e Integration.Tests 8/8; los tres sin tolerancia ZeroTests. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED según D-013. CER-M0-008 sigue sin reclamar. Dependabot #3/#4 permanece separado; Graphify label drift sigue pendiente como tooling.
+CER-M0-008 lista para review independiente: TelemetryService publica el contador sintético; WidgetHost WinUI 3 muestra snapshots reales por el Named Pipe. Build Release y Core/Telemetry/Integration PASS; demo local observó el valor cambiante. D-018 registra el alcance y la dependencia Windows App SDK 2.5.1. Sin widget engine, reconnect automático ni merge. Dependabot #3/#4 y Graphify label drift permanecen separados.

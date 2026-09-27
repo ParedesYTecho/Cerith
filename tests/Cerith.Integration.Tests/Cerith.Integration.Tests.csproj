@@ -6,6 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cerith.Core\Cerith.Core.csproj" />
     <ProjectReference Include="..\..\src\Cerith.TelemetryService\Cerith.TelemetryService.csproj" />
-    <ProjectReference Include="..\..\src\Cerith.WidgetHost\Cerith.WidgetHost.csproj" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\NamedPipeMetricClient.cs" Link="NamedPipeMetricClient.cs" />
   </ItemGroup>
 </Project>

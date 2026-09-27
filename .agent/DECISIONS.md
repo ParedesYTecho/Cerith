@@ -102,3 +102,9 @@ All candidates passed local echo, clean disconnect, reconnect, async-wait cancel
 ## D-017 — M0 IPC snapshot protocol
 
 Following D-016, M0 uses Windows Named Pipes with remote-client rejection and current-user access. A byte stream carries length-prefixed frames bounded to 64 KiB, with an explicit protocol version and `subscribe`, `accepted`, and `snapshot` messages. One connection subscribes to one exact MetricId. `accepted` follows active bus subscription; snapshots are future publications only, with no replay. This is an internal M0 wire contract, not a stable public/plugin protocol.
+
+## D-018 — M0 native visual pipeline
+
+CER-M0-008 uses one unpackaged, framework-dependent WinUI 3 window in WidgetHost to display the existing `synthetic.counter` IPC stream. TelemetryService is a console executable that publishes the existing SyntheticProvider once per second. The two executables start manually; this does not establish the M4 widget engine or the final visual design.
+
+WidgetHost references Microsoft.WindowsAppSDK 2.5.1 (stable, Microsoft Software License Terms) for WinUI 3. `WindowsPackageType=None` enables the standard runtime bootstrap; `WindowsAppSDKSelfContained=false` uses an installed Windows App Runtime. The .NET BCL and existing code cannot provide WinUI 3. The package brings transitive Windows App SDK, WebView2, Windows ML, BuildTools and MIT-licensed System.Numerics.Tensors components; these extra capabilities are not used by this slice. The SDK adds a runtime prerequisite and Microsoft-serviced code. Review its license and transitive terms against the draft GPL-3.0-or-later application license before public release.

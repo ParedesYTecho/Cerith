@@ -171,6 +171,8 @@ Requirements:
 
 The first M0 implementation uses Windows Named Pipes (D-016): TelemetryService serves bounded, versioned snapshots and WidgetHost subscribes through a local-only client. This does not define the future public plugin protocol.
 
+For the M0 exit demo (D-018), TelemetryService runs the SyntheticProvider and pipe server in one console process. A minimal unpackaged WinUI 3 WidgetHost window reads that pipe through NamedPipeMetricClient and displays `synthetic.counter`. Start the two processes manually in that order. This window is not the widget engine.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:

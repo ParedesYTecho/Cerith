@@ -146,3 +146,17 @@ Event: reconciliación post-merge
 Summary: PR #16 pasó review independiente del Advisor con PASS y se integró mediante squash. D-017 y el bridge Named Pipe están integrados; CER-M0-007 queda DONE. No iniciar CER-M0-008.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — `main` local y `origin/main` verificadas en `192afc43632ea50fe92e6416e65431ce0bbe7da8`; working tree limpia antes de editar memoria. Solo memoria operativa modificada. PR #16 CI: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. `git diff --check` PASS.
+
+## 2026-09-27 — Codex — CER-M0-008 claim
+
+Event: preflight y reclamación
+Summary: `main` y `origin/main` verificadas en `9041314c32f42b9a026a09491fb91900eb6ef19c` con árbol limpio; creada `feat/CER-M0-008-native-visual-pipeline` y reclamada CER-M0-008. Sin cambios de producto ni merge.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — preflight de Git; Graphify consultado para navegación. Build/tests: NOT RUN (solo memoria operativa).
+
+## 2026-09-27 — Codex — CER-M0-008 native visual pipeline
+
+Event: implementación y verificación local
+Summary: TelemetryService ejecutable publica `synthetic.counter` cada segundo; WidgetHost WinUI 3 unpackaged/framework-dependent muestra snapshots del cliente Named Pipe existente. D-018 registra la dependencia Microsoft.WindowsAppSDK 2.5.1 y el alcance M0. Integration.Tests compila el mismo archivo cliente sin cargar el bootstrapper del ejecutable UI.
+Files: `Program.cs`, `App.xaml`, `App.xaml.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`, `MetricIpcProtocol.cs`, tres `.csproj`, `docs/ARCHITECTURE.md`, `.agent/DECISIONS.md` y memoria operativa.
+Result: PASS — restore; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8; UI Automation observó Connecting y valor cambiante; sin servidor mostró unavailable; WidgetHost cerró con exit 0 y TelemetryService respondió a Ctrl+C con exit 0. Graphify code-only actualizado; label drift existente no regenerado. Review independiente pendiente; sin merge.
