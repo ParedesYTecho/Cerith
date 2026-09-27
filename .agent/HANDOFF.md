@@ -1,12 +1,12 @@
 # Handoff — CER-M0-008 native visual pipeline
 
 Fecha: 2026-09-27
-Estado: CER-M0-008 lista para review independiente del Advisor; no está DONE ni mergeada. CER-M0-007 DONE.
+Estado: CER-M0-008 DONE; review independiente del Advisor PASS y squash merge confirmado.
 Rama canónica: `main`
-`main` y `origin/main`: `9041314c32f42b9a026a09491fb91900eb6ef19c` (verificadas tras `git fetch origin main`)
-Rama de trabajo: `feat/CER-M0-008-native-visual-pipeline`
+`main` y `origin/main`: `15646293886e8951779c45d4bf894c3017c0bc7c` (verificadas tras `git fetch origin main` y fast-forward local; árbol limpio antes de reconciliar).
+Rama de implementación: `feat/CER-M0-008-native-visual-pipeline`
 PR de CER-M0-008: https://github.com/ParedesYTecho/Cerith/pull/18
-Commit de implementación: `94bd93f3b8d7037cae9015123ea1404f569de574`.
+SHA de squash: `15646293886e8951779c45d4bf894c3017c0bc7c`.
 
 ## Slice implementado
 
@@ -24,9 +24,9 @@ WinUI se inicia unpackaged y framework-dependent con bootstrap automático. La l
 
 Modificados: los dos `.csproj` de producción (salidas ejecutables y WinUI), `MetricIpcProtocol.cs` (nombre del pipe), `Cerith.Integration.Tests.csproj` (compila el mismo archivo cliente sin cargar el bootstrapper del ejecutable UI), `docs/ARCHITECTURE.md`, `.agent/DECISIONS.md` (D-018) y memoria operativa. No se añadieron proyectos, modelos de widget, paquetes de test ni UI automation.
 
-## Dependencia y revisión
+## Dependencia y deuda
 
-Única dependencia directa nueva: `Microsoft.WindowsAppSDK` 2.5.1, stable de 2026-09-16, para WinUI 3; Microsoft Software License Terms. El proyecto es framework-dependent y requiere Windows App Runtime 2.5.1 instalado; esta máquina lo tiene. El paquete agregado trae componentes transitivos de Windows App SDK, WebView2, Windows ML, BuildTools y System.Numerics.Tensors (MIT), aunque este slice solo usa WinUI. Revisar compatibilidad de licencias transitivas con la dirección GPL-3.0-or-later provisional antes de publicar Cerith. No se midió tamaño ni CPU en esta task.
+Única dependencia directa nueva: `Microsoft.WindowsAppSDK` 2.5.1, stable de 2026-09-16, para WinUI 3; Microsoft Software License Terms. El proyecto es framework-dependent y requiere Windows App Runtime 2.5.1 instalado. El Advisor aceptó esta elección para M0. La compatibilidad de su licencia y transitivas con la dirección GPL-3.0-or-later provisional NO está resuelta: cerrarla antes de fijar/publicar la licencia definitiva. No optimizar las transitivas sin medir footprint real. El linked source del cliente en Integration.Tests fue aceptado como workaround limitado de M0; no convertirlo en patrón permanente ni abrir ahora un proyecto/abstracción.
 
 ## Reproducción local
 
@@ -42,4 +42,4 @@ En el demo local, UI Automation leyó primero `synthetic.counter: Connecting…`
 - `dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build --verbosity normal`: 7/7 PASS.
 - `dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build --verbosity normal`: 8/8 PASS.
 
-Graphify code-only se actualizó (423 nodos, 840 aristas); su label drift previo queda fuera de esta task. El diff completo, los archivos nuevos y `git diff --check` pasaron revisión local. `git diff --stat main...94bd93f`: 15 archivos, 233 inserciones y 28 eliminaciones. PR #18 abierto; comprobar checks y solicitar review independiente del Advisor. Dependabot #3/#4 permanece separado. No hacer merge ni declarar la task DONE.
+PR #18: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013; Advisor independiente PASS (lifecycle/cancellation, UI thread, TelemetryService lifecycle y scope). No se añadieron correcciones de implementación tras la review. Graphify code-only se actualizó durante la implementación; su label drift queda fuera de esta task. La reconciliación modifica solo `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md` y `.agent/WORKLOG.md`. No reclamar CER-M0-009 ni otra task en esta sesión. Dependabot #3/#4 permanece separado.

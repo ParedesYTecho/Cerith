@@ -162,3 +162,10 @@ Files: `Program.cs`, `App.xaml`, `App.xaml.cs`, `MainWindow.xaml`, `MainWindow.x
 Result: PASS — restore; Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8; UI Automation observó Connecting y valor cambiante; sin servidor mostró unavailable; WidgetHost cerró con exit 0 y TelemetryService respondió a Ctrl+C con exit 0. Graphify code-only actualizado; label drift existente no regenerado. Review independiente pendiente; sin merge.
 
 PR #18: https://github.com/ParedesYTecho/Cerith/pull/18 — commit de implementación `94bd93f3b8d7037cae9015123ea1404f569de574`; pendiente de checks y review independiente del Advisor. No merge.
+
+## 2026-09-27 — Codex — CER-M0-008 post-merge
+
+Event: reconciliación post-merge
+Summary: Advisor independiente PASS sin correcciones de implementación. PR #18 pasó Build and Test y Repository Quality (CodeQL SKIPPED según D-013) y se integró por squash en `15646293886e8951779c45d4bf894c3017c0bc7c`. `main` local y `origin/main` coincidieron en ese SHA; working tree limpio antes de editar. CER-M0-008 queda DONE.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: PASS — la licencia GPL candidata aún requiere revisión de compatibilidad con Windows App SDK antes de fijar/publicar la licencia; linked source aceptado solo para M0. Sin próxima task reclamada; Dependabot y Graphify label drift separados.
