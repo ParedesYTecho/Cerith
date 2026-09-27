@@ -17,7 +17,7 @@ Descriptor: `cpu.total.usage`, `CPU Total Usage`, `percentage`, `double`, `%`, s
 
 Archivo nuevo: `src/Cerith.TelemetryService/CpuUsageProvider.cs` posee únicamente el ciclo de vida LHM y la normalización de esta métrica; Program lo usa ahora. No existe otro archivo con esa responsabilidad. Su coste es una clase concreta acoplada solo a TelemetryService.
 
-Archivos modificados: `src/Cerith.TelemetryService/{Cerith.TelemetryService.csproj,Program.cs}`, `src/Cerith.WidgetHost/{MainWindow.xaml,MainWindow.xaml.cs}`, `docs/{ARCHITECTURE.md,METRICS.md}` y memoria operativa `.agent/{STATE.md,TASKS.md,WORKLOG.md,HANDOFF.md}`. No se añadió ADR: no cambió la arquitectura del bus/IPC ni se adoptó una regla general de providers.
+Archivos modificados en el slice inicial: `src/Cerith.TelemetryService/{Cerith.TelemetryService.csproj,Program.cs}`, `src/Cerith.WidgetHost/{MainWindow.xaml,MainWindow.xaml.cs}`, `docs/{ARCHITECTURE.md,METRICS.md}` y memoria operativa. La revisión posterior añadió D-019 en `.agent/DECISIONS.md` para registrar la dependencia runtime significativa requerida por `docs/DEPENDENCY_POLICY.md`; no cambió la arquitectura del bus/IPC ni se adoptó una regla general de providers.
 
 ## Dependencia y licencias
 
@@ -30,7 +30,7 @@ Grafo transitivo resuelto por `dotnet list src/Cerith.TelemetryService/Cerith.Te
 | BlackSharp.Core | 1.0.7 | MPL-2.0 (nuspec) |
 | DiskInfoToolkit | 1.1.2 | MPL-2.0 (nuspec) |
 | HidSharp | 2.6.4 | Apache-2.0 (LICENSE.txt incluido en el paquete) |
-| Mono.Posix.NETStandard | 1.0.0 | **Sin SPDX/texto de licencia en el paquete.** Su `licenseUrl` redirige a [mono/mono LICENSE](https://github.com/mono/mono/blob/main/LICENSE), que describe bibliotecas generalmente MIT; la licencia exacta de este artefacto de 2018 queda por confirmar. |
+| Mono.Posix.NETStandard | 1.0.0 | **Sin SPDX ni LICENSE/NOTICE en el artefacto local.** El `.nuspec` solo declara `licenseUrl`; la licencia exacta de esta versión queda indeterminada. No se encontró evidencia de licencia incompatible/restrictiva. |
 | RAMSPDToolkit-NDD | 1.4.2 | MPL-2.0 (nuspec) |
 | System.CodeDom | 10.0.2 | MIT (nuspec) |
 | System.IO.FileSystem.AccessControl | 5.0.0 | MIT (nuspec) |
@@ -39,7 +39,9 @@ Grafo transitivo resuelto por `dotnet list src/Cerith.TelemetryService/Cerith.Te
 
 También se resolvieron 17 paquetes MIT `runtime.*.runtime.native.System.IO.Ports` versión `10.0.3`: `runtime.android-{arm,arm64,x64,x86}`, `runtime.linux-{arm,arm64,bionic-arm64,bionic-x64,musl-arm,musl-arm64,musl-x64,x64}`, `runtime.maccatalyst-{arm64,x64}`, `runtime.native`, `runtime.osx-{arm64,x64}` (todos con sufijo `.runtime.native.System.IO.Ports`, salvo `runtime.native.System.IO.Ports`). Son entradas del grafo NuGet, no afirmación de que todas se carguen en Windows.
 
-**Gate de licencia antes del merge:** el Advisor debe confirmar la licencia específica de `Mono.Posix.NETStandard 1.0.0` o resolver la duda. No hay licencia restrictiva confirmada. No se agregó un sistema general de THIRD-PARTY-NOTICES.
+Audit exacto de `Mono.Posix.NETStandard 1.0.0` en caché local: `.nuspec` con `id=Mono.Posix.NETStandard`, `version=1.0.0`, `authors/owners=Microsoft`, `requireLicenseAcceptance=true`, `licenseUrl=https://go.microsoft.com/fwlink/?linkid=869050` y `projectUrl=https://go.microsoft.com/fwlink/?linkid=869051`; sin `<license>`, SPDX ni `<repository>`. La carpeta contiene el `.nupkg` (SHA-256 `FC5EB593B318FDFBB615C7D6EC29328EE52BA0AC256005CF40555E0ECD509276`), `.nupkg.sha512`, `.nupkg.metadata`, `.signature.p7s` y DLLs/archivos nativos para net40, netstandard2.0, Linux, macOS y Windows. El `.nupkg` tiene 26 entradas: metadata/relaciones, `.nuspec`, assemblies por TFM/RID, helpers nativos por RID y firma; no incluye LICENSE/NOTICE. `.nupkg.metadata` registra `source=https://api.nuget.org/v3/index.json` y `contentHash`, coincidente con `project.assets.json`. El SHA-512 de los bytes del archivo coincide con `.nupkg.sha512` y difiere de ese `contentHash`; `dotnet nuget verify --all` pasó y mostró firma Repository de NuGet.org. No se atribuye causa a la diferencia de hashes ni se infiere una licencia de ella.
+
+**Resultado:** no hay evidencia de riesgo de incompatibilidad conocido para este transitivo; queda una ambigüedad de provenance/third-party-notice, incluida su licencia/SPDX exacta, para resolver o documentar en el audit de dependencias previo al public release. No se añadió un sistema general de THIRD-PARTY-NOTICES.
 
 ## Verificación local
 
@@ -55,4 +57,4 @@ Demo sin elevación: (1) `dotnet run --project src/Cerith.TelemetryService/Cerit
 
 Zero-AI-slop: una clase concreta nueva, sin interfaces/managers/factories/DI/scheduler genérico; una métrica, CPU como único grupo LHM, sin cambios a Core, protocolo IPC, linked-source workaround ni otras áreas. No hay tests de hardware CI; la selección del sensor se verificó manualmente en esta máquina. No se ha validado hardware distinto ni ausencia persistente de sensor. Un porcentaje inválido se rechaza explícitamente, sin modificarlo.
 
-Diff stat del commit de implementación: 11 archivos, 176 inserciones y 35 eliminaciones. Commit `7c9e43bf5ab9ff11a347a7ce00be044e33da80e2`. PR [#22](https://github.com/ParedesYTecho/Cerith/pull/22). CI para ese commit: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Advisor review y resolución de licencia pendientes; no hacer merge todavía.
+Diff stat del commit de implementación: 11 archivos, 176 inserciones y 35 eliminaciones. Commit `7c9e43bf5ab9ff11a347a7ce00be044e33da80e2`. PR [#22](https://github.com/ParedesYTecho/Cerith/pull/22). CI anterior: Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. Review técnica del Advisor PASS; corrección de provenance/registro de dependencia pendiente de checks del nuevo SHA. No hacer merge todavía.
