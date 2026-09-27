@@ -47,7 +47,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP sigue siendo el hito actual. CER-M1-001 está DONE tras el PASS del Advisor y el squash merge de PR #22 en `b7e40447f48cd6afd2b015a94a49d825f28099f9`; `cpu.total.usage` es el único vertical slice hardware integrado. M1 no está completo. La siguiente task M1 permanece sin definir y sin reclamar hasta que la defina el Advisor.
 
-PR #23 de context integrity/provenance está integrado en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después, sin conflicto. El estado de `main` debe reconciliarse mediante PR documental separado.
+PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
 Deuda explícita:
 
