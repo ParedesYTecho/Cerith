@@ -13,14 +13,14 @@ internal static class Program
     {
         using var stop = new CancellationTokenSource();
         using var bus = new MetricBus(1);
-        var provider = new SyntheticProvider(new MetricRegistry(), bus);
-        if (!provider.TryRegister()) throw new InvalidOperationException("Synthetic metric registration failed.");
+        using var provider = new CpuUsageProvider(new MetricRegistry(), bus);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
         if (server.IsCompleted) await server;
+        var initialState = await provider.PublishNextAsync(stop.Token);
         var publisher = PublishAsync(provider, stop.Token);
-        Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; metric synthetic.counter");
+        Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; cpu.total.usage {initialState}");
 
         try { await Task.WhenAny(server, publisher); }
         finally { await stop.CancelAsync(); }
@@ -30,7 +30,7 @@ internal static class Program
         Console.WriteLine("TelemetryService stopped.");
     }
 
-    private static async Task PublishAsync(SyntheticProvider provider, CancellationToken cancellationToken)
+    private static async Task PublishAsync(CpuUsageProvider provider, CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(cancellationToken))

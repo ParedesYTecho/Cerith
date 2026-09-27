@@ -3,6 +3,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
@@ -13,7 +14,7 @@ namespace Cerith.WidgetHost;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly MetricId CounterId = new("synthetic.counter");
+    private static readonly MetricId CpuUsageId = new("cpu.total.usage");
     private readonly CancellationTokenSource _stop = new();
     private Task? _readTask;
     private bool _closing;
@@ -40,29 +41,29 @@ public sealed partial class MainWindow : Window
             using (var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
                 connect.CancelAfter(TimeSpan.FromSeconds(5));
-                await client.ConnectAsync(CounterId, connect.Token);
+                await client.ConnectAsync(CpuUsageId, connect.Token);
             }
 
             await foreach (var snapshot in client.ReadSnapshotsAsync(cancellationToken))
             {
-                if (snapshot.MetricId != CounterId) throw new InvalidDataException("Unexpected metric ID.");
+                if (snapshot.MetricId != CpuUsageId) throw new InvalidDataException("Unexpected metric ID.");
                 CounterText.Text = snapshot.State switch
                 {
-                    MetricState.Fresh when snapshot.Value?.Kind == MetricValueKind.Int64 =>
-                        $"synthetic.counter: {snapshot.Value.Value.AsInt64()}",
-                    MetricState.Stale when snapshot.Value?.Kind == MetricValueKind.Int64 =>
-                        $"synthetic.counter: {snapshot.Value.Value.AsInt64()} (stale)",
-                    _ => "synthetic.counter: unavailable"
+                    MetricState.Fresh when snapshot.Value?.Kind == MetricValueKind.Double =>
+                        $"cpu.total.usage: {snapshot.Value.Value.AsDouble().ToString("F1", CultureInfo.InvariantCulture)} %",
+                    MetricState.Stale when snapshot.Value?.Kind == MetricValueKind.Double =>
+                        $"cpu.total.usage: {snapshot.Value.Value.AsDouble().ToString("F1", CultureInfo.InvariantCulture)} % (stale)",
+                    _ => "cpu.total.usage: unavailable"
                 };
             }
 
-            if (!_closing) CounterText.Text = "synthetic.counter: unavailable";
+            if (!_closing) CounterText.Text = "cpu.total.usage: unavailable";
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception error)
         {
             Debug.WriteLine(error);
-            if (!_closing) CounterText.Text = "synthetic.counter: unavailable";
+            if (!_closing) CounterText.Text = "cpu.total.usage: unavailable";
         }
     }
 

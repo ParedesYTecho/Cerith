@@ -2,7 +2,7 @@
 
 Proyecto: Cerith
 Nombre: provisional
-Hito: M1 — Hardware MVP (siguiente)
+Hito: M1 — Hardware MVP (actual)
 Rama canónica: `main`
 Estado: M0 — Foundation DONE. CER-M0-001 a CER-M0-009 están completadas y mergeadas en `main`; PR #20 pasó review independiente del Advisor y se integró por squash en `40c0b82920a4b9ca797300bea16d8a1f506a97c7`.
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP es el siguiente hito; no hay task de M1 definida ni reclamada.
+M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP es el hito actual. CER-M1-001 está reclamada en `feat/CER-M1-001-lhm-cpu-usage` y queda READY FOR ADVISOR REVIEW; no se ha mergeado ni declarado DONE.
 
 Deuda explícita:
 

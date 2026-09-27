@@ -1,5 +1,17 @@
 # Tasks
 
+## CER-M1-001 — LibreHardwareMonitor CPU usage vertical slice
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex
+Priority: P0
+Depends on: M0 — Foundation
+Branch: `feat/CER-M1-001-lhm-cpu-usage`
+
+Scope: probe local no elevado de LibreHardwareMonitorLib 0.9.6; si confirma inequívocamente CPU Total, publicar `cpu.total.usage` por el MetricBus y Named Pipe existentes y mostrarlo en WidgetHost. Sin otras métricas ni arquitectura de providers.
+
+Acceptance: Release build, tres suites, CI y demo local PASS; dependencia y licencias auditadas; PR abierto para Advisor. No declarar DONE antes de revisión.
+
 ## CER-M0-001 — Repository and solution skeleton
 
 Status: DONE

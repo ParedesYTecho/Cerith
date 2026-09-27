@@ -129,3 +129,5 @@ One sample can feed:
 - rule;
 - history;
 - multiple widgets.
+
+CER-M1-001 uses `cpu.total.usage` as a provider-independent percentage (`double`, `%`). A finite reading in the 0–100 domain is `Fresh`/`Measured`; a missing reading is `Unavailable`/`Unknown`, and a failed refresh or invalid reading is `Error`/`Unknown` with a sanitized code. No missing or invalid reading is published as zero.

@@ -183,3 +183,13 @@ Event: cierre de M0 y reconciliación operativa.
 Summary: Advisor independiente PASS; PR #20 se integró por squash. CER-M0-009 y M0 — Foundation quedan DONE. M1 — Hardware MVP es el siguiente milestone, sin task definida ni reclamada. Se conservan explícitamente las deudas de licencia Windows App SDK y linked source de Integration.Tests.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 Result: PASS — squash `40c0b82920a4b9ca797300bea16d8a1f506a97c7`; `HEAD == main == origin/main` en ese SHA y árbol limpio tras actualizar `main`. PR #20 CI Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED según D-013. `git diff --check` PASS. Reconciliation commit `aaad32d`; PR #21 abierto. No se tocó código, tests, Dependabot #3/#4 ni Graphify label drift.
+## 2026-09-27 — Codex — CER-M1-001 CPU total usage
+
+Event: probe local sin elevación, implementación y verificación del vertical slice; READY FOR ADVISOR REVIEW.
+Summary: LibreHardwareMonitorLib 0.9.6 expuso un único CPU/Load/CPU Total con valor presente. TelemetryService publica `cpu.total.usage` medido por el bus y pipe existentes; WidgetHost lo muestra sin depender de LHM. Se auditó el grafo NuGet; la licencia exacta del artefacto Mono.Posix.NETStandard 1.0.0 queda por confirmar antes del merge.
+Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 8/8 PASS. Demo UI observó 13.9 %, 15.1 % y 11.5 %; cierre de WidgetHost y mensaje de parada del servicio observados. Commit `7c9e43b`, PR #22; CI Build and Test y Repository Quality PASS, CodeQL SKIPPED. Revisión del Advisor pendiente.
+
+## 2026-09-27 — Codex — CER-M1-001 review de provenance
+
+Event: review técnica del Advisor PASS; inspección del artefacto transitivo exacto y registro D-019.
+Summary: `Mono.Posix.NETStandard 1.0.0` local pasó `dotnet nuget verify --all`; `.nuspec` sin SPDX ni licencia embebida, `.nupkg` sin LICENSE/NOTICE. No apareció evidencia de incompatibilidad/restricción; la licencia exacta sigue indeterminada y queda como deuda de provenance/notice previa al public release. D-019 registra la adopción de LHM 0.9.6. Sin cambios de código, paquetes o versiones; CER-M1-001 sigue READY FOR ADVISOR REVIEW.
