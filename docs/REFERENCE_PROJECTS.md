@@ -95,7 +95,9 @@ Its broader token/cost model is not automatically equivalent to provider rate-li
 
 CodexBar and OpenUsage remain useful independent research implementations where current and relevant.
 
-They do not outrank official provider sources merely because they are listed in Cerith docs.
+The original master brief also named **Claude Code Usage Monitor** as a research reference. The historical material available to Cerith does not preserve a sufficiently certain canonical repository URL for that name, so this document deliberately records the reference without inventing a link. If its exact provenance is re-established later, add the verified repository and revision here.
+
+These references do not outrank official provider sources merely because they are listed in Cerith docs.
 
 ## AI quota validation hierarchy
 
