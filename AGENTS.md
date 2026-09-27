@@ -25,6 +25,7 @@ architecture       docs/ARCHITECTURE.md
 roadmap            docs/ROADMAP.md
 metrics            docs/METRICS.md
 AI quotas          docs/PROVIDERS_AI_QUOTAS.md
+research provenance docs/REFERENCE_PROJECTS.md
 UI/UX              docs/UI_UX.md
 plugins            docs/PLUGINS.md
 testing            docs/TESTING_QA.md
@@ -36,6 +37,14 @@ code quality       CODE_QUALITY.md
 ```
 
 Do not duplicate canonical knowledge into multiple files.
+
+## Context integrity rule
+
+`.agent/STATE.md` and `.agent/HANDOFF.md` describe the current operational state; they do not replace product identity, roadmap or research provenance.
+
+Before making a product, architecture, provider or milestone-shaping decision, read `docs/PRODUCT_SPEC.md`, `docs/ROADMAP.md`, `docs/REFERENCE_PROJECTS.md` and the relevant canonical domain document.
+
+If external research or a conversation materially changes durable product requirements, architectural constraints, provider semantics or reference provenance, distill the durable conclusion into the appropriate canonical document before closing the session. Do not rely on chat-only context.
 
 ## Public-ready rule
 

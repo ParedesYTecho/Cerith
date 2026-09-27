@@ -37,6 +37,8 @@ AGENTS.md
 → relevant source
 ```
 
+For product, architecture, provider or milestone-shaping work, also read `docs/PRODUCT_SPEC.md`, `docs/ROADMAP.md`, `docs/REFERENCE_PROJECTS.md` and the relevant canonical domain document before deciding.
+
 Do not begin by reading the entire repository.
 
 ## End protocol
@@ -49,8 +51,11 @@ build/tests
 → worklog
 → state update if global
 → handoff
+→ context-integrity check
 → graph refresh if structural
 ```
+
+The context-integrity check asks whether the session produced durable knowledge that a fresh session could not reconstruct from the repository. If yes, record the conclusion and provenance in the appropriate canonical document; never commit private chat transcripts or generated context dumps.
 
 ## Ownership
 
