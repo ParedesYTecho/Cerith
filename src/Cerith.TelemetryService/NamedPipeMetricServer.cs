@@ -2,6 +2,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Collections.Concurrent;
 using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
@@ -24,19 +25,50 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var sessions = new ConcurrentDictionary<long, Task>();
+        long sequence = 0;
+        try
         {
-            using var pipe = CreatePipe(_pipeName);
-            var connected = false;
-            try
+            while (!stop.IsCancellationRequested)
             {
-                await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
-                connected = true;
-                await ServeAsync(pipe, cancellationToken).ConfigureAwait(false);
+                var pipe = CreatePipe(_pipeName);
+                try
+                {
+                    await pipe.WaitForConnectionAsync(stop.Token).ConfigureAwait(false);
+                    var key = ++sequence;
+                    var session = HandleSessionAsync(pipe, stop.Token);
+                    sessions[key] = session;
+                    _ = session.ContinueWith(completed =>
+                    {
+                        _ = completed.Exception;
+                        sessions.TryRemove(key, out _);
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                }
+                catch
+                {
+                    pipe.Dispose();
+                    throw;
+                }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
-            catch (IOException) when (connected) { continue; }
-            catch (InvalidDataException) when (connected) { continue; }
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        finally
+        {
+            await stop.CancelAsync().ConfigureAwait(false);
+            await Task.WhenAll(sessions.Values).ConfigureAwait(false);
+        }
+    }
+
+    private async Task HandleSessionAsync(NamedPipeServerStream pipe, CancellationToken cancellationToken)
+    {
+        using (pipe)
+        {
+            try { await ServeAsync(pipe, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            catch (IOException) { }
+            catch (InvalidDataException) { }
+            catch (Exception) { Console.Error.WriteLine("Metric IPC session failed."); }
         }
     }
 
@@ -90,7 +122,7 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
         {
             var security = new SecurityAttributes { Length = Marshal.SizeOf<SecurityAttributes>(), SecurityDescriptor = descriptor };
             var handle = CreateNamedPipe($@"\\.\pipe\{pipeName}",
-                PipeAccessDuplex | FileFlagOverlapped, PipeRejectRemoteClients, 1,
+                PipeAccessDuplex | FileFlagOverlapped, PipeRejectRemoteClients, 255,
                 MetricIpcProtocol.MaxFrameSize, MetricIpcProtocol.MaxFrameSize, 0, ref security);
             if (handle.IsInvalid)
             {

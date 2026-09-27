@@ -131,3 +131,18 @@ One sample can feed:
 - multiple widgets.
 
 CER-M1-001 uses `cpu.total.usage` as a provider-independent percentage (`double`, `%`). A finite reading in the 0–100 domain is `Fresh`/`Measured`; a missing reading is `Unavailable`/`Unknown`, and a failed refresh or invalid reading is `Error`/`Unknown` with a sanitized code. No missing or invalid reading is published as zero.
+
+CER-M1-002 adds the following measured metrics. RAM uses one `GlobalMemoryStatusEx` physical-memory sample: `ram.total.bytes` and `ram.available.bytes` are the API values, `ram.used.bytes = total - available`, and `ram.usage = 100 × used / total`. Byte values are `long`; usage is `double`. A zero total, inconsistent available value, or failed API call produces `Error` without a value. This baseline does not activate LHM's Memory/SPD group.
+
+For each discovered GPU, `gpu.N` is assigned by ordinal sorting of the LHM 0.9.6 hardware identifiers at startup. Identifiers remain internal and duplicate identifiers fail discovery. The provider publishes:
+
+| MetricId suffix | LHM sensor (exact type + name) | Unit / value kind |
+| --- | --- | --- |
+| `.usage` | Load / GPU Core | % / double |
+| `.temperature.core` | Temperature / GPU Core | °C / double |
+| `.clock.core` | Clock / GPU Core | MHz / double |
+| `.vram.used.bytes` | SmallData / GPU Memory Used | B / double |
+| `.vram.total.bytes` | SmallData / GPU Memory Total | B / double |
+| `.fan.rpm` | exactly one Fan sensor | RPM / double |
+
+LHM 0.9.6 defines `SmallData` as MiB (2²⁰ bytes); the provider multiplies by 1,048,576 before publishing. GPU sensor availability varies by device. A missing sensor/value is `Unavailable` without a value; multiple matching sensors are `Error` (`ambiguous_sensor`). Refresh failure or an invalid reading is `Error` without a value. Percentages must be finite and within 0–100; clock, byte and fan values must be finite and nonnegative; temperature must be finite. Values are never clamped or replaced by zero.

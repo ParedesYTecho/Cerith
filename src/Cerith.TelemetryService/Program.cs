@@ -13,14 +13,14 @@ internal static class Program
     {
         using var stop = new CancellationTokenSource();
         using var bus = new MetricBus(1);
-        using var provider = new CpuUsageProvider(new MetricRegistry(), bus);
+        using var provider = new HardwareTelemetryProvider(new MetricRegistry(), bus);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
         if (server.IsCompleted) await server;
-        var initialState = await provider.PublishNextAsync(stop.Token);
+        await provider.PublishNextAsync(stop.Token);
         var publisher = PublishAsync(provider, stop.Token);
-        Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; cpu.total.usage {initialState}");
+        Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing");
 
         try { await Task.WhenAny(server, publisher); }
         finally { await stop.CancelAsync(); }
@@ -30,7 +30,7 @@ internal static class Program
         Console.WriteLine("TelemetryService stopped.");
     }
 
-    private static async Task PublishAsync(CpuUsageProvider provider, CancellationToken cancellationToken)
+    private static async Task PublishAsync(HardwareTelemetryProvider provider, CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(cancellationToken))

@@ -19,6 +19,62 @@ namespace Cerith.Integration.Tests;
 public sealed class NamedPipeMetricTests
 {
     [TestMethod]
+    public async Task ConcurrentClientsKeepExactSubscriptionsAndShutDownTogether()
+    {
+        using var bus = new MetricBus(1);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var name = Name();
+        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var idA = new MetricId("metric.a");
+        var idB = new MetricId("metric.b");
+        await using var a = new NamedPipeMetricClient(name);
+        await using var b = new NamedPipeMetricClient(name);
+        await a.ConnectAsync(idA, stop.Token);
+        await b.ConnectAsync(idB, stop.Token);
+        await using (var invalid = new NamedPipeClientStream(".", name, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly))
+        {
+            await invalid.ConnectAsync(stop.Token);
+            using var frame = Frame("{\"Version\":2,\"Kind\":\"subscribe\",\"MetricId\":\"x\"}");
+            await invalid.WriteAsync(frame.ToArray(), stop.Token);
+        }
+        await using var readerA = a.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+        await using var readerB = b.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+        var nextA = readerA.MoveNextAsync().AsTask();
+        var nextB = readerB.MoveNextAsync().AsTask();
+
+        await bus.PublishAsync(Snapshot(idA), stop.Token);
+        Assert.IsTrue(await nextA.WaitAsync(stop.Token));
+        Assert.AreEqual(idA, readerA.Current.MetricId);
+        await Task.Delay(100, stop.Token);
+        Assert.IsFalse(nextB.IsCompleted);
+
+        nextA = readerA.MoveNextAsync().AsTask();
+        await bus.PublishAsync(Snapshot(idB), stop.Token);
+        Assert.IsTrue(await nextB.WaitAsync(stop.Token));
+        Assert.AreEqual(idB, readerB.Current.MetricId);
+        await Task.Delay(100, stop.Token);
+        Assert.IsFalse(nextA.IsCompleted);
+
+        await a.DisposeAsync();
+        try { await nextA.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (IOException) { }
+        catch (OperationCanceledException) { }
+
+        nextB = readerB.MoveNextAsync().AsTask();
+        await bus.PublishAsync(Snapshot(idB), stop.Token);
+        Assert.IsTrue(await nextB.WaitAsync(stop.Token));
+        Assert.AreEqual(idB, readerB.Current.MetricId);
+
+        stop.Cancel();
+        await server.WaitAsync(TimeSpan.FromSeconds(5));
+        nextB = readerB.MoveNextAsync().AsTask();
+        try { Assert.IsFalse(await nextB.WaitAsync(TimeSpan.FromSeconds(5))); }
+        catch (IOException) { }
+        catch (OperationCanceledException) { }
+    }
+
+    [TestMethod]
     public async Task SyntheticSnapshotTraversesPipeAndReconnectsWithoutReplay()
     {
         using var bus = new MetricBus(1);
