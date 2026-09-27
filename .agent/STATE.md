@@ -2,9 +2,9 @@
 
 Proyecto: Cerith
 Nombre: provisional
-Hito: M0 — Foundation
+Hito: M1 — Hardware MVP (siguiente)
 Rama canónica: `main`
-Estado: CER-M0-001 a CER-M0-008 completadas y mergeadas en `main`. CER-M0-009 está READY FOR ADVISOR REVIEW en `feat/CER-M0-009-m0-exit-diagnostics`; M0 aún no se declara DONE.
+Estado: M0 — Foundation DONE. CER-M0-001 a CER-M0-009 están completadas y mergeadas en `main`; PR #20 pasó review independiente del Advisor y se integró por squash en `40c0b82920a4b9ca797300bea16d8a1f506a97c7`.
 
 ## Listo
 
@@ -45,4 +45,11 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M0-009 añade el diagnóstico mínimo de inicio y cierre de TelemetryService; `docs/ROADMAP.md` define el shell de ControlCenter y el baseline de diagnostics M0. Release build y tres suites PASS; review independiente pendiente. No se ha adelantado M1. La compatibilidad de Windows App SDK y sus transitivas con la licencia GPL-3.0-or-later candidata sigue pendiente antes de fijar/publicar la licencia definitiva. Dependabot #3/#4 y Graphify label drift permanecen separados.
+M0 — Foundation DONE tras la aceptación del Advisor de CER-M0-009 y el squash merge de PR #20 (`40c0b82920a4b9ca797300bea16d8a1f506a97c7`). M1 — Hardware MVP es el siguiente hito; no hay task de M1 definida ni reclamada.
+
+Deuda explícita:
+
+- Revisar la compatibilidad de Windows App SDK y sus transitivas con la licencia antes de fijar o publicar la licencia definitiva.
+- El linked source de `NamedPipeMetricClient` en Integration.Tests es un workaround limitado de M0, no un patrón permanente.
+
+Dependabot #3/#4 y Graphify label drift permanecen separados.

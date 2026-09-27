@@ -1,25 +1,28 @@
-# Handoff — CER-M0-009 M0 exit diagnostics
+# Handoff — CER-M0-009 post-merge reconciliation
 
 Fecha: 2026-09-27
-Estado: READY FOR ADVISOR REVIEW; M0 no está declarado DONE.
-Rama: `feat/CER-M0-009-m0-exit-diagnostics`, base `main` = `origin/main` = `4a5381c06cb99479e537197848eb15ccf1dba370` al iniciar, árbol limpio. Commit de implementación: `7bbd97d00a370d794bc3e3c2e9cb23076288c5bb`. PR: https://github.com/ParedesYTecho/Cerith/pull/20 (abierto; checks en curso al redactar).
+Estado: CER-M0-009 DONE; M0 — Foundation DONE.
+PR de implementación: #20, Advisor PASS, squash merge completado.
+SHA squash y estado canónico: `40c0b82920a4b9ca797300bea16d8a1f506a97c7`; `HEAD == main == origin/main`. Working tree limpio tras sincronizar `main` y antes de esta reconciliación.
 
-## Resultado
+## Cierre
 
-`TelemetryService` escribe `TelemetryService ready: pipe Cerith.Metrics.M0; metric synthetic.counter` una vez, después de que el servidor haya creado el pipe, y `TelemetryService stopped.` tras cierre normal. Si el pipe falla al arrancar, se propaga el error sin anunciar ready. No se registran snapshots.
+El Advisor confirmó que CER-M0-009 satisface los requisitos documentados restantes de M0. El roadmap define el ControlCenter shell de M0 como el proyecto/dirección de dependencias ya existentes y limita diagnostics al baseline de runtime. WidgetHost conserva Connecting, valor y unavailable. No se requieren cambios adicionales de implementación.
 
-`docs/ROADMAP.md` define ControlCenter shell como el proyecto existente y su dirección de dependencias; una UI funcional espera una capability concreta. El baseline diagnostics M0 es ready/pipe/métrica y cierre normal en TelemetryService, más Connecting/valor/unavailable existentes en WidgetHost. Health rico de hardware/providers sigue en M1. El exit M0 continúa siendo el pipeline sintético visible, con tests y baseline IPC medido de D-016. README y roadmap son compatibles.
+M1 — Hardware MVP es el siguiente milestone. No se definió ni reclamó ninguna task de M1; no se inició trabajo de hardware.
 
-Archivos modificados: `src/Cerith.TelemetryService/Program.cs`, `docs/ROADMAP.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`. Archivos, proyectos, dependencias y abstracciones nuevos: ninguno. WidgetHost sin cambios. Sin desviaciones de scope.
+Deuda que sigue abierta:
 
-## Verificación
+- Revisar compatibilidad de Windows App SDK y sus transitivas con la licencia antes de fijar o publicar la licencia definitiva.
+- El linked source de `NamedPipeMetricClient` en Integration.Tests es un workaround limitado de M0; no es un patrón permanente.
 
-- `dotnet build Cerith.sln --configuration Release`: PASS, 0 warnings/errors.
-- `dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build --verbosity normal`: PASS 39/39.
-- `dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build --verbosity normal`: PASS 7/7.
-- `dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build --verbosity normal`: PASS 8/8.
-- Demo manual: primer proceso anunció ready; Ctrl+C produjo stopped. Un segundo proceso concurrente falló por pipe ocupado sin anunciar ready. El shell PTY devolvió 1 al recibir Ctrl+C; no se confirmó por separado el exit code del ejecutable.
-- UI de WidgetHost: sin demo nuevo; los tres estados están en `MainWindow.xaml(.cs)` y habían sido observados en CER-M0-008.
-- `git diff --check` y chequeo de higiene de nombres sensibles configurado en CI: PASS.
+## Verificación de PR #20
 
-Los requisitos documentados de M0 parecen satisfechos tras esta task según código, pruebas, demo previo de UI y baseline de IPC existente; el Advisor debe decidir su aceptación y si M0 puede declararse DONE. No mergear antes de esa review. Dependabot #3/#4, Graphify label drift y licencia siguen fuera de scope.
+- Advisor independiente: PASS.
+- Release build: PASS, 0 warnings/errors.
+- Core.Tests: 39/39; Telemetry.Tests: 7/7; Integration.Tests: 8/8 PASS.
+- CI Build and Test: PASS; Repository Quality: PASS; CodeQL: SKIPPED según D-013.
+- `git diff --check`: PASS en la implementación; se vuelve a ejecutar para esta reconciliación.
+- Demo de consola: ready y stopped observados; segunda instancia falló por pipe ocupado sin anunciar ready. El PTY devolvió 1 tras Ctrl+C, por lo que no se confirmó aparte el exit code del ejecutable.
+
+Esta reconciliación cambia solo `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md` y `.agent/WORKLOG.md`. No toca Dependabot #3/#4 ni Graphify label drift. PR de reconciliación #21: https://github.com/ParedesYTecho/Cerith/pull/21, abierto y pendiente de revisión/merge.
