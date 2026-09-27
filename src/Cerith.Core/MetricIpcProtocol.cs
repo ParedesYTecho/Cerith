@@ -12,6 +12,7 @@ namespace Cerith.Core;
 
 public static class MetricIpcProtocol
 {
+    public const string LocalPipeName = "Cerith.Metrics.M0";
     public const int Version = 1;
     public const int MaxFrameSize = 64 * 1024;
 
