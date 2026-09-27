@@ -117,6 +117,8 @@ install
 → useful
 ```
 
+UX target: when detection and preset selection succeed normally, a new user should reach a useful, polished first setup in about 30 seconds. This is a product-experience target, not a measured performance claim.
+
 Advanced:
 
 ```text
