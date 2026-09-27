@@ -1,12 +1,12 @@
 # Handoff — CER-M1-002 multi-metric hardware baseline
 
-Status: READY FOR ADVISOR REVIEW. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. No merge, PR, commit or next task started.
+Status: READY FOR ADVISOR REVIEW. First independent Advisor review: NEEDS FIXES, documentation/state only. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. No PR or merge; CER-M1-003 has not started.
 
 ## Base and ownership
 
-- `main == origin/main == c153bddf73b44285e5bd3eef4572774a432d0900` after a fresh fetch. The worktree was clean before the task.
-- Branch: `codex/CER-M1-002-multi-metric-hardware`. Single writer: Codex. No active overlapping worktree or open feature PR; open PRs #3/#4 are Dependabot.
-- Graphify was queried before selective source reads. Implementation is local, unstaged and uncommitted.
+- Base: `c153bddf73b44285e5bd3eef4572774a432d0900` (`main == origin/main` when the task started). The worktree was clean before the task.
+- Branch: `codex/CER-M1-002-multi-metric-hardware`. Single writer: Codex. Initial implementation/review commit: `161c28160fcc721375a7e24446731bacd66af935`, pushed to `origin`; the worktree was clean after commit/push. No PR has been opened and no merge has occurred.
+- Graphify was queried before selective source reads. The first Advisor review requested only this handoff reconciliation and a precise `gpu.N` identity limitation; product code remains unchanged.
 
 ## Required pre-change probes
 
@@ -18,7 +18,7 @@ Status: READY FOR ADVISOR REVIEW. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. No me
 
 - `HardwareTelemetryProvider` replaces `CpuUsageProvider` as the one concrete owner of an LHM `Computer` with CPU/GPU enabled. Each tick updates each discovered hardware once, reads Windows physical RAM once, and publishes via the existing `MetricBus`. LHM Memory remains disabled: upstream `MemoryGroup` starts RAMSPDToolkit/SMBus/driver work for DIMMs, while `GlobalMemoryStatusEx` supplies this baseline directly.
 - Integrated IDs: `cpu.total.usage`; `ram.used.bytes`, `ram.available.bytes`, `ram.total.bytes`, `ram.usage`; and, for each discovered GPU, `gpu.N.usage`, `gpu.N.temperature.core`, `gpu.N.clock.core`, `gpu.N.vram.used.bytes`, `gpu.N.vram.total.bytes`, `gpu.N.fan.rpm`. The local machine publishes 11 IDs. VRAM converts LHM MiB to bytes; RAM uses physical bytes. No other candidate metric was integrated.
-- `gpu.N` uses ordinal sorting of LHM hardware identifiers at discovery. Duplicate identifiers fail startup rather than creating unstable IDs. These identifiers are internal, never MetricIds or WidgetHost data. No hotplug policy is added.
+- `gpu.N` uses ordinal sorting of `IHardware.Identifier.ToString()` from LHM 0.9.6 at discovery. Duplicate identifiers fail startup. This determines order for the identifiers discovered in one startup; it does not establish persistent physical-device association across reboot, driver changes, adapter reenumeration or topology changes. AMD uses `AdapterIndex`, NVIDIA uses `adapterIndex`, and Intel integrated/discrete use different identifier schemes upstream. Identifiers stay internal, never MetricIds or WidgetHost data. Multi-GPU was not physically validated; persistent identity is deferred to a later slice without adding DeviceId here.
 - Exact type/name selectors reject ambiguity. One Fan sensor maps to the singular RPM ID; multiple Fan sensors produce `Error/ambiguous_sensor`. Absent sensor/value yields `Unavailable/Unknown`; invalid finite/domain values, refresh or read failures yield `Error/Unknown` with sanitized codes and no value. Valid zero remains measured zero. No clamp, guessed mapping or fallback.
 - `NamedPipeMetricServer` accepts concurrent v1 sessions, retaining one exact MetricId per connection, current-user ACL, remote rejection, framing and limits. Session exceptions are observed and isolated; completed tasks leave the active set; cancellation drains sessions and disposes handles. `MetricBus` and protocol were not changed.
 - WidgetHost opens one pipe client per displayed ID and shows CPU, RAM, GPU 0, VRAM and fan together. It does not enumerate extra GPU windows or implement the widget engine.
@@ -31,4 +31,4 @@ Status: READY FOR ADVISOR REVIEW. M0 DONE; CER-M1-001 DONE; M1 INCOMPLETE. No me
 - Release build: PASS, 0 warnings/errors. Core tests: 39/39 PASS. Telemetry tests: 7/7 PASS. Integration tests: 9/9 PASS, including concurrent A/B isolation, bad third subscribe, A disconnect, B continuity and shutdown. CI still uses no real hardware.
 - Non-elevated demo: TelemetryService announced ready; 11 simultaneous subscriptions produced `Fresh/Measured` snapshots. UI Automation read the visible WidgetHost twice: CPU 24.7→5.0 %, GPU usage 12.0→4.0 %, RAM and VRAM changed, and fan displayed measured 0 RPM. WidgetHost closed normally. A subsequent service run printed `TelemetryService stopped.` after Ctrl+C; its PTY wrapper reported exit code 1, so the executable exit code is not separately verified.
 - Hardware limits: only one AMD GPU and one CPU were physically tested. NVIDIA/Intel variants, missing sensors, multiple fans/GPUs, hotplug and cross-machine/cross-account pipe attempts were not exercised. LHM can internally swallow some vendor refresh failures; a retained sensor value in that case is not independently detectable here.
-- `git diff --check`: PASS. Local Repository Quality filename check: PASS across 73 tracked/new paths. No configured preflight script exists. Graphify code graph refreshed (468 nodes, 925 edges); its documentary semantic graph and community labels were not refreshed. Working tree intentionally contains only this task's changes, unstaged. PR: none.
+- Initial implementation review state: `git diff --check` PASS. Local Repository Quality filename check: PASS across 73 tracked/new paths. No configured preflight script exists. Graphify code graph refreshed (468 nodes, 925 edges); its documentary semantic graph and community labels were not refreshed. The worktree was clean after commit `161c28160fcc721375a7e24446731bacd66af935` and push. This documentation-only review correction is a separate commit on the same branch. PR: none.

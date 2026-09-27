@@ -134,7 +134,7 @@ CER-M1-001 uses `cpu.total.usage` as a provider-independent percentage (`double`
 
 CER-M1-002 adds the following measured metrics. RAM uses one `GlobalMemoryStatusEx` physical-memory sample: `ram.total.bytes` and `ram.available.bytes` are the API values, `ram.used.bytes = total - available`, and `ram.usage = 100 × used / total`. Byte values are `long`; usage is `double`. A zero total, inconsistent available value, or failed API call produces `Error` without a value. This baseline does not activate LHM's Memory/SPD group.
 
-For each discovered GPU, `gpu.N` is assigned by ordinal sorting of the LHM 0.9.6 hardware identifiers at startup. Identifiers remain internal and duplicate identifiers fail discovery. The provider publishes:
+For each discovered GPU, `gpu.N` is assigned by ordinal sorting of LHM 0.9.6 `IHardware.Identifier.ToString()` at startup. Identifiers remain internal and duplicate identifiers fail discovery. This order is deterministic for the identifiers discovered in that startup. LHM derives AMD and NVIDIA identifiers from adapter indices and uses different schemes for Intel integrated and discrete GPUs; stable association of `gpu.N` with the same physical device across reboot, driver changes, adapter reenumeration or topology changes is unproven. Multiple GPUs have not been physically validated. Persistent device identity remains a later-slice concern; these provider-specific identifiers are not part of MetricId. The provider publishes:
 
 | MetricId suffix | LHM sensor (exact type + name) | Unit / value kind |
 | --- | --- | --- |

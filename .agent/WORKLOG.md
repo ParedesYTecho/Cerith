@@ -207,3 +207,8 @@ Event: probes previos, implementación y demo local; READY FOR ADVISOR REVIEW.
 Summary: un LHM 0.9.6 para CPU/GPU, RAM física por GlobalMemoryStatusEx, 11 métricas simultáneas en esta máquina, sesiones pipe v1 concurrentes y WidgetHost mínimo. Probe IPC previo confirmó que B no recibía accepted mientras A seguía viva. El tag upstream corresponde a `3d331e3370efb858411f19511373eff65a218701`. Sin paquetes nuevos ni cambios a Core/MetricBus.
 Files: provider renombrado, server, Program, WidgetHost, Integration.Tests, docs/METRICS.md, docs/ARCHITECTURE.md y memoria operativa.
 Result: Release build 0 warnings/errors; Core 39/39, Telemetry 7/7, Integration 9/9 PASS. Demo UI Automation observó CPU 24.7→5.0 %, GPU 12.0→4.0 %, RAM/VRAM cambiantes y fan 0 RPM medido. Cierre de WidgetHost y mensaje `TelemetryService stopped.` observados; wrapper PTY devolvió código 1 tras Ctrl+C. Sin PR ni merge; M1 incompleto.
+
+## 2026-09-27 — Codex — CER-M1-002 primera review
+
+Event: Advisor NEEDS FIXES, limitado a documentación/estado.
+Summary: reconciliar `.agent/HANDOFF.md` tras el commit `161c28160fcc721375a7e24446731bacd66af935` y su push; aclarar en `docs/METRICS.md` y el handoff que el orden de `gpu.N` es determinista solo para los identifiers descubiertos en ese arranque y que la identidad física persistente/multi-GPU no está validada. Sin cambios de producto; CER-M1-002 sigue READY FOR ADVISOR REVIEW y M1 incompleto.
