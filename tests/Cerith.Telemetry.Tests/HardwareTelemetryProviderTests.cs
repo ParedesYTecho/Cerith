@@ -1,5 +1,7 @@
 #nullable enable
 
+using System;
+using Cerith.Core;
 using Cerith.TelemetryService;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -9,6 +11,20 @@ namespace Cerith.Telemetry.Tests;
 [TestClass]
 public sealed class HardwareTelemetryProviderTests
 {
+    [TestMethod]
+    public void DiagnosticSummarySeparatesMeasuredZeroAbsenceAndKnownFailure()
+    {
+        var summary = new HardwareDiagnosticSummary();
+        var id = new MetricId("cpu.total.usage");
+        var now = DateTimeOffset.UtcNow;
+        summary.Record(new MetricSnapshot(id, MetricValue.From(0d), now, MetricState.Fresh, MetricConfidence.Measured));
+        summary.Record(new MetricSnapshot(id, null, now, MetricState.Unavailable, MetricConfidence.Unknown));
+        summary.Record(new MetricSnapshot(id, null, now, MetricState.Error, MetricConfidence.Unknown,
+            errorCode: "cpu_refresh_failed"));
+
+        Assert.AreEqual("fresh=1 stale=0 unavailable=1 error=1 codes=cpu_refresh_failed:1", summary.ToString());
+    }
+
     [TestMethod]
     public void NormalizesProviderUnitsAndRejectsInvalidReadings()
     {

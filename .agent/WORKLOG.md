@@ -240,3 +240,14 @@ Summary: initial commit `07d904aac358150ea906486d42dfb419f710e797` was published
 
 Event: Advisor PASS final; PR #27 squash-merged into `main` at `70c54cf692c8a8f33d6719a845a8124d0fd9a9fc`.
 Summary: Approved head `6921eeb91884403553c7bf09a86b614b98de40bc` and squash commit have identical trees. Build and Test and Repository Quality PASS; CodeQL SKIPPED under current policy. `HEAD == main == origin/main`, clean working tree and `git diff --check` PASS before reconciliation. CER-M1-003 DONE; Network had real `Fresh/Measured` traffic. Storage usage/total/free mapping is source-audited but not runtime-validated here because LHM 0.9.6 found zero Storage without elevation despite four Windows disks; read/write throughput remains deferred. Indices lack persistent physical identity; additions/reconnections may require restart. M1 INCOMPLETE; hardware/provider diagnostics pending; CER-M1-004 NOT STARTED. Reconciliation changes operational memory only.
+
+## 2026-09-28 — Codex — CER-M1-004 hardware diagnostics and M1 exit
+
+Event: single-writer implementation and M1 exit audit; READY FOR ADVISOR REVIEW.
+Summary: base `17bdeb61b65edc28db01df5a2935f2e8fd109747`; startup discovery counts and per-sample state/error-code totals use existing snapshots without new MetricIds or dependencies. WidgetHost displays sanitized errors, marks silent/disconnected streams unavailable and reconnects. Non-elevated service observed CPU 1, GPU 1, Storage 0, Network 13 with six `invalid_percentage` network readings; UI Automation observed measured CPU/RAM/GPU/VRAM/fan/Network, unavailable after service loss, and recovery after service restart. Storage has no positive local runtime validation; internal LHM failures and topology limits remain. M1 DONE is proposed for Advisor review; M2 not started.
+Verification: Release solution build PASS (0 warnings/errors); Core 39/39, Telemetry 9/9, Integration 9/9 PASS. No new file, package, generic health framework or PR.
+
+## 2026-09-28 — Codex — CER-M1-004 Advisor evidence follow-up
+
+Event: Advisor DIAGNOSTICS IMPLEMENTATION PASS, M1 EXIT NEEDS EVIDENCE; both requested gates now PASS without product-code changes.
+Summary: an uncommitted .NET 10 probe ran the same service/LHM 0.9.6. Non-elevated Storage discovery stayed 0; elevated via UAC it found four and the existing pipe returned `storage.0` usage/total/free as coherent `Fresh`/`Measured` values. No read/write throughput returned to the provider. A separate isolated console probe sent CTRL+C to the service, observed `TelemetryService stopped.` and exit code 0, identifying the earlier PTY code 1 as a wrapper limitation. No serial, physical ID, path, firmware or SMART payload was retained. M1 DONE remains proposed for second Advisor review, with non-elevated Storage support unproven on this host. M2 not started.
