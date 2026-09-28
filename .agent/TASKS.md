@@ -10,7 +10,7 @@ Branch: `codex/CER-M1-004-hardware-diagnostics-m1-exit`
 
 Scope: minimal sanitized hardware/provider diagnostics, real non-elevated runtime verification, and M1 exit audit. M1 remains INCOMPLETE until its criteria have evidence. No M2 work.
 
-Result: Release build and all canonical suites PASS. Non-elevated service reported discovery counts and known error-code totals; WidgetHost showed measured CPU/RAM/GPU/VRAM/fan/Network, switched to unavailable on service loss, and recovered on restart. Storage remained undiscovered (0), so no positive local validation. The M1 exit audit proposes DONE with this limitation explicit. No new dependency, metric ID, diagnostics protocol, ControlCenter feature or M2 work.
+Result: Advisor review: DIAGNOSTICS IMPLEMENTATION PASS, M1 EXIT NEEDS EVIDENCE. Both gates now pass without code changes: the same service/LHM 0.9.6 discovered four Storage when elevated and published coherent `storage.0` usage/total/free `Fresh`/`Measured` values through the existing pipe; without elevation it still discovered zero. A targeted console signal produced `TelemetryService stopped.` and process exit code 0. Release build and all canonical suites PASS. The M1 exit audit again proposes DONE with non-elevated Storage unverified on this host. No new dependency, metric ID, diagnostics protocol, ControlCenter feature or M2 work.
 
 ## CER-M1-003 — Storage and network telemetry baseline
 
