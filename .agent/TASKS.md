@@ -2,7 +2,7 @@
 
 ## CER-M1-003 — Storage and network telemetry baseline
 
-Status: READY FOR SECOND ADVISOR REVIEW (storage runtime unverified: LHM discovered zero devices without elevation)
+Status: DONE (Storage runtime unverified: LHM discovered zero devices without elevation)
 Owner: Codex (single writer)
 Priority: P0
 Depends on: CER-M1-002
@@ -10,7 +10,7 @@ Branch: `codex/CER-M1-003-storage-network`
 
 Scope: probe local no elevado y mapping verificado de LibreHardwareMonitorLib 0.9.6 para almacenamiento y red; extender el único lifecycle hardware, métricas canónicas y demo compacta en WidgetHost. Sin diagnostics M1, paquetes nuevos ni framework de hotplug. M1 permanece INCOMPLETE.
 
-Result: initial review commit `07d904aac358150ea906486d42dfb419f710e797` was published to `origin/codex/CER-M1-003-storage-network`; first Advisor review returned NEEDS FIXES. Storage read/write throughput is deferred because no local Storage device was discovered and upstream issue #1574 records unreliable DLL readings. LHM v0.9.6 source mapping remains for Storage usage/total/free and Network download/upload/usage. Non-elevated probe: Windows sees four disks, LHM Storage zero; LHM Network 19 with measured positive Ethernet traffic. Removed captured devices become unavailable; additions await restart. No PR, merge, new package, M1 diagnostics or CER-M1-004 work. M1 INCOMPLETE.
+Result: Advisor PASS final; PR #27 passed Build and Test and Repository Quality (CodeQL SKIPPED under current policy) and was squash-merged into `main` at `70c54cf692c8a8f33d6719a845a8124d0fd9a9fc`. Storage usage/total/free has LHM 0.9.6 source mapping audited but no positive runtime validation on this host: Windows saw four disks and LHM discovered zero Storage without elevation. Storage read/write throughput remains deferred. Network download/upload/usage had real `Fresh/Measured` traffic. `storage.N`/`network.N` lack guaranteed persistent physical identity; removed devices become unavailable and additions/reconnections may require restart. No general hotplug system or M1 diagnostics. M1 INCOMPLETE; hardware/provider diagnostics pending; CER-M1-004 NOT STARTED.
 
 ## CER-M1-002 — Multi-metric hardware baseline
 
