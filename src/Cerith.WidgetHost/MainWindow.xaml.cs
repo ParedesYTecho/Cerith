@@ -20,7 +20,9 @@ public sealed partial class MainWindow : Window
         new("cpu.total.usage"),
         new("ram.used.bytes"), new("ram.available.bytes"), new("ram.total.bytes"), new("ram.usage"),
         new("gpu.0.usage"), new("gpu.0.temperature.core"), new("gpu.0.clock.core"),
-        new("gpu.0.vram.used.bytes"), new("gpu.0.vram.total.bytes"), new("gpu.0.fan.rpm")
+        new("gpu.0.vram.used.bytes"), new("gpu.0.vram.total.bytes"), new("gpu.0.fan.rpm"),
+        new("storage.0.usage"), new("storage.0.total.bytes"), new("storage.0.free.bytes"),
+        new("network.0.download.bytes_per_second"), new("network.0.upload.bytes_per_second"), new("network.0.usage")
     ];
     private readonly string[] _values = Enumerable.Repeat("Connecting…", MetricIds.Length).ToArray();
     private readonly CancellationTokenSource _stop = new();
@@ -53,8 +55,11 @@ public sealed partial class MainWindow : Window
                 await client.ConnectAsync(MetricIds[index], connect.Token);
             }
 
-            await foreach (var snapshot in client.ReadSnapshotsAsync(cancellationToken))
+            using var firstSnapshot = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            firstSnapshot.CancelAfter(TimeSpan.FromSeconds(5));
+            await foreach (var snapshot in client.ReadSnapshotsAsync(firstSnapshot.Token))
             {
+                firstSnapshot.CancelAfter(Timeout.InfiniteTimeSpan);
                 if (snapshot.MetricId != MetricIds[index]) throw new InvalidDataException("Unexpected metric ID.");
                 _values[index] = Format(index, snapshot);
                 Render();
@@ -63,6 +68,10 @@ public sealed partial class MainWindow : Window
             if (!_closing) { _values[index] = "unavailable"; Render(); }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException)
+        {
+            if (!_closing) { _values[index] = "unavailable"; Render(); }
+        }
         catch (Exception error)
         {
             Debug.WriteLine(error);
@@ -79,10 +88,12 @@ public sealed partial class MainWindow : Window
         {
             1 or 2 or 3 when value.Kind == MetricValueKind.Int64 =>
                 (value.AsInt64() / 1_073_741_824d).ToString("F1", CultureInfo.InvariantCulture) + " GiB",
-            8 or 9 when value.Kind == MetricValueKind.Double =>
+            8 or 9 or 12 or 13 when value.Kind == MetricValueKind.Double =>
                 (value.AsDouble() / 1_073_741_824d).ToString("F1", CultureInfo.InvariantCulture) + " GiB",
-            0 or 4 or 5 when value.Kind == MetricValueKind.Double =>
+            0 or 4 or 5 or 11 or 16 when value.Kind == MetricValueKind.Double =>
                 value.AsDouble().ToString("F1", CultureInfo.InvariantCulture) + " %",
+            14 or 15 when value.Kind == MetricValueKind.Double =>
+                (value.AsDouble() / 1_000_000d).ToString("F2", CultureInfo.InvariantCulture) + " MB/s",
             6 when value.Kind == MetricValueKind.Double =>
                 value.AsDouble().ToString("F1", CultureInfo.InvariantCulture) + " °C",
             7 when value.Kind == MetricValueKind.Double =>
@@ -101,7 +112,9 @@ public sealed partial class MainWindow : Window
             $"Available    {_values[2]}\n" +
             $"GPU 0  {_values[5]} · {_values[6]} · {_values[7]}\n" +
             $"VRAM   {_values[8]} / {_values[9]}\n" +
-            $"Fan    {_values[10]}";
+            $"Fan    {_values[10]}\n" +
+            $"Disk 0 {_values[11]} · {_values[12]} total · {_values[13]} free\n" +
+            $"Net 0  ↓ {_values[14]} · ↑ {_values[15]} · {_values[16]}";
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)

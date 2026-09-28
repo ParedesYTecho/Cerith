@@ -218,3 +218,20 @@ Summary: reconciliar `.agent/HANDOFF.md` tras el commit `161c28160fcc721375a7e24
 Event: cierre de task tras Advisor PASS y squash merge de PR #25.
 Summary: PR #25 integró en `main` el baseline CPU/RAM/GPU/VRAM/fan y Named Pipe concurrente en `6f442a2ecdf92d4368dce30ad55572950e52ccb2`. En el PR y en el push del squash a `main`: Build and Test y Repository Quality PASS; CodeQL SKIPPED según política. `HEAD == main == origin/main`, working tree limpio y `git diff --check` PASS tras el fast-forward. CER-M1-002 DONE; M1 INCOMPLETE; CER-M1-003 no definida ni reclamada.
 Limits: hardware real validado con una CPU y una GPU AMD. NVIDIA/Intel/multi-GPU siguen sin validación física; `gpu.N` no demuestra identidad física persistente entre reinicios o reenumeración. Sin cambios de producto en la reconciliación.
+
+## 2026-09-27 — Codex — CER-M1-003 storage/network baseline
+
+Event: single-writer implementation and non-elevated probe; READY FOR ADVISOR REVIEW.
+Summary: base `dd28e2da2ce22c3f229d09256b50ea090743799c`, branch `codex/CER-M1-003-storage-network`; LHM 0.9.6 upstream commit verified. Windows saw four disks but LHM Storage discovered zero, so Storage runtime remains unverified. Network discovered 19 physical/virtual/filter interfaces and published positive Ethernet traffic. One LHM Computer now maps selected Storage/Network metrics with verified units, startup-only indices and unavailable-on-removal behavior; WidgetHost shows a compact sample and unavailable for absent first snapshots. No M1 diagnostics, package, PR or merge.
+Files: provider and TelemetryService test visibility, WidgetHost, one pure normalization test, `docs/METRICS.md`, `docs/ARCHITECTURE.md` and operational docs.
+Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 8/8, Integration 9/9 PASS. Real WidgetHost and IPC demo PASS for Network and existing metrics; Storage displayed unavailable. Final diff/security/Graphify checks recorded in the handoff. M1 INCOMPLETE.
+
+## 2026-09-28 — Codex — CER-M1-003 unit correction before handoff
+
+Event: final source-level unit audit.
+Summary: LHM's general Data comment says 2^30 bytes, but StorageDevice uses BlackSharp.Core 1.0.7 `ByteToGigabyte` dividing by 10^9. Verified source and installed assembly; corrected storage byte normalization and the pure test. Storage runtime remains unverified because local non-elevated discovery returned zero devices. No PR, merge or diagnostics work.
+
+## 2026-09-28 — Codex — CER-M1-003 first Advisor review fixes
+
+Event: independent Advisor NEEDS FIXES; prepared for second review.
+Summary: initial commit `07d904aac358150ea906486d42dfb419f710e797` was published to `origin/codex/CER-M1-003-storage-network`. Removed `storage.N.read.bytes_per_second` and `storage.N.write.bytes_per_second` from provider, WidgetHost and integrated-metric docs because local Storage discovery returned zero and LHM issue #1574 records unreliable DLL readings. Kept Storage usage/total/free and Network download/upload/usage. Reconciled handoff and task state. Release build and Core 39/39, Telemetry 8/8, Integration 9/9 PASS; compact WidgetHost demo showed Storage unavailable and Network intact. No alternative backend, new tests, diagnostics, PR, merge or CER-M1-004 work. M1 INCOMPLETE.

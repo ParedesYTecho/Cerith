@@ -177,6 +177,8 @@ For CER-M1-001, TelemetryService instead reads CPU total usage from LibreHardwar
 
 CER-M1-002 extends that slice with one LHM `Computer` for CPU and discovered GPUs, plus one direct Windows physical-memory read per tick. The provider publishes independent snapshots for CPU, RAM and GPU metrics through the existing bus. The pipe server accepts concurrent sessions, each subscribed to one exact MetricId under protocol v1. WidgetHost opens one connection per displayed metric; it remains a small demo window, not a widget engine.
 
+CER-M1-003 enables Storage and Network on that same `Computer`, captures their discovered devices at startup and publishes the selected normalized metrics in `docs/METRICS.md`. LHM can change those groups at runtime: removed captured devices become unavailable; additions require a service restart before Cerith assigns an index. WidgetHost displays a compact `storage.0`/`network.0` sample alongside the existing metrics; all discovered devices still publish on the bus. This is not a device catalog or a general hotplug system. Hardware/provider health diagnostics remain outside this task and M1 remains incomplete.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:
