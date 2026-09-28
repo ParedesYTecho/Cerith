@@ -179,6 +179,8 @@ CER-M1-002 extends that slice with one LHM `Computer` for CPU and discovered GPU
 
 CER-M1-003 enables Storage and Network on that same `Computer`, captures their discovered devices at startup and publishes the selected normalized metrics in `docs/METRICS.md`. LHM can change those groups at runtime: removed captured devices become unavailable; additions require a service restart before Cerith assigns an index. WidgetHost displays a compact `storage.0`/`network.0` sample alongside the existing metrics; all discovered devices still publish on the bus. This is not a device catalog or a general hotplug system. Hardware/provider health diagnostics remain outside this task and M1 remains incomplete.
 
+CER-M1-004 reports startup discovery counts and per-sample Fresh/Stale/Unavailable/Error totals with sanitized error-code counts in TelemetryService. Counts describe observed publication outcomes, not an independent health verdict. Each `MetricSnapshot` remains the authority for its metric. WidgetHost displays sanitized errors and marks subscriptions unavailable after a receive timeout or disconnect, then retries. Zero discovered devices have an unknown cause; LibreHardwareMonitor internal failures and sensor truth cannot be independently detected here. No diagnostics protocol, metric IDs, logging framework or ControlCenter UI is added.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:

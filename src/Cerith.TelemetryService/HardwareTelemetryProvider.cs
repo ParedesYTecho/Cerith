@@ -25,6 +25,7 @@ internal sealed class HardwareTelemetryProvider : IDisposable
     private readonly MetricBus _bus;
     private readonly (IHardware Hardware, MetricDescriptor Descriptor, ISensor? Sensor, SensorType Type, bool Ambiguous)[] _sensors;
     private readonly MetricDescriptor[] _memory;
+    public (int Cpu, int Gpu, int Storage, int Network) Discovered { get; private set; }
 
     public HardwareTelemetryProvider(MetricRegistry registry, MetricBus bus)
     {
@@ -68,6 +69,7 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                 .OrderBy(h => h.Identifier.ToString(), StringComparer.Ordinal).ToArray();
             var network = hardware.Where(h => h.HardwareType == HardwareType.Network)
                 .OrderBy(h => h.Identifier.ToString(), StringComparer.Ordinal).ToArray();
+            Discovered = (hardware.Count(h => h.HardwareType == HardwareType.Cpu), gpus.Length, storage.Length, network.Length);
             if (storage.Select(h => h.Identifier.ToString()).Distinct(StringComparer.Ordinal).Count() != storage.Length ||
                 network.Select(h => h.Identifier.ToString()).Distinct(StringComparer.Ordinal).Count() != network.Length)
                 throw new InvalidOperationException("Duplicate storage or network identifiers.");
@@ -122,8 +124,9 @@ internal sealed class HardwareTelemetryProvider : IDisposable
         }
     }
 
-    public async ValueTask PublishNextAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<HardwareDiagnosticSummary> PublishNextAsync(CancellationToken cancellationToken = default)
     {
+        var diagnostics = new HardwareDiagnosticSummary();
         var present = _computer.Hardware.ToHashSet(ReferenceEqualityComparer.Instance);
         foreach (var group in _sensors.GroupBy(s => s.Hardware))
         {
@@ -165,7 +168,7 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                 }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested) { error = "sensor_read_failed"; }
                 if (error is not null) state = MetricState.Error;
-                await Publish(binding.Descriptor.Id, value, state, HardwareSource, error, cancellationToken);
+                await Publish(binding.Descriptor.Id, value, state, HardwareSource, error, diagnostics, cancellationToken);
             }
         }
 
@@ -182,7 +185,8 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                MetricValue.From(100d * used / memory.TotalPhysical)]
             : [null, null, null, null];
         for (var index = 0; index < _memory.Length; index++)
-            await Publish(_memory[index].Id, memoryValues[index], memoryState, MemorySource, memoryError, cancellationToken);
+            await Publish(_memory[index].Id, memoryValues[index], memoryState, MemorySource, memoryError, diagnostics, cancellationToken);
+        return diagnostics;
     }
 
     internal static bool TryNormalize(HardwareType hardwareType, SensorType type, float reading, bool positive, out double value)
@@ -204,11 +208,13 @@ internal sealed class HardwareTelemetryProvider : IDisposable
     }
 
     private async ValueTask Publish(MetricId id, MetricValue? value, MetricState state, string source,
-        string? errorCode, CancellationToken cancellationToken)
+        string? errorCode, HardwareDiagnosticSummary diagnostics, CancellationToken cancellationToken)
     {
-        await _bus.PublishAsync(new MetricSnapshot(id, value, DateTimeOffset.UtcNow, state,
+        var snapshot = new MetricSnapshot(id, value, DateTimeOffset.UtcNow, state,
             value.HasValue ? MetricConfidence.Measured : MetricConfidence.Unknown,
-            source: source, errorCode: errorCode), cancellationToken).ConfigureAwait(false);
+            source: source, errorCode: errorCode);
+        await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
+        diagnostics.Record(snapshot);
     }
 
     public void Dispose() => _computer.Close();
@@ -230,4 +236,33 @@ internal sealed class HardwareTelemetryProvider : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GlobalMemoryStatusEx(ref MemoryStatus status);
+}
+
+internal sealed class HardwareDiagnosticSummary
+{
+    private readonly SortedDictionary<string, int> _errors = new(StringComparer.Ordinal);
+    private int _fresh;
+    private int _stale;
+    private int _unavailable;
+    private int _error;
+
+    internal void Record(MetricSnapshot snapshot)
+    {
+        switch (snapshot.State)
+        {
+            case MetricState.Fresh: _fresh++; break;
+            case MetricState.Stale: _stale++; break;
+            case MetricState.Unavailable: _unavailable++; break;
+            case MetricState.Error:
+                _error++;
+                if (snapshot.ErrorCode is { } code)
+                    _errors[code] = _errors.GetValueOrDefault(code) + 1;
+                break;
+            default: throw new InvalidOperationException("Unexpected hardware metric state.");
+        }
+    }
+
+    public override string ToString() =>
+        $"fresh={_fresh} stale={_stale} unavailable={_unavailable} error={_error} codes=" +
+        (_errors.Count == 0 ? "none" : string.Join(",", _errors.Select(pair => $"{pair.Key}:{pair.Value}")));
 }

@@ -46,6 +46,8 @@ with tests, this runtime diagnostic baseline and the measured IPC baseline (D-01
 
 ## M1 — Hardware MVP
 
+**M1 — Hardware MVP: DONE** (proposed for independent Advisor review).
+
 - LibreHardwareMonitor;
 - CPU;
 - GPU;
@@ -54,6 +56,8 @@ with tests, this runtime diagnostic baseline and the measured IPC baseline (D-01
 - basic fans;
 - storage/network basics;
 - diagnostics.
+
+Exit evidence: CER-M1-001/002/003 provide the LHM CPU/GPU/VRAM/fan, Windows RAM and source-audited Storage/Network basics; CER-M1-004 adds sanitized discovery and sample diagnostics plus disconnect/reconnect behavior. The non-elevated host produced CPU/RAM/GPU/VRAM/fan and Network readings, but LHM discovered zero Storage devices, so Storage has no positive local runtime validation. This limit, absent sensors, internal LHM failures, persistent device identity and topology changes remain explicit in `docs/METRICS.md`. M2 is next; no M2 work is part of this exit.
 
 ## M2 — Gaming MVP
 

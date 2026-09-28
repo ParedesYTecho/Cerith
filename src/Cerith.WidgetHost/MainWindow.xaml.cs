@@ -46,41 +46,43 @@ public sealed partial class MainWindow : Window
 
     private async Task ReadAsync(int index, CancellationToken cancellationToken)
     {
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            await using var client = new NamedPipeMetricClient(MetricIpcProtocol.LocalPipeName);
-            using (var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            try
             {
-                connect.CancelAfter(TimeSpan.FromSeconds(5));
-                await client.ConnectAsync(MetricIds[index], connect.Token);
+                await using var client = new NamedPipeMetricClient(MetricIpcProtocol.LocalPipeName);
+                using (var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    connect.CancelAfter(TimeSpan.FromSeconds(5));
+                    await client.ConnectAsync(MetricIds[index], connect.Token);
+                }
+
+                using var receiveTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                receiveTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                await foreach (var snapshot in client.ReadSnapshotsAsync(receiveTimeout.Token))
+                {
+                    receiveTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                    if (snapshot.MetricId != MetricIds[index]) throw new InvalidDataException("Unexpected metric ID.");
+                    _values[index] = Format(index, snapshot);
+                    Render();
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
+            catch (Exception)
+            {
+                Debug.WriteLine("Metric subscription interrupted; reconnecting.");
             }
 
-            using var firstSnapshot = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            firstSnapshot.CancelAfter(TimeSpan.FromSeconds(5));
-            await foreach (var snapshot in client.ReadSnapshotsAsync(firstSnapshot.Token))
-            {
-                firstSnapshot.CancelAfter(Timeout.InfiniteTimeSpan);
-                if (snapshot.MetricId != MetricIds[index]) throw new InvalidDataException("Unexpected metric ID.");
-                _values[index] = Format(index, snapshot);
-                Render();
-            }
-
             if (!_closing) { _values[index] = "unavailable"; Render(); }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (OperationCanceledException)
-        {
-            if (!_closing) { _values[index] = "unavailable"; Render(); }
-        }
-        catch (Exception error)
-        {
-            Debug.WriteLine(error);
-            if (!_closing) { _values[index] = "unavailable"; Render(); }
+            try { await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); }
+            catch (OperationCanceledException) { break; }
         }
     }
 
     private static string Format(int index, MetricSnapshot snapshot)
     {
+        if (snapshot.State == MetricState.Error)
+            return snapshot.ErrorCode is null ? "error" : $"error ({snapshot.ErrorCode})";
         if (snapshot.State is not (MetricState.Fresh or MetricState.Stale) || snapshot.Value is null)
             return "unavailable";
         var value = snapshot.Value.Value;

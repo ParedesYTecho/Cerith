@@ -1,5 +1,17 @@
 # Tasks
 
+## CER-M1-004 — Hardware/provider diagnostics and M1 exit
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex (single writer)
+Priority: P0
+Depends on: CER-M1-003
+Branch: `codex/CER-M1-004-hardware-diagnostics-m1-exit`
+
+Scope: minimal sanitized hardware/provider diagnostics, real non-elevated runtime verification, and M1 exit audit. M1 remains INCOMPLETE until its criteria have evidence. No M2 work.
+
+Result: Release build and all canonical suites PASS. Non-elevated service reported discovery counts and known error-code totals; WidgetHost showed measured CPU/RAM/GPU/VRAM/fan/Network, switched to unavailable on service loss, and recovered on restart. Storage remained undiscovered (0), so no positive local validation. The M1 exit audit proposes DONE with this limitation explicit. No new dependency, metric ID, diagnostics protocol, ControlCenter feature or M2 work.
+
 ## CER-M1-003 — Storage and network telemetry baseline
 
 Status: DONE (Storage runtime unverified: LHM discovered zero devices without elevation)
