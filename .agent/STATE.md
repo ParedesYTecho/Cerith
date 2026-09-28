@@ -2,7 +2,7 @@
 
 Proyecto: Cerith
 Nombre: provisional
-Hito: M1 — Hardware MVP DONE (propuesta para review independiente); M2 siguiente, no iniciada
+Hito: M1 — Hardware MVP DONE; M2 siguiente, no iniciada
 Rama canónica: `main`
 Estado: M0 — Foundation DONE. CER-M0-001 a CER-M0-009 están completadas y mergeadas en `main`; PR #20 pasó review independiente del Advisor y se integró por squash en `40c0b82920a4b9ca797300bea16d8a1f506a97c7`.
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-M0 — Foundation DONE tras Advisor y PR #20. CER-M1-001/002/003 están DONE e integradas en `main`. CER-M1-004 implementa diagnostics sanitizados de descubrimiento y muestras, errores conocidos y recuperación de WidgetHost tras desconexión; el Advisor aprobó diagnostics y pidió dos evidencias para M1 exit. Ambas se obtuvieron sin cambios de código: el servicio/LHM 0.9.6 elevado descubrió cuatro Storage y publicó usage/total/free coherentes `Fresh`/`Measured` por IPC; sin elevación siguió descubriendo cero. Una señal de consola dirigida produjo `TelemetryService stopped.` y exit code 0. CER-M1-004 vuelve a READY FOR ADVISOR REVIEW en su branch. Se propone M1 DONE tras auditoría de `docs/ROADMAP.md`; M2 es el siguiente hito y no se ha iniciado. Read/write throughput, identidad física persistente y algunas topology changes siguen fuera del baseline. Los fallos internos de LHM pueden ser invisibles para Cerith.
+M0 — Foundation DONE tras Advisor y PR #20. CER-M1-001/002/003/004 están DONE e integradas en `main`. CER-M1-004 recibió PASS final del Advisor; PR #29 pasó Build and Test y Repository Quality (CodeQL SKIPPED según política) y se integró por squash en `59ecb648a9f714376578fc16cdaa446571bd4874`. M1 — Hardware MVP DONE tras la auditoría de `docs/ROADMAP.md`; M2 es NEXT/NOT STARTED. La prueba elevada del servicio/LHM 0.9.6 descubrió cuatro Storage y publicó usage/total/free coherentes `Fresh`/`Measured` por IPC; sin elevación descubrió cero en esta máquina. Una señal de consola dirigida produjo `TelemetryService stopped.` y exit code 0. Read/write throughput, identidad física persistente y algunas topology changes siguen fuera del baseline. Los fallos internos de LHM pueden ser invisibles para Cerith.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 

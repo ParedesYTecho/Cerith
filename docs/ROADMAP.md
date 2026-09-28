@@ -46,7 +46,7 @@ with tests, this runtime diagnostic baseline and the measured IPC baseline (D-01
 
 ## M1 — Hardware MVP
 
-**M1 — Hardware MVP: DONE** (proposed for independent Advisor review).
+**M1 — Hardware MVP: DONE**.
 
 - LibreHardwareMonitor;
 - CPU;
