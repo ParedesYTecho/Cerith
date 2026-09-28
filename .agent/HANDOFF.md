@@ -1,6 +1,6 @@
 # Handoff — CER-M1-004 hardware/provider diagnostics and M1 exit
 
-Status: READY FOR ADVISOR REVIEW, second pass. Base `17bdeb61b65edc28db01df5a2935f2e8fd109747`; first review head `9e5698faff2c0cedc4da7b182ad0869b5a652ea9`; branch `codex/CER-M1-004-hardware-diagnostics-m1-exit`; second review head is branch HEAD after the evidence-only commit. Advisor: DIAGNOSTICS IMPLEMENTATION PASS, M1 EXIT NEEDS EVIDENCE. Both requested gates now pass. No product code changed in this follow-up. No PR or merge. M2 not started.
+Status: CER-M1-004 DONE; M1 — Hardware MVP DONE; M2 NEXT/NOT STARTED. Advisor PASS final for diagnostics and M1 exit. Approved product head `1028767c0e38c06061707eeed694e54fc6b15f6a` on base `17bdeb61b65edc28db01df5a2935f2e8fd109747` passed PR #29 Build and Test and Repository Quality (CodeQL SKIPPED under policy), then was squash-merged into `main` at `59ecb648a9f714376578fc16cdaa446571bd4874`. The integrated tree matches the approved head. This handoff records the post-merge state; no product code changed after that head.
 
 ## Missing diagnostics and design
 
@@ -47,6 +47,6 @@ Temporary probe directories remain outside the repository: automatic approval re
 | Storage/network basics | Storage source mapping and elevated `storage.0` usage/total/free `Fresh`/`Measured` pipe readings; Network real readings here and positive traffic in CER-M1-003 | Non-elevated Storage discovery 0 on this host; read/write throughput deferred. Positive path and graceful absence satisfy M1 scope with privilege limit explicit |
 | Diagnostics | Discovery counts, snapshot states/codes, UI timeout/reconnect; real degraded demo and deterministic test | Cannot independently validate hardware truth; non-blocking |
 
-Conclusion proposed for second Advisor review: `M1 — Hardware MVP: DONE` with both evidence gates PASS and the listed limits explicit. M2 is next but untouched.
+Conclusion after Advisor PASS final and PR #29 merge: `M1 — Hardware MVP: DONE` with both evidence gates PASS and the listed limits explicit. M2 is next and has not started.
 
-First review changed provider, TelemetryService Program, WidgetHost MainWindow, one existing Telemetry test, canonical docs and operational memory. This follow-up changes only `docs/METRICS.md`, `docs/ROADMAP.md`, `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md` and this handoff. New tracked files/dependencies: none. Graphify code graph remained at 485 nodes and 960 edges; no code structure changed in this follow-up. Working tree clean after the second review commit and push.
+The product PR changed the provider, TelemetryService Program, WidgetHost MainWindow, one existing Telemetry test, canonical docs and operational memory. This reconciliation changes only `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md` and `docs/ROADMAP.md`. New tracked files/dependencies: none. No code structure changed, so Graphify refresh is unnecessary.

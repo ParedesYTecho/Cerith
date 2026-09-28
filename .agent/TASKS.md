@@ -2,15 +2,15 @@
 
 ## CER-M1-004 — Hardware/provider diagnostics and M1 exit
 
-Status: READY FOR ADVISOR REVIEW
+Status: DONE
 Owner: Codex (single writer)
 Priority: P0
 Depends on: CER-M1-003
 Branch: `codex/CER-M1-004-hardware-diagnostics-m1-exit`
 
-Scope: minimal sanitized hardware/provider diagnostics, real non-elevated runtime verification, and M1 exit audit. M1 remains INCOMPLETE until its criteria have evidence. No M2 work.
+Scope: minimal sanitized hardware/provider diagnostics, real non-elevated runtime verification, and M1 exit audit with evidence for its criteria. No M2 work.
 
-Result: Advisor review: DIAGNOSTICS IMPLEMENTATION PASS, M1 EXIT NEEDS EVIDENCE. Both gates now pass without code changes: the same service/LHM 0.9.6 discovered four Storage when elevated and published coherent `storage.0` usage/total/free `Fresh`/`Measured` values through the existing pipe; without elevation it still discovered zero. A targeted console signal produced `TelemetryService stopped.` and process exit code 0. Release build and all canonical suites PASS. The M1 exit audit again proposes DONE with non-elevated Storage unverified on this host. No new dependency, metric ID, diagnostics protocol, ControlCenter feature or M2 work.
+Result: Advisor PASS final for diagnostics and M1 exit. Both evidence gates passed without product-code changes: the same service/LHM 0.9.6 discovered four Storage when elevated and published coherent `storage.0` usage/total/free `Fresh`/`Measured` values through the existing pipe; without elevation it still discovered zero. A targeted console signal produced `TelemetryService stopped.` and process exit code 0. Release build and all canonical suites PASS. PR #29 passed Build and Test and Repository Quality (CodeQL SKIPPED under policy) and was squash-merged into `main` at `59ecb648a9f714376578fc16cdaa446571bd4874`. M1 DONE; M2 NEXT/NOT STARTED. Non-elevated Storage remains unverified on this host. No new dependency, metric ID, diagnostics protocol, ControlCenter feature or M2 work.
 
 ## CER-M1-003 — Storage and network telemetry baseline
 
