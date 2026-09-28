@@ -2,7 +2,7 @@
 
 ## CER-M1-003 — Storage and network telemetry baseline
 
-Status: READY FOR ADVISOR REVIEW (storage runtime unverified: LHM discovered zero devices without elevation)
+Status: READY FOR SECOND ADVISOR REVIEW (storage runtime unverified: LHM discovered zero devices without elevation)
 Owner: Codex (single writer)
 Priority: P0
 Depends on: CER-M1-002
@@ -10,7 +10,7 @@ Branch: `codex/CER-M1-003-storage-network`
 
 Scope: probe local no elevado y mapping verificado de LibreHardwareMonitorLib 0.9.6 para almacenamiento y red; extender el único lifecycle hardware, métricas canónicas y demo compacta en WidgetHost. Sin diagnostics M1, paquetes nuevos ni framework de hotplug. M1 permanece INCOMPLETE.
 
-Result: LHM v0.9.6 upstream verified at `3d331e3370efb858411f19511373eff65a218701`. Non-elevated probe: Windows sees four disks, LHM Storage zero; LHM Network 19 (physical, virtual and filter interfaces), including measured positive Ethernet traffic. Storage mapping is implemented but cannot be runtime-validated on this host. One LHM `Computer` publishes eight selected storage/network suffixes for discovered devices; removed captured devices become unavailable, additions await restart. WidgetHost shows `storage.0` as unavailable and `network.0` as measured on this host. Release build PASS (0 warnings/errors); Core 39/39, Telemetry 8/8, Integration 9/9 PASS. No PR, merge, new package or M1 diagnostics. M1 INCOMPLETE.
+Result: initial review commit `07d904aac358150ea906486d42dfb419f710e797` was published to `origin/codex/CER-M1-003-storage-network`; first Advisor review returned NEEDS FIXES. Storage read/write throughput is deferred because no local Storage device was discovered and upstream issue #1574 records unreliable DLL readings. LHM v0.9.6 source mapping remains for Storage usage/total/free and Network download/upload/usage. Non-elevated probe: Windows sees four disks, LHM Storage zero; LHM Network 19 with measured positive Ethernet traffic. Removed captured devices become unavailable; additions await restart. No PR, merge, new package, M1 diagnostics or CER-M1-004 work. M1 INCOMPLETE.
 
 ## CER-M1-002 — Multi-metric hardware baseline
 

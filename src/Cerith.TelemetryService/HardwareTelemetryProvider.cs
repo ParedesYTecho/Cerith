@@ -78,10 +78,6 @@ internal sealed class HardwareTelemetryProvider : IDisposable
                 var prefix = $"storage.{index}";
                 Add(disk, $"{prefix}.usage", $"Storage {index} Usage", "percentage", "%", MetricValueKind.Double,
                     SensorType.Load, "Used Space");
-                Add(disk, $"{prefix}.read.bytes_per_second", $"Storage {index} Read Rate", "rate", "B/s", MetricValueKind.Double,
-                    SensorType.Throughput, "Read Rate");
-                Add(disk, $"{prefix}.write.bytes_per_second", $"Storage {index} Write Rate", "rate", "B/s", MetricValueKind.Double,
-                    SensorType.Throughput, "Write Rate");
                 Add(disk, $"{prefix}.total.bytes", $"Storage {index} Total", "bytes", "B", MetricValueKind.Double,
                     SensorType.Data, "Total Space");
                 Add(disk, $"{prefix}.free.bytes", $"Storage {index} Free", "bytes", "B", MetricValueKind.Double,

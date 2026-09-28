@@ -230,3 +230,8 @@ Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 8/8, Integ
 
 Event: final source-level unit audit.
 Summary: LHM's general Data comment says 2^30 bytes, but StorageDevice uses BlackSharp.Core 1.0.7 `ByteToGigabyte` dividing by 10^9. Verified source and installed assembly; corrected storage byte normalization and the pure test. Storage runtime remains unverified because local non-elevated discovery returned zero devices. No PR, merge or diagnostics work.
+
+## 2026-09-28 — Codex — CER-M1-003 first Advisor review fixes
+
+Event: independent Advisor NEEDS FIXES; prepared for second review.
+Summary: initial commit `07d904aac358150ea906486d42dfb419f710e797` was published to `origin/codex/CER-M1-003-storage-network`. Removed `storage.N.read.bytes_per_second` and `storage.N.write.bytes_per_second` from provider, WidgetHost and integrated-metric docs because local Storage discovery returned zero and LHM issue #1574 records unreliable DLL readings. Kept Storage usage/total/free and Network download/upload/usage. Reconciled handoff and task state. Release build and Core 39/39, Telemetry 8/8, Integration 9/9 PASS; compact WidgetHost demo showed Storage unavailable and Network intact. No alternative backend, new tests, diagnostics, PR, merge or CER-M1-004 work. M1 INCOMPLETE.
