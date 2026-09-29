@@ -11,9 +11,10 @@ Project memory belongs to the repository, not to private chat history.
 1. Read `.agent/STATE.md`.
 2. Read `.agent/HANDOFF.md`.
 3. Read `.agent/TASKS.md`.
-4. Run `git status --short`.
-5. Query Graphify / the configured code graph before broad source reads.
-6. Read only task-relevant canonical docs.
+4. Read `.agent/MODEL_ROUTING.md` before choosing models/subagents.
+5. Run `git status --short`.
+6. Query Graphify / the configured code graph before broad source reads.
+7. Read only task-relevant canonical docs.
 
 Do not reconstruct the whole project from chat history.
 
@@ -125,6 +126,14 @@ Do not write:
 - TODO comments without a tracked task or issue.
 
 Prefer names and structure that explain the code without narration.
+
+## Model routing
+
+`.agent/MODEL_ROUTING.md` is the canonical operational routing policy.
+
+Keep model family, reasoning effort and execution route distinct. In particular, `Web` is a route, not a model name.
+
+Do not copy the full routing matrix into task/state docs; historical task records should describe what actually ran, while current routing lives in `.agent/MODEL_ROUTING.md`.
 
 ## Multi-agent ownership
 
