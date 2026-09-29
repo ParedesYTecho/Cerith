@@ -1,5 +1,18 @@
 # Tasks
 
+## CER-M2-002 — Displayed FPS P1 rolling window
+
+Status: IN PROGRESS
+Owner: GPT-6 Luna Max (Codex, sole repository writer)
+Priority: P1
+Depends on: CER-M2-001
+Branch: `codex/CER-M2-002-presentmon-p01`
+Base: `029d3a254d5dc684b9f4c224c36b778671351015` (`origin/main`, confirmed after rebase)
+
+Scope: add truthful displayed-FPS P1 using the existing PresentMon boundary, MetricBus, Named Pipe v1 and MetricId-only WidgetHost. Keep the existing one-second FPS and frame-time metrics independent. No 0.1% low, process selection, IPC redesign, or M2 exit claim.
+
+Semantic gate: fresh GPT-6 Sol High read-only review completed and accepted before product edits. Use `PM_METRIC_DISPLAYED_FPS` / `PM_STAT_PERCENTILE_01` as PresentMon v2.6.0 defines it: reciprocal displayed interval percentile with reversed rank and upstream linear interpolation; finite zero intervals from non-displayed frames remain in the percentile input. MetricId `game.fps.display.p01`; requested trailing window 10 seconds, warmup from the first positive displayed-change observation. Reset after more than two seconds without recent positive display evidence and on capture/target restart. This is P1 FPS, not average worst 1% or integral low. The 4096-frame PresentMon ring may shorten retained history above roughly 410 frames/s; `PM_STAT_COUNT` is not implemented and is not a gate.
+
 ## CER-M2-001 — PresentMon displayed telemetry vertical slice
 
 Status: DONE

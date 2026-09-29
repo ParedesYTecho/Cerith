@@ -37,8 +37,9 @@ Boundary:
 Repository: https://github.com/GameTechDev/PresentMon
 
 Role in Cerith:
-- official Service/API source for CER-M2-001 displayed FPS and displayed frame time;
+- official Service/API source for CER-M2-001 displayed FPS and displayed frame time and the CER-M2-002 displayed FPS P1 statistic;
 - pinned integration contract: [v2.6.0 release](https://github.com/GameTechDev/PresentMon/releases/tag/v2.6.0), [Service/SDK guidance](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/README-Service.md) and tagged [PresentMonAPI.h](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonAPI2/PresentMonAPI.h).
+- P1 semantic provenance: tagged [`MetricsCalculatorDisplay.cpp`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/CommonUtilities/mc/MetricsCalculatorDisplay.cpp) emits zero intervals for non-displayed frames; [`DynamicMetric.h`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/DynamicMetric.h) retains finite zeros in percentile input; tagged [`DynamicStat.cpp`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/DynamicStat.cpp) reverses rank for reciprocal metrics, interpolates the selected raw interval percentile, and reciprocates. Tagged [`Middleware.cpp`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/Middleware.cpp) sets a 4096-frame-metric per-swap-chain ring capacity. The API rejects `PM_STAT_COUNT` for dynamic queries. Cerith's controlled high-drop validation used a separate `PM_METRIC_DROPPED_FRAMES` measurement to reconstruct the zero-sample population absent from `pmConsumeFrames` rows before comparing raw-oracle P99/P1.
 
 Boundary:
 - generic Cerith widgets bind to MetricId, never PresentMon-specific types;
