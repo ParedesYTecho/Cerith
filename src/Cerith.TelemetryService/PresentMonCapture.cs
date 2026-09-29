@@ -70,7 +70,7 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         checked((long)(Stopwatch.Frequency * P1RegistrationRetrySeconds));
 
     private readonly uint _processId;
-    private Process? _process;
+    private readonly Process _process;
     private IntPtr _session;
     private IntPtr _dynamicQuery;
     private IntPtr _p1Query;
@@ -91,15 +91,14 @@ internal sealed class PresentMonCapture : IPresentMonCapture
     private bool _tracking;
     private bool _disposed;
 
-    public PresentMonCapture(int processId)
+    public PresentMonCapture(Process process)
     {
-        if (processId <= 0) throw new ArgumentOutOfRangeException(nameof(processId));
-        _processId = (uint)processId;
+        ArgumentNullException.ThrowIfNull(process);
+        _process = process;
+        _processId = checked((uint)process.Id);
 
         try
         {
-            try { _process = Process.GetProcessById(processId); }
-            catch (ArgumentException) { throw Stopped(); }
             if (TargetHasExited()) throw Stopped();
 
             Check(Native.pmGetApiVersion(out var version));
@@ -403,10 +402,14 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         }
     }
 
-    private static void Check(int status)
+    private void Check(int status)
     {
         if (status == StatusSuccess) return;
-        if (status == StatusInvalidPid) throw Stopped();
+        if (status == StatusInvalidPid)
+        {
+            if (TargetHasExited()) throw Stopped();
+            throw Failure(MetricState.Unavailable, "presentmon_target_unavailable");
+        }
         if (status is StatusPipeError or StatusMiddlewareMissingPath or StatusMissingFile or
             StatusMiddlewareMissingEndpoint or StatusFeatureDisabled)
             throw Failure(MetricState.Unavailable, "presentmon_unavailable");
@@ -430,7 +433,6 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         if (_dynamicQuery != IntPtr.Zero) Native.pmFreeDynamicQuery(_dynamicQuery);
         if (_tracking && _session != IntPtr.Zero) Native.pmStopTrackingProcess(_session, _processId);
         if (_session != IntPtr.Zero) Native.pmCloseSession(_session);
-        _process?.Dispose();
         _frameQuery = IntPtr.Zero;
         _p1Query = IntPtr.Zero;
         _dynamicQuery = IntPtr.Zero;

@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
@@ -12,7 +14,9 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
     private readonly MetricBus _bus;
     private readonly int? _processId;
-    private readonly Func<int, IPresentMonCapture> _openCapture;
+    private readonly Func<Process, IPresentMonCapture> _openCapture;
+    private readonly Func<Process, string?> _readApplicationName;
+    private readonly Func<int, Process> _getProcessById;
     private readonly MetricDescriptor _fps = new(new MetricId("game.fps.display"), "Displayed FPS",
         "rate", MetricValueKind.Double, unit: "FPS");
     private readonly MetricDescriptor _frameTime = new(new MetricId("game.frametime.display"), "Displayed Frame Time",
@@ -21,26 +25,38 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         "rate", MetricValueKind.Double,
         description: "PresentMon PM_STAT_PERCENTILE_01 over a requested trailing 10-second window: reciprocal of the linearly interpolated 99th percentile of display-change intervals, including zero-valued samples for non-displayed frames. Warm-up begins with the first positive displayed-change observation and resets after more than two seconds without recent evidence. PresentMon retains at most 4096 frame samples per swap chain, so actual history can be shorter.",
         unit: "FPS");
+    private readonly MetricDescriptor _application = new(new MetricId("game.session.application"), "Selected Game",
+        "text", MetricValueKind.String);
+    private Process? _targetProcess;
     private IPresentMonCapture? _capture;
     private PresentMonReading _lastReading = new(MetricState.Unavailable);
+    private MetricState _applicationState = MetricState.Unavailable;
+    private string? _applicationName;
+    private string? _applicationErrorCode;
     private DateTimeOffset _retryAt;
     private bool _targetStopped;
+    private bool _targetIdentityFailed;
     private bool _disposed;
 
     public PresentMonTelemetryProvider(MetricRegistry registry, MetricBus bus, int? processId)
-        : this(registry, bus, processId, static pid => new PresentMonCapture(pid))
+        : this(registry, bus, processId, static process => new PresentMonCapture(process),
+            static process => process.ProcessName)
     {
     }
 
     internal PresentMonTelemetryProvider(MetricRegistry registry, MetricBus bus, int? processId,
-        Func<int, IPresentMonCapture> openCapture)
+        Func<Process, IPresentMonCapture> openCapture, Func<Process, string?>? readApplicationName = null,
+        Func<int, Process>? getProcessById = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         _bus = bus ?? throw new ArgumentNullException(nameof(bus));
         _openCapture = openCapture ?? throw new ArgumentNullException(nameof(openCapture));
+        _readApplicationName = readApplicationName ?? (static process => process.ProcessName);
+        _getProcessById = getProcessById ?? Process.GetProcessById;
         if (processId is <= 0) throw new ArgumentOutOfRangeException(nameof(processId));
         _processId = processId;
-        if (!registry.TryRegister(_fps) || !registry.TryRegister(_frameTime) || !registry.TryRegister(_p1))
+        if (!registry.TryRegister(_fps) || !registry.TryRegister(_frameTime) || !registry.TryRegister(_p1) ||
+            !registry.TryRegister(_application))
             throw new InvalidOperationException("PresentMon metric registration failed.");
     }
 
@@ -49,14 +65,8 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_processId is null || _targetStopped)
-        {
-            _lastReading = new PresentMonReading(MetricState.Stopped, P1State: MetricState.Stopped);
-        }
-        else
-        {
-            ReadNext(cancellationToken);
-        }
+        if (_processId is null) StopTarget();
+        else if (!_targetStopped && !_targetIdentityFailed) ReadNext(cancellationToken);
 
         await PublishAsync(_fps, _lastReading.State, _lastReading.Fps, _lastReading.ErrorCode, cancellationToken)
             .ConfigureAwait(false);
@@ -64,19 +74,22 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
             cancellationToken).ConfigureAwait(false);
         await PublishAsync(_p1, _lastReading.P1State, _lastReading.P1Fps, _lastReading.P1ErrorCode, cancellationToken)
             .ConfigureAwait(false);
+        await PublishApplicationAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private void ReadNext(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (_targetProcess is null && DateTimeOffset.UtcNow < _retryAt) return;
+        if (_targetProcess is null && !TryOpenTargetProcess()) return;
+        if (!CheckTarget()) return;
+        ReadApplicationName();
+        if (!CheckTarget()) return;
+
         if (_capture is null && DateTimeOffset.UtcNow >= _retryAt)
         {
-            try { _capture = _openCapture(_processId!.Value); }
-            catch (PresentMonCaptureException error)
-            {
-                RecordFailure(error.State, error.ErrorCode);
-                return;
-            }
+            try { _capture = _openCapture(_targetProcess!); }
+            catch (PresentMonCaptureException error) { HandleCaptureFailure(error.State, error.ErrorCode); return; }
             catch (DllNotFoundException) { RecordFailure(MetricState.Error, "presentmon_loader_missing"); return; }
             catch (BadImageFormatException) { RecordFailure(MetricState.Error, "presentmon_architecture"); return; }
             catch (EntryPointNotFoundException) { RecordFailure(MetricState.Error, "presentmon_loader_invalid"); return; }
@@ -85,29 +98,152 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
         if (_capture is null) return;
         var captureFailure = false;
-        try { _lastReading = Normalize(_capture.Poll()); }
+        try
+        {
+            var reading = Normalize(_capture.Poll());
+            if (reading.State == MetricState.Stopped)
+            {
+                captureFailure = true;
+                HandleCaptureFailure(MetricState.Stopped, "target_stopped");
+            }
+            else
+                _lastReading = reading;
+        }
         catch (PresentMonCaptureException error)
         {
             captureFailure = true;
-            RecordFailure(error.State, error.ErrorCode);
+            HandleCaptureFailure(error.State, error.ErrorCode);
         }
         catch (DllNotFoundException) { captureFailure = true; RecordFailure(MetricState.Error, "presentmon_loader_missing"); }
         catch (BadImageFormatException) { captureFailure = true; RecordFailure(MetricState.Error, "presentmon_architecture"); }
         catch (EntryPointNotFoundException) { captureFailure = true; RecordFailure(MetricState.Error, "presentmon_loader_invalid"); }
         catch (Exception) { captureFailure = true; RecordFailure(MetricState.Error, "presentmon_runtime_failure"); }
 
-        if (_lastReading.State == MetricState.Stopped)
-        {
-            _targetStopped = true;
-            CloseCapture();
-        }
-        else if (captureFailure ||
-                 (_lastReading.State == MetricState.Error &&
-                  _lastReading.ErrorCode is not ("multiple_swap_chains" or "invalid_reading")))
+        if (_targetStopped) return;
+        if (!CheckTarget()) return;
+        if (captureFailure ||
+            (_lastReading.State == MetricState.Error &&
+             _lastReading.ErrorCode is not ("multiple_swap_chains" or "invalid_reading")))
         {
             CloseCapture();
             _retryAt = DateTimeOffset.UtcNow + RetryDelay;
         }
+    }
+
+    private bool TryOpenTargetProcess()
+    {
+        Process? process = null;
+        try
+        {
+            process = _getProcessById(_processId!.Value);
+            _ = process.Handle;
+            _targetProcess = process;
+            process = null;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            StopTarget();
+            return false;
+        }
+        catch (Win32Exception)
+        {
+            _targetIdentityFailed = true;
+            RecordTargetFailure("target_identity_failed");
+            return false;
+        }
+        catch (Exception)
+        {
+            _targetIdentityFailed = true;
+            RecordTargetFailure("target_identity_failed");
+            return false;
+        }
+        finally { process?.Dispose(); }
+    }
+
+    private bool CheckTarget()
+    {
+        try
+        {
+            if (!_targetProcess!.HasExited) return true;
+            StopTarget();
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            StopTarget();
+            return false;
+        }
+        catch (Win32Exception)
+        {
+            RecordTargetFailure("target_status_failed");
+            return false;
+        }
+    }
+
+    private void ReadApplicationName()
+    {
+        if (_applicationState == MetricState.Fresh) return;
+        try
+        {
+            var name = _readApplicationName(_targetProcess!);
+            if (string.IsNullOrWhiteSpace(name) || name.Contains('/') || name.Contains('\\'))
+            {
+                _applicationName = null;
+                _applicationState = MetricState.Error;
+                _applicationErrorCode = "invalid_application_name";
+                return;
+            }
+
+            _applicationName = name;
+            _applicationState = MetricState.Fresh;
+            _applicationErrorCode = null;
+        }
+        catch (Win32Exception)
+        {
+            _applicationName = null;
+            _applicationState = MetricState.Unavailable;
+            _applicationErrorCode = null;
+        }
+        catch (Exception)
+        {
+            _applicationName = null;
+            _applicationState = MetricState.Error;
+            _applicationErrorCode = "application_metadata_failure";
+        }
+    }
+
+    private void HandleCaptureFailure(MetricState state, string errorCode)
+    {
+        if (state == MetricState.Stopped)
+        {
+            if (!CheckTarget()) return;
+            state = MetricState.Unavailable;
+            errorCode = "presentmon_target_unavailable";
+        }
+        RecordFailure(state, errorCode);
+    }
+
+    private void RecordTargetFailure(string errorCode)
+    {
+        _applicationName = null;
+        _applicationState = MetricState.Error;
+        _applicationErrorCode = errorCode;
+        RecordFailure(MetricState.Error, errorCode);
+        CloseCapture();
+        _retryAt = DateTimeOffset.UtcNow + RetryDelay;
+    }
+
+    private void StopTarget()
+    {
+        _targetStopped = true;
+        _lastReading = new PresentMonReading(MetricState.Stopped, P1State: MetricState.Stopped);
+        _applicationName = null;
+        _applicationState = MetricState.Stopped;
+        _applicationErrorCode = null;
+        CloseCapture();
+        _targetProcess?.Dispose();
+        _targetProcess = null;
     }
 
     private void RecordFailure(MetricState state, string? errorCode)
@@ -116,7 +252,6 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         _lastReading = new PresentMonReading(state, ErrorCode: code, P1State: state, P1ErrorCode: code);
         if (state is MetricState.Error or MetricState.Unavailable)
             _retryAt = DateTimeOffset.UtcNow + RetryDelay;
-        if (state == MetricState.Stopped) _targetStopped = true;
     }
 
     private static PresentMonReading Normalize(PresentMonReading reading)
@@ -169,6 +304,19 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
     }
 
+    private async ValueTask PublishApplicationAsync(CancellationToken cancellationToken)
+    {
+        var hasValue = _applicationState == MetricState.Fresh && _applicationName is not null;
+        var snapshot = new MetricSnapshot(_application.Id,
+            hasValue ? MetricValue.From(_applicationName!) : null,
+            DateTimeOffset.UtcNow,
+            _applicationState,
+            hasValue ? MetricConfidence.Measured : MetricConfidence.Unknown,
+            source: "Windows",
+            errorCode: _applicationState == MetricState.Error ? _applicationErrorCode : null);
+        await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
+    }
+
     private void CloseCapture()
     {
         _capture?.Dispose();
@@ -180,5 +328,7 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         if (_disposed) return;
         _disposed = true;
         CloseCapture();
+        _targetProcess?.Dispose();
+        _targetProcess = null;
     }
 }
