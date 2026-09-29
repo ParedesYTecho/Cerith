@@ -68,10 +68,10 @@ internal sealed class PresentMonCapture : IPresentMonCapture
     private QueryElement[] _frameElements = [];
     private byte[] _dynamicBlob = [];
     private byte[] _frameBlob = [];
+    private int _frameRowSize;
     private long _lastDisplayedQpc;
     private bool _tracking;
     private bool _disposed;
-    private bool _ambiguousSwapChains;
 
     public PresentMonCapture(int processId)
     {
@@ -118,7 +118,8 @@ internal sealed class PresentMonCapture : IPresentMonCapture
             if (frameRowSize == 0 || frameRowSize > 64 || GetRowSize(_frameElements, 64) > frameRowSize ||
                 _frameElements[0].DataSize != sizeof(ulong) || _frameElements[1].DataSize != sizeof(double))
                 throw Failure(MetricState.Error, "presentmon_query_layout");
-            _frameBlob = new byte[checked((int)frameRowSize * FrameCapacity)];
+            _frameRowSize = checked((int)frameRowSize);
+            _frameBlob = new byte[checked(_frameRowSize * FrameCapacity)];
         }
         catch
         {
@@ -134,17 +135,19 @@ internal sealed class PresentMonCapture : IPresentMonCapture
 
         uint swapChains = MaxSwapChains;
         Check(Native.pmPollDynamicQuery(_dynamicQuery, _processId, _dynamicBlob, ref swapChains));
-        if (_ambiguousSwapChains) return new PresentMonReading(MetricState.Error, ErrorCode: "multiple_swap_chains");
 
         uint frameCount = FrameCapacity;
         Check(Native.pmConsumeFrames(_frameQuery, _processId, _frameBlob, ref frameCount));
-        if (frameCount >= FrameCapacity)
-            return new PresentMonReading(MetricState.Unavailable);
+        if (swapChains > 1)
+        {
+            if (TargetHasExited()) return new PresentMonReading(MetricState.Stopped);
+            return new PresentMonReading(MetricState.Error, ErrorCode: "multiple_swap_chains");
+        }
+        if (frameCount >= FrameCapacity) return new PresentMonReading(MetricState.Unavailable);
 
-        var frameRowSize = checked((int)GetRowSize(_frameElements, 64));
         for (var i = 0; i < frameCount; i++)
         {
-            var offset = i * frameRowSize;
+            var offset = checked(i * _frameRowSize);
             var qpc = BitConverter.ToUInt64(_frameBlob, offset + checked((int)_frameElements[0].DataOffset));
             var displayDelta = BitConverter.ToDouble(_frameBlob, offset + checked((int)_frameElements[1].DataOffset));
             if (qpc > long.MaxValue || !double.IsFinite(displayDelta) || displayDelta <= 0) continue;
@@ -152,11 +155,6 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         }
 
         if (TargetHasExited()) return new PresentMonReading(MetricState.Stopped);
-        if (swapChains > 1)
-        {
-            _ambiguousSwapChains = true;
-            return new PresentMonReading(MetricState.Error, ErrorCode: "multiple_swap_chains");
-        }
         if (swapChains != 1) return new PresentMonReading(MetricState.Unavailable);
 
         var fps = ReadDouble(_dynamicBlob, 0, _dynamicElements[0]);

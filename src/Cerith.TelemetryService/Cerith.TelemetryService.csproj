@@ -10,6 +10,8 @@
   <ItemGroup>
     <None Update="native\PresentMonAPI2Loader.dll" CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" TargetPath="PresentMonAPI2Loader.dll" />
+    <None Update="native\PresentMonAPI2Loader.LICENSE.txt" CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" TargetPath="PresentMonAPI2Loader.LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
