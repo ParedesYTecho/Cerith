@@ -17,6 +17,10 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         "rate", MetricValueKind.Double, unit: "FPS");
     private readonly MetricDescriptor _frameTime = new(new MetricId("game.frametime.display"), "Displayed Frame Time",
         "duration", MetricValueKind.Double, unit: "ms");
+    private readonly MetricDescriptor _p1 = new(new MetricId("game.fps.display.p01"), "Displayed FPS P1 (10 s)",
+        "rate", MetricValueKind.Double,
+        description: "PresentMon PM_STAT_PERCENTILE_01 over a requested trailing 10-second window: reciprocal of the linearly interpolated 99th percentile of display-change intervals, including zero-valued samples for non-displayed frames. Warm-up begins with the first positive displayed-change observation and resets after more than two seconds without recent evidence. PresentMon retains at most 4096 frame samples per swap chain, so actual history can be shorter.",
+        unit: "FPS");
     private IPresentMonCapture? _capture;
     private PresentMonReading _lastReading = new(MetricState.Unavailable);
     private DateTimeOffset _retryAt;
@@ -36,7 +40,7 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         _openCapture = openCapture ?? throw new ArgumentNullException(nameof(openCapture));
         if (processId is <= 0) throw new ArgumentOutOfRangeException(nameof(processId));
         _processId = processId;
-        if (!registry.TryRegister(_fps) || !registry.TryRegister(_frameTime))
+        if (!registry.TryRegister(_fps) || !registry.TryRegister(_frameTime) || !registry.TryRegister(_p1))
             throw new InvalidOperationException("PresentMon metric registration failed.");
     }
 
@@ -47,15 +51,19 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
         if (_processId is null || _targetStopped)
         {
-            _lastReading = new PresentMonReading(MetricState.Stopped);
+            _lastReading = new PresentMonReading(MetricState.Stopped, P1State: MetricState.Stopped);
         }
         else
         {
             ReadNext(cancellationToken);
         }
 
-        await PublishAsync(_fps, _lastReading.Fps, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(_frameTime, _lastReading.FrameTimeMilliseconds, cancellationToken).ConfigureAwait(false);
+        await PublishAsync(_fps, _lastReading.State, _lastReading.Fps, _lastReading.ErrorCode, cancellationToken)
+            .ConfigureAwait(false);
+        await PublishAsync(_frameTime, _lastReading.State, _lastReading.FrameTimeMilliseconds, _lastReading.ErrorCode,
+            cancellationToken).ConfigureAwait(false);
+        await PublishAsync(_p1, _lastReading.P1State, _lastReading.P1Fps, _lastReading.P1ErrorCode, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private void ReadNext(CancellationToken cancellationToken)
@@ -104,9 +112,8 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
     private void RecordFailure(MetricState state, string? errorCode)
     {
-        _lastReading = new PresentMonReading(state, ErrorCode: state == MetricState.Error
-            ? errorCode ?? "presentmon_api_failure"
-            : null);
+        var code = state == MetricState.Error ? errorCode ?? "presentmon_api_failure" : null;
+        _lastReading = new PresentMonReading(state, ErrorCode: code, P1State: state, P1ErrorCode: code);
         if (state is MetricState.Error or MetricState.Unavailable)
             _retryAt = DateTimeOffset.UtcNow + RetryDelay;
         if (state == MetricState.Stopped) _targetStopped = true;
@@ -114,35 +121,51 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
     private static PresentMonReading Normalize(PresentMonReading reading)
     {
-        if (reading.State == MetricState.Fresh)
-        {
-            if (reading.Fps is not double fps || reading.FrameTimeMilliseconds is not double frameTime ||
-                !double.IsFinite(fps) || !double.IsFinite(frameTime) || fps <= 0 || frameTime <= 0)
-                return new PresentMonReading(MetricState.Error, ErrorCode: "invalid_reading");
-            return reading with { ErrorCode = null };
-        }
-
-        return reading.State switch
-        {
-            MetricState.Unavailable => new PresentMonReading(MetricState.Unavailable),
-            MetricState.Stopped => new PresentMonReading(MetricState.Stopped),
-            MetricState.Error => new PresentMonReading(MetricState.Error,
-                ErrorCode: reading.ErrorCode ?? "presentmon_api_failure"),
-            _ => new PresentMonReading(MetricState.Error, ErrorCode: "presentmon_invalid_state")
-        };
+        var averages = NormalizeMetric(reading.State, reading.Fps,
+            IsFinitePositive(reading.Fps) && IsFinitePositive(reading.FrameTimeMilliseconds), reading.ErrorCode);
+        var p1 = NormalizeMetric(reading.P1State, reading.P1Fps,
+            IsFinitePositive(reading.P1Fps), reading.P1ErrorCode);
+        return new PresentMonReading(averages.State, averages.Value,
+            averages.State == MetricState.Fresh ? reading.FrameTimeMilliseconds : null,
+            averages.ErrorCode, p1.State, p1.Value, p1.ErrorCode);
     }
 
-    private async ValueTask PublishAsync(MetricDescriptor descriptor, double? value,
-        CancellationToken cancellationToken)
+    private static bool IsFinitePositive(double? value) =>
+        value is double number && double.IsFinite(number) && number > 0;
+
+    private static (MetricState State, double? Value, string? ErrorCode) NormalizeMetric(
+        MetricState state, double? value, bool validFreshValue, string? errorCode)
     {
-        var hasValue = _lastReading.State == MetricState.Fresh && value.HasValue;
+        if (state == MetricState.Fresh && !validFreshValue)
+        {
+            state = MetricState.Error;
+            errorCode = "invalid_reading";
+        }
+        if (state != MetricState.Fresh)
+        {
+            value = null;
+            if (state == MetricState.Error) errorCode ??= "presentmon_api_failure";
+            else if (state is not (MetricState.Unavailable or MetricState.Stopped))
+            {
+                state = MetricState.Error;
+                errorCode = "presentmon_invalid_state";
+            }
+            else errorCode = null;
+        }
+        return (state, value, errorCode);
+    }
+
+    private async ValueTask PublishAsync(MetricDescriptor descriptor, MetricState state, double? value,
+        string? errorCode, CancellationToken cancellationToken)
+    {
+        var hasValue = state == MetricState.Fresh && value.HasValue;
         var snapshot = new MetricSnapshot(descriptor.Id,
             hasValue ? MetricValue.From(value!.Value) : null,
             DateTimeOffset.UtcNow,
-            _lastReading.State,
+            state,
             hasValue ? MetricConfidence.Measured : MetricConfidence.Unknown,
             source: "PresentMon",
-            errorCode: _lastReading.State == MetricState.Error ? _lastReading.ErrorCode : null);
+            errorCode: state == MetricState.Error ? errorCode : null);
         await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
     }
 

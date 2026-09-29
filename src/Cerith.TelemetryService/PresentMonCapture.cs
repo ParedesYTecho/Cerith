@@ -16,7 +16,10 @@ internal readonly record struct PresentMonReading(
     MetricState State,
     double? Fps = null,
     double? FrameTimeMilliseconds = null,
-    string? ErrorCode = null);
+    string? ErrorCode = null,
+    MetricState P1State = MetricState.Unavailable,
+    double? P1Fps = null,
+    string? P1ErrorCode = null);
 
 internal sealed class PresentMonCaptureException(MetricState state, string errorCode) : Exception
 {
@@ -45,6 +48,7 @@ internal sealed class PresentMonCapture : IPresentMonCapture
     private const int MetricBetweenDisplayChange = 80;
     private const int StatisticNone = 0;
     private const int StatisticAverage = 1;
+    private const int StatisticPercentile01 = 5;
     private const int StatusSuccess = 0;
     private const int StatusInvalidPid = 6;
     private const int StatusPipeError = 12;
@@ -57,19 +61,33 @@ internal sealed class PresentMonCapture : IPresentMonCapture
     private const int StatusFeatureDisabled = 23;
     private const int MaxSwapChains = 16;
     private const int FrameCapacity = 4096;
+    private const ulong DynamicQueryRowAlignment = 16;
+    private const double P1WindowMilliseconds = 10_000d;
+    private const double P1RegistrationRetrySeconds = 5d;
     private static readonly long MaxFrameAge = Stopwatch.Frequency * 2;
+    private static readonly long P1WindowQpc = checked((long)(Stopwatch.Frequency * P1WindowMilliseconds / 1000d));
+    private static readonly long P1RegistrationRetryQpc =
+        checked((long)(Stopwatch.Frequency * P1RegistrationRetrySeconds));
 
     private readonly uint _processId;
     private Process? _process;
     private IntPtr _session;
     private IntPtr _dynamicQuery;
+    private IntPtr _p1Query;
     private IntPtr _frameQuery;
     private QueryElement[] _dynamicElements = [];
+    private QueryElement[] _p1Elements = [];
     private QueryElement[] _frameElements = [];
     private byte[] _dynamicBlob = [];
+    private byte[] _p1Blob = [];
     private byte[] _frameBlob = [];
     private int _frameRowSize;
     private long _lastDisplayedQpc;
+    private long _firstDisplayedQpc;
+    private MetricState? _p1SetupFailureState;
+    private string? _p1SetupErrorCode;
+    private bool _p1SetupRetryable;
+    private long _p1RetryAt;
     private bool _tracking;
     private bool _disposed;
 
@@ -89,7 +107,7 @@ internal sealed class PresentMonCapture : IPresentMonCapture
                 throw Failure(MetricState.Error, "presentmon_api_mismatch");
 
             Check(Native.pmOpenSession(out _session));
-            ValidateCapabilities();
+            var supportsP1 = ValidateCapabilities();
 
             var trackStatus = Native.pmStartTrackingProcess(_session, _processId);
             Check(trackStatus);
@@ -102,11 +120,13 @@ internal sealed class PresentMonCapture : IPresentMonCapture
             ];
             Check(Native.pmRegisterDynamicQuery(_session, out _dynamicQuery, _dynamicElements,
                 (ulong)_dynamicElements.Length, 1000d, 0d));
-            var dynamicRowSize = GetRowSize(_dynamicElements, 64);
+            var dynamicRowSize = GetDynamicQueryRowStride(GetRowSize(_dynamicElements, 64));
             if (dynamicRowSize == 0 || _dynamicElements[0].DataSize != sizeof(double) ||
                 _dynamicElements[1].DataSize != sizeof(double))
                 throw Failure(MetricState.Error, "presentmon_query_layout");
             _dynamicBlob = new byte[checked(dynamicRowSize * MaxSwapChains)];
+
+            if (supportsP1) RegisterP1Query();
 
             _frameElements =
             [
@@ -131,46 +151,155 @@ internal sealed class PresentMonCapture : IPresentMonCapture
     public PresentMonReading Poll()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (TargetHasExited()) return new PresentMonReading(MetricState.Stopped);
+        if (TargetHasExited()) return StoppedReading();
 
         uint swapChains = MaxSwapChains;
         Check(Native.pmPollDynamicQuery(_dynamicQuery, _processId, _dynamicBlob, ref swapChains));
 
         uint frameCount = FrameCapacity;
         Check(Native.pmConsumeFrames(_frameQuery, _processId, _frameBlob, ref frameCount));
-        if (swapChains > 1)
+        var frameOverflow = frameCount >= FrameCapacity;
+        if (!frameOverflow)
         {
-            if (TargetHasExited()) return new PresentMonReading(MetricState.Stopped);
-            return new PresentMonReading(MetricState.Error, ErrorCode: "multiple_swap_chains");
+            for (var i = 0; i < frameCount; i++)
+            {
+                var offset = checked(i * _frameRowSize);
+                var qpc = BitConverter.ToUInt64(_frameBlob, offset + checked((int)_frameElements[0].DataOffset));
+                var displayDelta = BitConverter.ToDouble(_frameBlob, offset + checked((int)_frameElements[1].DataOffset));
+                if (qpc > long.MaxValue || !double.IsFinite(displayDelta) || displayDelta <= 0) continue;
+                if (qpc <= (ulong)_lastDisplayedQpc) continue;
+                if (_lastDisplayedQpc == 0 || qpc - (ulong)_lastDisplayedQpc > (ulong)MaxFrameAge)
+                    _firstDisplayedQpc = (long)qpc;
+                else if (_firstDisplayedQpc == 0)
+                    _firstDisplayedQpc = (long)qpc;
+                _lastDisplayedQpc = (long)qpc;
+            }
         }
-        if (frameCount >= FrameCapacity) return new PresentMonReading(MetricState.Unavailable);
-
-        for (var i = 0; i < frameCount; i++)
-        {
-            var offset = checked(i * _frameRowSize);
-            var qpc = BitConverter.ToUInt64(_frameBlob, offset + checked((int)_frameElements[0].DataOffset));
-            var displayDelta = BitConverter.ToDouble(_frameBlob, offset + checked((int)_frameElements[1].DataOffset));
-            if (qpc > long.MaxValue || !double.IsFinite(displayDelta) || displayDelta <= 0) continue;
-            if (qpc > (ulong)_lastDisplayedQpc) _lastDisplayedQpc = (long)qpc;
-        }
-
-        if (TargetHasExited()) return new PresentMonReading(MetricState.Stopped);
-        if (swapChains != 1) return new PresentMonReading(MetricState.Unavailable);
-
-        var fps = ReadDouble(_dynamicBlob, 0, _dynamicElements[0]);
-        var frameTime = ReadDouble(_dynamicBlob, 0, _dynamicElements[1]);
-        if (!double.IsFinite(fps) || !double.IsFinite(frameTime) || fps < 0 || frameTime < 0)
-            return new PresentMonReading(MetricState.Error, ErrorCode: "invalid_reading");
-        if (fps == 0 || frameTime == 0) return new PresentMonReading(MetricState.Unavailable);
 
         var now = Stopwatch.GetTimestamp();
-        if (_lastDisplayedQpc <= 0 || now < _lastDisplayedQpc || now - _lastDisplayedQpc > MaxFrameAge)
-            return new PresentMonReading(MetricState.Unavailable);
+        var hasRecentDisplayEvidence = HasRecentDisplayEvidence(_lastDisplayedQpc, now);
+        if (!hasRecentDisplayEvidence) _firstDisplayedQpc = 0;
 
-        return new PresentMonReading(MetricState.Fresh, fps, frameTime);
+        MetricState averageState;
+        double? fpsValue = null;
+        double? frameTimeValue = null;
+        string? averageErrorCode = null;
+        if (swapChains > 1)
+        {
+            averageState = MetricState.Error;
+            averageErrorCode = "multiple_swap_chains";
+        }
+        else if (frameOverflow || swapChains != 1)
+        {
+            averageState = MetricState.Unavailable;
+        }
+        else
+        {
+            var fps = ReadDouble(_dynamicBlob, 0, _dynamicElements[0]);
+            var frameTime = ReadDouble(_dynamicBlob, 0, _dynamicElements[1]);
+            if (!double.IsFinite(fps) || !double.IsFinite(frameTime) || fps < 0 || frameTime < 0)
+            {
+                averageState = MetricState.Error;
+                averageErrorCode = "invalid_reading";
+            }
+            else if (fps == 0 || frameTime == 0 || !hasRecentDisplayEvidence)
+            {
+                averageState = MetricState.Unavailable;
+            }
+            else
+            {
+                averageState = MetricState.Fresh;
+                fpsValue = fps;
+                frameTimeValue = frameTime;
+            }
+        }
+
+        var p1 = frameOverflow
+            ? (MetricState.Unavailable, (double?)null, (string?)null)
+            : PollP1(now, hasRecentDisplayEvidence);
+        if (TargetHasExited()) return StoppedReading();
+
+        return new PresentMonReading(averageState, fpsValue, frameTimeValue, averageErrorCode,
+            p1.Item1, p1.Item2, p1.Item3);
     }
 
-    private void ValidateCapabilities()
+    private (MetricState State, double? Value, string? ErrorCode) PollP1(long now, bool hasRecentDisplayEvidence)
+    {
+        if (_p1SetupFailureState is MetricState setupFailure)
+        {
+            if (!_p1SetupRetryable || !IsP1RegistrationRetryDue(now, _p1RetryAt))
+                return (setupFailure, null, _p1SetupErrorCode);
+
+            _p1SetupFailureState = null;
+            _p1SetupErrorCode = null;
+            _p1SetupRetryable = false;
+            _p1RetryAt = 0;
+            RegisterP1Query();
+            if (_p1SetupFailureState is MetricState retryFailure)
+                return (retryFailure, null, _p1SetupErrorCode);
+        }
+        if (_p1Query == IntPtr.Zero) return (MetricState.Unavailable, null, null);
+
+        uint swapChains = MaxSwapChains;
+        try { Check(Native.pmPollDynamicQuery(_p1Query, _processId, _p1Blob, ref swapChains)); }
+        catch (PresentMonCaptureException error)
+        {
+            return (error.State, null, error.State == MetricState.Error ? error.ErrorCode : null);
+        }
+
+        if (swapChains > 1) return (MetricState.Error, null, "multiple_swap_chains");
+        if (swapChains != 1 || !hasRecentDisplayEvidence ||
+            !HasP1Window(_firstDisplayedQpc, _lastDisplayedQpc, now))
+            return (MetricState.Unavailable, null, null);
+
+        var fps = ReadDouble(_p1Blob, 0, _p1Elements[0]);
+        return double.IsFinite(fps) && fps > 0
+            ? (MetricState.Fresh, fps, null)
+            : (MetricState.Error, null, "invalid_reading");
+    }
+
+    internal static bool HasP1Window(long firstDisplayedQpc, long lastDisplayedQpc, long now) =>
+        firstDisplayedQpc > 0 && lastDisplayedQpc > 0 && now >= firstDisplayedQpc && now >= lastDisplayedQpc &&
+        now - firstDisplayedQpc >= P1WindowQpc && now - lastDisplayedQpc <= MaxFrameAge;
+
+    internal static bool IsP1RegistrationRetryable(MetricState state, string? errorCode) =>
+        (state is MetricState.Error or MetricState.Unavailable) &&
+        (errorCode is "presentmon_api_failure" or "presentmon_unavailable");
+
+    internal static bool IsP1RegistrationRetryDue(long now, long retryAt) => now >= retryAt;
+
+    private static bool HasRecentDisplayEvidence(long lastDisplayedQpc, long now) =>
+        lastDisplayedQpc > 0 && now >= lastDisplayedQpc && now - lastDisplayedQpc <= MaxFrameAge;
+
+    private static PresentMonReading StoppedReading() =>
+        new(MetricState.Stopped, P1State: MetricState.Stopped);
+
+    private void RegisterP1Query()
+    {
+        _p1Elements = [new QueryElement { Metric = MetricDisplayedFps, Statistic = StatisticPercentile01 }];
+        try
+        {
+            Check(Native.pmRegisterDynamicQuery(_session, out _p1Query, _p1Elements,
+                (ulong)_p1Elements.Length, P1WindowMilliseconds, 0d));
+            var rowSize = GetDynamicQueryRowStride(GetRowSize(_p1Elements, 64));
+            if (rowSize == 0 || _p1Elements[0].DataSize != sizeof(double))
+                throw Failure(MetricState.Error, "presentmon_query_layout");
+            _p1Blob = new byte[checked((int)(rowSize * MaxSwapChains))];
+        }
+        catch (PresentMonCaptureException error)
+        {
+            if (_p1Query != IntPtr.Zero) Native.pmFreeDynamicQuery(_p1Query);
+            _p1Query = IntPtr.Zero;
+            _p1Blob = [];
+            _p1SetupFailureState = error.State;
+            _p1SetupErrorCode = error.State == MetricState.Error ? error.ErrorCode : null;
+            _p1SetupRetryable = IsP1RegistrationRetryable(error.State, error.ErrorCode);
+            if (_p1SetupRetryable)
+                _p1RetryAt = checked(Stopwatch.GetTimestamp() + P1RegistrationRetryQpc);
+        }
+    }
+
+    private bool ValidateCapabilities()
     {
         Check(Native.pmGetIntrospectionRoot(_session, out var root));
         try
@@ -185,6 +314,9 @@ internal sealed class PresentMonCapture : IPresentMonCapture
                 !Supports(data.Metrics, MetricBetweenDisplayChange, MetricTypeDynamicFrame, UnitMilliseconds,
                     DataTypeDouble, DataTypeDouble, StatisticAverage))
                 throw Failure(MetricState.Unavailable, "presentmon_metric_unavailable");
+
+            return Supports(data.Metrics, MetricDisplayedFps, MetricTypeDynamic, UnitFramesPerSecond,
+                DataTypeDouble, DataTypeDouble, StatisticPercentile01);
         }
         finally
         {
@@ -255,6 +387,9 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         return size;
     }
 
+    internal static ulong GetDynamicQueryRowStride(ulong rowSize) =>
+        checked((rowSize + DynamicQueryRowAlignment - 1) & ~(DynamicQueryRowAlignment - 1));
+
     private static double ReadDouble(byte[] blob, int row, QueryElement element) =>
         BitConverter.ToDouble(blob, checked(row + (int)element.DataOffset));
 
@@ -291,11 +426,13 @@ internal sealed class PresentMonCapture : IPresentMonCapture
         if (_disposed) return;
         _disposed = true;
         if (_frameQuery != IntPtr.Zero) Native.pmFreeFrameQuery(_frameQuery);
+        if (_p1Query != IntPtr.Zero) Native.pmFreeDynamicQuery(_p1Query);
         if (_dynamicQuery != IntPtr.Zero) Native.pmFreeDynamicQuery(_dynamicQuery);
         if (_tracking && _session != IntPtr.Zero) Native.pmStopTrackingProcess(_session, _processId);
         if (_session != IntPtr.Zero) Native.pmCloseSession(_session);
         _process?.Dispose();
         _frameQuery = IntPtr.Zero;
+        _p1Query = IntPtr.Zero;
         _dynamicQuery = IntPtr.Zero;
         _session = IntPtr.Zero;
     }
