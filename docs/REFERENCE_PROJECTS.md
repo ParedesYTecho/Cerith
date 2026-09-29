@@ -37,12 +37,14 @@ Boundary:
 Repository: https://github.com/GameTechDev/PresentMon
 
 Role in Cerith:
-- primary planned research/integration direction for M2 gaming/frame telemetry;
-- FPS, frame time, presentation metrics and related session evidence.
+- official Service/API source for CER-M2-001 displayed FPS and displayed frame time;
+- pinned integration contract: [v2.6.0 release](https://github.com/GameTechDev/PresentMon/releases/tag/v2.6.0), [Service/SDK guidance](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/README-Service.md) and tagged [PresentMonAPI.h](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonAPI2/PresentMonAPI.h).
 
 Boundary:
 - generic Cerith widgets bind to MetricId, never PresentMon-specific types;
-- derived gaming claims require measured definitions and validation.
+- use the official Service/API and loader contract; do not ship the service middleware DLL;
+- the API header defines the source metrics, average statistic, PID tracking, dynamic and frame queries; local runtime behavior is recorded separately in CER-M2-001 evidence;
+- derived gaming claims require measured definitions and validation; this slice does not establish anti-cheat compatibility or universal capture coverage.
 
 ### MSI Afterburner / RTSS / HWiNFO / Rainmeter
 

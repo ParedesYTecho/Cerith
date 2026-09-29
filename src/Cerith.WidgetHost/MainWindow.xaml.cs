@@ -22,7 +22,8 @@ public sealed partial class MainWindow : Window
         new("gpu.0.usage"), new("gpu.0.temperature.core"), new("gpu.0.clock.core"),
         new("gpu.0.vram.used.bytes"), new("gpu.0.vram.total.bytes"), new("gpu.0.fan.rpm"),
         new("storage.0.usage"), new("storage.0.total.bytes"), new("storage.0.free.bytes"),
-        new("network.0.download.bytes_per_second"), new("network.0.upload.bytes_per_second"), new("network.0.usage")
+        new("network.0.download.bytes_per_second"), new("network.0.upload.bytes_per_second"), new("network.0.usage"),
+        new("game.fps.display"), new("game.frametime.display")
     ];
     private readonly string[] _values = Enumerable.Repeat("Connecting…", MetricIds.Length).ToArray();
     private readonly CancellationTokenSource _stop = new();
@@ -81,6 +82,7 @@ public sealed partial class MainWindow : Window
 
     private static string Format(int index, MetricSnapshot snapshot)
     {
+        if (snapshot.State == MetricState.Stopped) return "stopped";
         if (snapshot.State == MetricState.Error)
             return snapshot.ErrorCode is null ? "error" : $"error ({snapshot.ErrorCode})";
         if (snapshot.State is not (MetricState.Fresh or MetricState.Stale) || snapshot.Value is null)
@@ -102,6 +104,10 @@ public sealed partial class MainWindow : Window
                 value.AsDouble().ToString("F0", CultureInfo.InvariantCulture) + " MHz",
             10 when value.Kind == MetricValueKind.Double =>
                 value.AsDouble().ToString("F0", CultureInfo.InvariantCulture) + " RPM",
+            17 when value.Kind == MetricValueKind.Double =>
+                value.AsDouble().ToString("F1", CultureInfo.InvariantCulture) + " FPS",
+            18 when value.Kind == MetricValueKind.Double =>
+                value.AsDouble().ToString("F2", CultureInfo.InvariantCulture) + " ms",
             _ => "unavailable"
         };
         return snapshot.State == MetricState.Stale && formatted != "unavailable" ? formatted + " (stale)" : formatted;
@@ -116,7 +122,9 @@ public sealed partial class MainWindow : Window
             $"VRAM   {_values[8]} / {_values[9]}\n" +
             $"Fan    {_values[10]}\n" +
             $"Disk 0 {_values[11]} · {_values[12]} total · {_values[13]} free\n" +
-            $"Net 0  ↓ {_values[14]} · ↑ {_values[15]} · {_values[16]}";
+            $"Net 0  ↓ {_values[14]} · ↑ {_values[15]} · {_values[16]}\n" +
+            $"Displayed FPS    {_values[17]}\n" +
+            $"Displayed frame time    {_values[18]}";
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)

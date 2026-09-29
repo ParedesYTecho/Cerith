@@ -1,4 +1,56 @@
-# Handoff — CER-M1-004 hardware/provider diagnostics and M1 exit
+# Handoff — CER-M2-001 PresentMon displayed telemetry vertical slice
+
+Status: READY FOR ADVISOR REVIEW. Single write owner: Codex. Branch `codex/CER-M2-001-presentmon-display`, based on `main` at `89ddd69c13affd76b3b6085a25753bb7b83b0a3f`; this review correction starts from `c63e25110e4c18be3a6698e58b80cbbd4f411dba`. M0 and M1 remain complete; M2 remains incomplete and CER-M2-002 has not started. No PR or merge.
+
+## Implementation boundary
+
+TelemetryService accepts one explicit positive `--pid` and publishes only `game.fps.display` and `game.frametime.display`. The PresentMon adapter owns the native session/tracking/query handles and verifies the API version, metric metadata, data layouts and sample freshness before returning readings; frame rows use the blob size returned by `pmRegisterFrameQuery`. It publishes through existing MetricRegistry, MetricBus and Named Pipe protocol v1. WidgetHost consumes only the MetricIds. No Core contract, package, generic provider framework, logging of process metadata or solution-wide architecture change was introduced.
+
+Cerith carries only the official x64 `PresentMonAPI2Loader.dll` and the adjacent upstream MIT license. It does not redistribute PresentMon middleware or the Service; the official Service installs its matching API. The loader and its license are copied into normal build and publish output. A 32-bit TelemetryService cannot load it and receives a sanitized `presentmon_architecture` error while hardware publication remains independent.
+
+## Official release and local runtime
+
+Official PresentMon v2.6.0 (released 2026-09-21) MSI SHA-256: `0cb43d2622356c1e277a77f840887f9000cea4e2d4236c0850922fc204c6f820`; Authenticode: Valid, Intel Corporation. The installed API reported version 3.4.0. The SDK loader is version 2.6.0.0, x64, SHA-256 `BA5863F35687F0A1E3A98C5E22535313CB5A37E7DDAFAF8861477BF390FF43BE`; its Intel signature is valid. Service was restored to Running/Automatic after fault injection. These probes were run from a non-elevated user process; the Windows service itself runs under its service account.
+
+## Runtime evidence
+
+- A temporary D3D11 window presented real frames under an explicit PID. At a roughly 165 Hz cap, repeated pipe samples changed around 158–165 FPS and 6.0–6.3 ms. Both IDs were `Fresh`/`Measured`; UI Automation read `164.9 FPS` and `6.07 ms` while the pipe client was non-elevated.
+- On the final Release run (`run-final-valid`), one PID and one TelemetryService capture showed `Fresh` before the second chain. Across the transition interval (10:58:01.053–10:58:22.552 UTC), each metric had 22 `Error/multiple_swap_chains` snapshots (last at 10:58:21.556), 18 `Unavailable`, and 4 `Fresh`; three `Fresh` samples were earlier in the interval (10:58:01.053, 10:58:11.052 and 10:58:14.053). The first post-removal recovery sample was 10:58:22.552. Because the query window is one second, that boundary can lag the swap-chain destruction; these counts do not mean all four `Fresh` samples occurred while both chains were present. From that first recovery sample through 10:58:50.552, both metrics stayed `Fresh` (57 snapshots each); target exit produced `Stopped` at 10:58:51.057. No capture restart or retarget occurred.
+- An instrumented confirmation run (`run-confirm-count-semantics`, one target PID and one capture throughout) logged successful `Present` calls for both chains in all 19 one-second intervals of phase `two`: each chain recorded 75–82 calls per interval. In the matching 20-second pipe interval, the two metrics produced 78 `Fresh`, 2 `Unavailable`, and 0 `Error` snapshots combined. The preceding one-chain phase had 88 `Unavailable` snapshots; after destroying chain 1, `one-again` had 8 `Fresh` and 112 `Unavailable` snapshots before `Stopped`. This repeat does not demonstrate a clean 1→2→1 telemetry transition and does not establish whether absent display samples came from event loss/occlusion or query-window timing.
+- PresentMon v2.6.0's output count is the number of dynamic-query result rows for swap chains with frame samples in that poll's time window; the implementation returns one fallback row when the window has no matching chains. It is not a live-object inventory. Thus successful D3D `Present` calls do not guarantee that both chains contribute rows or displayed-frame samples in each API poll. The logs show per-poll variation; the API source does not specify a stable active-chain count or identify the cause of these gaps. See the pinned [`FrameMetricsSource`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/FrameMetricsSource.cpp#L347-L377) and [`DynamicQuery`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/DynamicQuery.cpp#L470-L500) implementations.
+- A no-frame target produced no zero FPS/frame-time sample. The API probe observed zero dynamic values and no display-change frames; Cerith withheld values until valid recent frame evidence existed.
+- Closing the target changed both IDs to valueless `Stopped`/`Unknown` on the next approximately 500 ms poll. Polls whose API result count exceeded one produced `Error`/`Unknown`, code `multiple_swap_chains`, with neither row selected or combined; observed states varied as detailed above.
+- Stopping `PresentMonSharedService` left TelemetryService alive and publishing `cpu.total.usage` as `Fresh`/`Measured`; the two gaming IDs became valueless `Unavailable`/`Unknown`. Restarting the official service restored fresh gaming samples without restarting TelemetryService or WidgetHost.
+- Startup discovered CPU 1, GPU 1, Storage 0 and Network 13. During PresentMon loss, hardware publication continued. This is one local machine and one D3D11 probe; no commercial game, anti-cheat environment, cross-vendor hardware or controlled capture-overhead comparison was tested.
+- Over 12 seconds with a target active, TelemetryService used 0.188 seconds CPU (1.56% of one logical core by process CPU-time delta) and working set increased from 79.6 to 80.5 MiB. PresentMonService working set was 27.9 MiB at both endpoints; its CPU delta was below the available sampling resolution. These are local spot measurements, not a performance guarantee or a before/after target-impact test.
+- Forty-five pipe FPS samples had 496 ms minimum, 500 ms median and 502 ms maximum gaps. API sample recency is separately checked against QPC and display-change evidence.
+
+## Pre-mortem outcome
+
+| Risk | Result |
+| --- | --- |
+| Service/API version mismatch | Installed API v3.4.0 was introspected; unsupported version/metadata paths become sanitized Error, never guessed queries. |
+| Loader/process architecture mismatch | Official x64 loader verified and runtime-tested; 32-bit mismatch has a sanitized failure path. No 32-bit runtime was installed for a separate execution test. |
+| Service or capability absent | Service stop produced `Unavailable`; hardware stayed live; service restart recovered without restarting Cerith. |
+| Permission/elevation assumption | Non-elevated client, TelemetryService, pipe client and WidgetHost completed the real frame flow. |
+| No-frame window becomes zero | No-frame probe returned no value; only finite positive samples with recent frame evidence become Fresh. |
+| Stale Fresh after target/service loss | Target close produced valueless Stopped; Service stop produced valueless Unavailable. |
+| Target exits during query | Process state is checked around capture queries; deterministic stop tests and real close probe did not retain stale values. The narrow exit/query race is handled as a valueless stopped/error result. |
+| Multiple swap chains | One final-build run recovered `Fresh` after the second chain was destroyed; a separately instrumented repeat logged both chains presenting but did not reproduce that state sequence. The API count is per-poll rows, not active objects; no chain is selected or averaged. |
+| Cancellation or native-handle leak | Query/tracking/session destruction is centralized; temporary native API probes returned successful cleanup statuses and all probe processes exited. Long-duration leak soak was not run. |
+| Anti-cheat or ETW limitations | No commercial game/anti-cheat test was run; behavior is claimed only for the tested D3D11 workload and official Service/API. |
+| Process metadata privacy | Explicit PID is not logged; no process name, executable path, title, command line or raw provider payload is emitted. |
+| Provider-framework overdesign | Existing registry, bus and pipe are reused; native seam is limited to the concrete PresentMon ABI. |
+| M1 hardware regression | Core, Telemetry and Integration suites passed; concurrent runtime kept CPU and other hardware publication alive through PresentMon stop/restart. |
+| Dependency or provenance error | MSI and loader hashes/signatures were verified; upstream MIT license is physically present beside the unchanged loader in Release build and publish output; no package or middleware was added. |
+
+## Verification and handoff
+
+For this review correction, `dotnet restore Cerith.sln` and Release solution build passed with 0 warnings/errors; Core 39/39, Telemetry 16/16 and Integration 9/9 passed. Release `dotnet publish` passed. Physical inspection confirmed both loader and license in normal build and publish outputs; loader SHA-256 matches the checked-in official binary. `git diff --check` and the configured tracked-file hygiene check passed. One same-PID run observed `Fresh` → varying `Error`/`Unavailable`/`Fresh` polls during the dual-chain interval → sustained `Fresh` after returning to one chain; the instrumented repeat verified both chains called `Present` continuously but did not reproduce the same telemetry sequence. PresentMon API probe reported 3.4.0; the installed service was Running/Automatic. Graphify query shows the existing capture type and field-context references to non-primitive types, but the member identifiers `_ambiguousSwapChains` and `_frameRowSize` are absent from `graph.json`; these scalar fields add no graph node or relationship, so no incremental refresh was warranted. The configured CodeQL workflow runs on `main` and PRs; local CodeQL CLI was unavailable, and no PR was opened as instructed.
+
+Canonical semantics, architecture, performance/provenance and decision records are in `docs/METRICS.md`, `docs/ARCHITECTURE.md`, `docs/PERFORMANCE.md`, `docs/REFERENCE_PROJECTS.md` and `.agent/DECISIONS.md`. Do not mark M2 complete or start CER-M2-002 as part of this review.
+
+# Previous handoff — CER-M1-004 hardware/provider diagnostics and M1 exit
 
 Status: CER-M1-004 DONE; M1 — Hardware MVP DONE; M2 NEXT/NOT STARTED. Advisor PASS final for diagnostics and M1 exit. Approved product head `1028767c0e38c06061707eeed694e54fc6b15f6a` on base `17bdeb61b65edc28db01df5a2935f2e8fd109747` passed PR #29 Build and Test and Repository Quality (CodeQL SKIPPED under policy), then was squash-merged into `main` at `59ecb648a9f714376578fc16cdaa446571bd4874`. The integrated tree matches the approved head. This handoff records the post-merge state; no product code changed after that head.
 
