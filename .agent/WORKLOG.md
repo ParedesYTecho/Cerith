@@ -284,3 +284,10 @@ On the earlier final-build run, the pipe log around the chain transition (10:58:
 
 Event: Advisor PASS; product PR #31 squash-merged into `main` as `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf`.
 Summary: approved product head `086db95e29124900854e29d2b70caa16b3f43889` and integrated tree match. Build and Test PASS; Repository Quality PASS; CodeQL SKIPPED under D-013. Reconciled the operational state, handoff, task, D-020 and M2 roadmap status without product changes. CER-M2-001 DONE; M0 and M1 DONE; M2 INCOMPLETE; CER-M2-002 NEXT / NOT STARTED. PresentMon variability and coverage limits remain explicit in the handoff.
+
+## 2026-09-29 — Codex — CER-M2-002 post-merge reconciliation
+
+Event: handoff
+Summary: CER-M2-002 adds the PresentMon v2.6.0 displayed-FPS P1 metric at `game.fps.display.p01`; canonical semantics are in D-021 and `docs/METRICS.md`. Product PR #36 was squash-merged as `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf`; approved head `cf49247d53808f3cb0653708316c8cc732450c2a` and integrated tree match.
+Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`.
+Result: Release build 0 warnings/errors; Core 39/39, Telemetry 22/22, Integration 9/9 PASS. PR `build`/`hygiene` PASS; CodeQL SKIPPED under D-013. Fresh hostile Sol High PASS; Ponytail review/debt/audit and code-reviewer review found no actionable issue. Controlled D3D11 validation and numeric oracle ran with the visible producer on DISPLAY2; the high-drop raw oracle reconstructed zero-sample equivalents from the independent dropped-frame fraction. A 15-second local sample measured 0.250 TelemetryService CPU seconds (1.67% of one logical core), 63.6→62.0 MiB working set, and roughly 500 ms P1 publication cadence. M2 remains INCOMPLETE; CER-M2-003 is NEXT / NOT STARTED.
