@@ -2,9 +2,9 @@
 
 Proyecto: Cerith
 Nombre: provisional
-Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; CER-M2-001/002/003 DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP NEXT / NOT STARTED
+Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M2-003 DONE. El producto se integró mediante PR #38 y squash `5364ec7824f424e0206c9ebdecf826e16484d60d`; el head aprobado `561450d391234c98294fdd5fc6e99336575a13d1` tiene el mismo árbol integrado. D-022 y `docs/METRICS.md` definen el resumen de sesión seleccionada. El probe de pérdida de servicio mantuvo Fresh la misma identidad durante 160 snapshots; las métricas de frames quedaron sin valor mientras PresentMon estuvo parado y recuperaron Fresh tras iniciarlo, sin reiniciar TelemetryService ni retarget. Review Sol Medium PASS; CI `build` y `hygiene` PASS; CodeQL SKIPPED según D-013. M0, M1, CER-M2-001/002/003 y M2 están DONE. M3 es NEXT / NOT STARTED.
+Estado: CER-M3-001 DONE (research/contract only); review independiente GPT-6.1 Sol Medium PASS. Bootstrap desde `main == origin/main` en `730ae6c5d518c812213c631eab4129c4bcbea1f6`, PR #41 integrado y working tree limpio antes del claim. La matriz canónica es `docs/AI_QUOTA_REFERENCE_MATRIX.md`; el contrato y plan del primer slice están en `docs/PROVIDERS_AI_QUOTAS.md`. D-023 elige Codex para CER-M3-002 (NEXT / NOT STARTED); ningún provider AI está implementado. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE.
 
 ## Listo
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-M0 — Foundation, M1 — Hardware MVP, CER-M2-001/002/003 y M2 están DONE e integrados en `main`. M2 incluye FPS y frame time (PR #31), displayed FPS P1 (PR #36) y el resumen de la sesión elegida (PR #38). La semántica de `game.session.application`, sus estados y límites de privacidad están en D-022 y `docs/METRICS.md`. M3 — AI Quotas MVP es NEXT / NOT STARTED; no se ha iniciado.
+CER-M3-001 está cerrado como research/contract. CER-M3-002 — Codex es NEXT / NOT STARTED; su contrato y gates están en `docs/PROVIDERS_AI_QUOTAS.md`. No se ha implementado ningún provider ni se inicia la siguiente task en esta sesión. M0/M1/M2 siguen DONE; su evidencia histórica permanece en TASKS/HANDOFF y las decisiones canónicas.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
@@ -58,4 +58,4 @@ Deuda explícita:
 
 Dependabot #3/#4 se integraron posteriormente como mantenimiento de GitHub Actions, sin cambio de comportamiento de producto. Graphify label drift permanece separado.
 
-Futuro no activo: `docs/ROADMAP.md` y los documentos de producto registran una expansión posterior de telemetría hardware/gaming (incluyendo CPU_FAN/GPU fan verificables, métricas CPU/GPU adicionales y separación de FPS) y un modo Test / Diagnostic Session para validación reproducible y comparación externa. Nada de ello cambia el alcance de M2. M3 es el siguiente hito y permanece NOT STARTED.
+Futuro no activo: `docs/ROADMAP.md` y los documentos de producto registran una expansión posterior de telemetría hardware/gaming (incluyendo CPU_FAN/GPU fan verificables, métricas CPU/GPU adicionales y separación de FPS) y un modo Test / Diagnostic Session para validación reproducible y comparación externa. Nada de ello cambia el alcance de M2 ni inicia M4; M3 está ACTIVE / INCOMPLETE.

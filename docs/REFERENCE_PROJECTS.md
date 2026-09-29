@@ -98,6 +98,10 @@ Its broader token/cost model is not automatically equivalent to provider rate-li
 
 CodexBar and OpenUsage remain useful independent research implementations where current and relevant.
 
+Canonical repositories for the CER-M3-001 comparison: [CodexBar](https://github.com/steipete/CodexBar) and [OpenUsage](https://github.com/robinebers/openusage). Other repositories named OpenUsage are distinct projects and were not substituted. Exact audited revisions, file links, source classifications and disagreements for all five monitors are maintained only in [AI_QUOTA_REFERENCE_MATRIX.md](AI_QUOTA_REFERENCE_MATRIX.md). No source code was copied or dependency added; future reuse still requires a separate license review.
+
+CER-M3-001 also uses first-party [openai/codex](https://github.com/openai/codex) for protocol/backend/auth-lifecycle evidence, official [Claude Code statusline documentation](https://code.claude.com/docs/en/statusline) for event-fed quota semantics, and official Antigravity product documentation for published UI/plan behavior. First-party source observations do not make undocumented backend endpoints supported APIs. Concrete endpoint provenance and local-probe limits belong to the matrix; normalized Cerith behavior belongs to `PROVIDERS_AI_QUOTAS.md`.
+
 The original master brief also named **Claude Code Usage Monitor** as a research reference. The historical material available to Cerith does not preserve a sufficiently certain canonical repository URL for that name, so this document deliberately records the reference without inventing a link. If its exact provenance is re-established later, add the verified repository and revision here.
 
 These references do not outrank official provider sources merely because they are listed in Cerith docs.
