@@ -8,6 +8,10 @@
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="native\PresentMonAPI2Loader.dll" CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" TargetPath="PresentMonAPI2Loader.dll" />
+  </ItemGroup>
+  <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Cerith.Telemetry.Tests</_Parameter1>
     </AssemblyAttribute>

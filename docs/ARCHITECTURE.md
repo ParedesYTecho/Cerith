@@ -181,6 +181,8 @@ CER-M1-003 enables Storage and Network on that same `Computer`, captures their d
 
 CER-M1-004 reports startup discovery counts and per-sample Fresh/Stale/Unavailable/Error totals with sanitized error-code counts in TelemetryService. Counts describe observed publication outcomes, not an independent health verdict. Each `MetricSnapshot` remains the authority for its metric. WidgetHost displays sanitized errors and marks subscriptions unavailable after a receive timeout or disconnect, then retries. Zero discovered devices have an unknown cause; LibreHardwareMonitor internal failures and sensor truth cannot be independently detected here. No diagnostics protocol, metric IDs, logging framework or ControlCenter UI is added.
 
+CER-M2-001 adds a second concrete acquisition lifecycle in TelemetryService. It tracks only the explicit `--pid` target through the official PresentMon Service/API, normalizes displayed FPS and frame time to the existing `MetricSnapshot` contract, and publishes on the existing MetricBus and Named Pipe v1. WidgetHost remains MetricId-only. A narrow native capture boundary owns PresentMon session/query handles and supports deterministic provider tests; PresentMon types and binaries do not enter Core. Service/API absence does not stop hardware acquisition. The pinned API, loader provenance and state rules are recorded in D-020 and `docs/METRICS.md`.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:

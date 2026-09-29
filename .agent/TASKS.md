@@ -1,5 +1,18 @@
 # Tasks
 
+## CER-M2-001 — PresentMon displayed telemetry vertical slice
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex (single writer)
+Priority: P0
+Depends on: M1 — Hardware MVP
+Branch: `codex/CER-M2-001-presentmon-display`
+Base: `89ddd69c13affd76b3b6085a25753bb7b83b0a3f` (`main`, confirmed after fetch)
+
+Scope: one explicit target PID; official PresentMon Service/API; average displayed FPS and displayed frame time; normalized snapshots through the existing MetricBus, Named Pipe v1 and WidgetHost. No other gaming metrics or M2 exit claim.
+
+Result: official PresentMon 2.6.0 Service/SDK verified and installed; implementation and deterministic tests complete. Release build PASS (0 warnings/errors); Core 39/39, Telemetry 16/16, Integration 9/9 PASS. A non-elevated end-to-end D3D11 probe showed changing `Fresh/Measured` FPS/frame time through PresentMon, Cerith, MetricBus, Named Pipe v1 and WidgetHost. Service loss/recovery, target exit, no-frame behavior and multiple swap chains were exercised; exact results and limits are in `.agent/HANDOFF.md` and canonical metric/performance/provenance docs. M2 remains incomplete; CER-M2-002 has not started. No PR or merge.
+
 ## CER-M1-004 — Hardware/provider diagnostics and M1 exit
 
 Status: DONE

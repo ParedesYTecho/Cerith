@@ -171,3 +171,14 @@ TelemetryService prints startup counts for discovered CPU, GPU, Storage and Netw
 LHM may catch errors internally or retain a prior sensor value. Cerith cannot identify such readings as erroneous or prove physical sensor truth from these diagnostics. Startup discovery does not track new devices; existing hotplug and persistent-identity limits still apply.
 
 An elevated CER-M1-004 probe of the unchanged service and LHM 0.9.6 discovered four Storage devices. The existing local pipe published `storage.0.usage`, `storage.0.total.bytes` and `storage.0.free.bytes` as `Fresh`/`Measured` doubles: usage was about 33.8%, total positive, and free between zero and total. `100 × (1 - free/total)` agreed with usage within 0.000002 percentage points. The provider's Storage `Data` conversion remained ×1,000,000,000 bytes; no read/write throughput MetricIds were added. The same probe without elevation discovered zero Storage. This establishes a positive elevated path here, not non-elevated Storage support or independent sensor accuracy. Missing/error snapshots still have no value under the existing Core contract; absent hardware can emit no Storage snapshots at all.
+
+## Displayed gaming metrics (CER-M2-001)
+
+| MetricId | PresentMon source | Statistic | Semantic type / value / unit |
+| --- | --- | --- | --- |
+| `game.fps.display` | `PM_METRIC_DISPLAYED_FPS` | `PM_STAT_AVG` over 1000 ms | rate / `double` / FPS |
+| `game.frametime.display` | `PM_METRIC_DISPLAYED_FRAME_TIME` | `PM_STAT_AVG` over 1000 ms | duration / `double` / ms |
+
+TelemetryService polls the dynamic query about every 500 ms. It also consumes the frame query for `PM_METRIC_PRESENT_START_QPC` and `PM_METRIC_BETWEEN_DISPLAY_CHANGE`; a reading is `Fresh`/`Measured` only when the API returns exactly one swap chain, both averages are finite and positive, and a positive display-change sample has a QPC timestamp no more than two seconds old. This prevents a cached dynamic-query value from appearing Fresh after frame events stop. A second swap chain is `Error` (`multiple_swap_chains`) because this baseline does not choose or combine chains.
+
+No target PID and a terminated target publish `Stopped` without values. A selected target with no usable display sample, including the API's zero/no-frame result, publishes `Unavailable` without values. An absent service or capability is also unavailable; operational API failures and invalid/non-finite values publish `Error` with a short sanitized code. No missing frame or error is converted to FPS or frame-time zero. Target selection is the explicit ephemeral `--pid` input; process paths, titles, command lines and PID values are not emitted by Cerith. PresentMon's ETW flush period is left unchanged.
