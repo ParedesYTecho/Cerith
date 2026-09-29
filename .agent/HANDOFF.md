@@ -1,4 +1,39 @@
-# Handoff — CER-M2-002 Displayed FPS P1 rolling window
+# Handoff — CER-M2-003 selected game/session summary and M2 exit
+
+Status: CER-M2-003 DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP NEXT / NOT STARTED. Product PR #38 was squash-merged as `5364ec7824f424e0206c9ebdecf826e16484d60d`; approved head `561450d391234c98294fdd5fc6e99336575a13d1` and integrated tree match. The reconciliation is docs/state only.
+
+## Contract and implementation
+
+The session is the lifetime of the single explicitly selected `--pid` process. `game.session.application` publishes the Windows `Process.ProcessName` basename through the existing MetricBus, Named Pipe v1 and MetricId-only WidgetHost route. The same opened `Process` identity is retained across PresentMon retries; the implementation does not reopen a numeric PID after the original process exits. A failed initial handle acquisition remains terminal until TelemetryService restarts. The name has no path or `.exe` extension.
+
+While the selected process is alive and its name is readable, the label stays `Fresh`/`Measured` through no-frame periods and PresentMon service loss. Frame metrics keep their own `Unavailable`/`Error` states and values remain absent. Target exit stops all four gaming metrics. M2 does not implement automatic game detection, launcher-to-renderer inference or process-tree grouping, and does not publish PID, path, command line, window title, package identity or process tree. Exact state and UI semantics are in D-022 and `docs/METRICS.md`.
+
+No dependency, new source file, Core or IPC change, or provider abstraction was added.
+
+## Verification and runtime evidence
+
+- Release build PASS with 0 warnings/errors; Core 39/39, Telemetry 26/26, Integration 9/9 PASS (74 total). PR #38 `build` and `hygiene` PASS; CodeQL SKIPPED under D-013. `git diff --check` and repository hygiene PASS.
+- Fresh Sol Medium hostile review of approved product head `561450d391234c98294fdd5fc6e99336575a13d1`, after the service-loss probe, PASS with no actionable findings. The `code-review-checklist` review found no actionable issue.
+- On a controlled D3D11 target on the verified secondary display, WidgetHost displayed the selected application label with live FPS, frame time and P1. Pausing left the label Fresh while frame metrics became Unavailable; target exit stopped all four metrics. A second selected target displayed its own label.
+- During the 2026-09-29 service-loss probe, 160 Named Pipe snapshots kept `game.session.application` Fresh with the same `M2TestProducerNext` identity while PresentMon was stopped and restarted. FPS, frame time and P1 became valueless Error and then Unavailable while stopped. FPS and frame time recovered Fresh after service startup; P1 recovered after its own warm-up. TelemetryService remained alive and the target selection did not change.
+- A 15-second local sample observed TelemetryService at 0.52% of one logical CPU and a steady 84.3 MiB working set; pipe publication was about 500 ms. These are one-host observations, not a before/after claim.
+- Cleanup PASS: the controlled target and observer exited, PresentMon was restored to Running/Automatic, and the temporary probe directory was absent.
+
+## M2 exit audit
+
+| Roadmap scope | Status | Evidence |
+| --- | --- | --- |
+| PresentMon, FPS and frame time | DONE | CER-M2-001; product PR #31 |
+| Displayed FPS P1 | DONE | CER-M2-002; product PR #36; D-021 |
+| Selected game/session summary | DONE | CER-M2-003; product PR #38; service-loss continuity and recovery observed |
+| M2 — Gaming MVP | DONE | All committed M2 scope implemented, tested and runtime-validated |
+| M3 — AI Quotas MVP | NEXT / NOT STARTED | No M3 work started |
+
+Limitations remain: selection is explicit by PID, not automatic game detection; no commercial-game, anti-cheat, launcher/multi-process, or cross-vendor matrix is claimed. Later gaming metrics remain deferred by `docs/ROADMAP.md`.
+
+---
+
+# Previous handoff — CER-M2-002 Displayed FPS P1 rolling window
 
 Status: CER-M2-002 DONE. Product PR #36 merged by squash as `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf`; approved product head `cf49247d53808f3cb0653708316c8cc732450c2a` and integrated tree match. M0, M1, CER-M2-001 and CER-M2-002 are DONE; M2 remains INCOMPLETE and CER-M2-003 is NEXT / NOT STARTED.
 

@@ -1,5 +1,22 @@
 # Tasks
 
+## CER-M2-003 — selected game/session summary and M2 exit
+
+Status: DONE
+Owner: GPT-6 Luna Max (Codex, sole repository writer)
+Priority: P0
+Depends on: CER-M2-002
+Branch: `codex/CER-M2-003-reconciliation`
+Base: `5364ec7824f424e0206c9ebdecf826e16484d60d` (product PR #38 merged; tree matches approved head `561450d391234c98294fdd5fc6e99336575a13d1`)
+
+Scope: reconcile operational state after the product merge. Docs/state only; do not start M3.
+
+Result: product PR #38 added `game.session.application` for the explicitly selected `--pid` process using Windows `Process.ProcessName`; D-022 and `docs/METRICS.md` hold the durable contract. The label remains Fresh independently of frame/PresentMon availability, and the retained process handle prevents PID reuse from becoming a new session. No automatic game detection or extra process metadata is included.
+
+M2 exit: PASS. A controlled service-loss probe observed the same Fresh application identity through PresentMon stop/restart. FPS, frame time and P1 became valueless Error/Unavailable while stopped; FPS/frame time recovered Fresh after service start and P1 after its warm-up. TelemetryService and the selected target continued without restart or retarget.
+
+Verification: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 26/26, Integration 9/9 PASS. PR #38 head `561450d391234c98294fdd5fc6e99336575a13d1` passed CI `build` and `hygiene`; CodeQL skipped under D-013. Fresh Sol Medium hostile review PASS with no actionable findings. Squash `5364ec7824f424e0206c9ebdecf826e16484d60d` has the same tree as the approved head. CER-M2-003 DONE; M2 DONE; M3 NEXT / NOT STARTED.
+
 ## CER-M2-002 — Displayed FPS P1 rolling window
 
 Status: DONE

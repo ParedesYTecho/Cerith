@@ -76,8 +76,8 @@ No Electron or browser runtime in the always-on monitoring path.
 
 ## Current milestone
 
-`M2 — Gaming MVP` — INCOMPLETE.
+`M2 — Gaming MVP` — DONE.
 
-M0 — Foundation and M1 — Hardware MVP are DONE. CER-M2-001 (Displayed FPS and displayed frame time through PresentMon) is integrated. CER-M2-002 (1% low) is the next slice.
+M0 — Foundation and M1 — Hardware MVP are DONE. CER-M2-001 (Displayed FPS and displayed frame time), CER-M2-002 (displayed FPS P1) and CER-M2-003 (selected game/session summary) are integrated. M3 — AI Quotas MVP is NEXT / NOT STARTED.
 
 Current task truth lives in `.agent/STATE.md` and `.agent/TASKS.md`; `docs/ROADMAP.md` defines milestone scope.

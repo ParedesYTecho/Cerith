@@ -88,7 +88,7 @@ Later:
 
 Do not infer generated FPS by subtracting two rates unless the provider semantics and frame classification make that derivation valid.
 
-Current status: M2 INCOMPLETE. CER-M2-001 (displayed FPS and frame time) is DONE via product PR #31, squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf` (approved head `086db95e29124900854e29d2b70caa16b3f43889`). CER-M2-002 (displayed FPS P1) is DONE via product PR #36, squash `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf` (approved head `cf49247d53808f3cb0653708316c8cc732450c2a`). M2 remains open; CER-M2-003 is NEXT / NOT STARTED.
+Current status: M2 DONE. CER-M2-001 (displayed FPS and frame time) is DONE via product PR #31, squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf` (approved head `086db95e29124900854e29d2b70caa16b3f43889`). CER-M2-002 (displayed FPS P1) is DONE via product PR #36, squash `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf` (approved head `cf49247d53808f3cb0653708316c8cc732450c2a`). CER-M2-003 (selected game/session summary) is DONE via product PR #38, squash `5364ec7824f424e0206c9ebdecf826e16484d60d` (approved head `561450d391234c98294fdd5fc6e99336575a13d1`; integrated tree matches). Its explicit-target identity, lifecycle and privacy contract are in D-022 and `docs/METRICS.md`; the live service-loss probe confirmed label continuity and frame-metric recovery without TelemetryService restart or retarget. M3 — AI Quotas MVP is NEXT / NOT STARTED.
 
 ### Post-M2 diagnostic validation mode (future; non-blocking)
 
@@ -108,6 +108,8 @@ This mode must not collect secrets, arbitrary personal data, command lines, priv
 This future capability does not change M2 acceptance criteria and does not start before M2 closes.
 
 ## M3 — AI Quotas MVP
+
+Current status: NEXT / NOT STARTED. No M3 work has started.
 
 Clean implementation:
 

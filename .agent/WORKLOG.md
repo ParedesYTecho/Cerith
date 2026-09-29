@@ -291,3 +291,11 @@ Event: handoff
 Summary: CER-M2-002 adds the PresentMon v2.6.0 displayed-FPS P1 metric at `game.fps.display.p01`; canonical semantics are in D-021 and `docs/METRICS.md`. Product PR #36 was squash-merged as `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf`; approved head `cf49247d53808f3cb0653708316c8cc732450c2a` and integrated tree match.
 Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`.
 Result: Release build 0 warnings/errors; Core 39/39, Telemetry 22/22, Integration 9/9 PASS. PR `build`/`hygiene` PASS; CodeQL SKIPPED under D-013. Fresh hostile Sol High PASS; Ponytail review/debt/audit and code-reviewer review found no actionable issue. Controlled D3D11 validation and numeric oracle ran with the visible producer on DISPLAY2; the high-drop raw oracle reconstructed zero-sample equivalents from the independent dropped-frame fraction. A 15-second local sample measured 0.250 TelemetryService CPU seconds (1.67% of one logical core), 63.6→62.0 MiB working set, and roughly 500 ms P1 publication cadence. M2 remains INCOMPLETE; CER-M2-003 is NEXT / NOT STARTED.
+
+## 2026-09-29 — Codex — CER-M2-003 post-merge reconciliation and M2 closure
+
+Event: product PR #38 squash-merged; product tree verified; docs/state reconciliation prepared on a separate branch.
+Summary: PR #38 added `game.session.application` for the explicitly selected `--pid` process, with durable semantics in D-022 and `docs/METRICS.md`. The service-loss probe kept the same Fresh application identity across 160 pipe snapshots while frame metrics became valueless Error/Unavailable and recovered after PresentMon restarted; TelemetryService was not restarted and the target was not retargeted.
+Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `README.md`.
+Product integration: approved head `561450d391234c98294fdd5fc6e99336575a13d1`; squash `5364ec7824f424e0206c9ebdecf826e16484d60d`; integrated tree matches. Release build 0 warnings/errors; Core 39/39, Telemetry 26/26, Integration 9/9 PASS. PR #38 `build` and `hygiene` PASS; CodeQL SKIPPED under D-013. Fresh Sol Medium hostile review PASS with no findings.
+M2 exit: CER-M2-003 DONE; M2 DONE; M3 NEXT / NOT STARTED. Local cleanup PASS; no M3 work started.
