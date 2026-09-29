@@ -81,23 +81,31 @@ Current default idea:
 
 ```text
 default write/execution owner
-→ GPT-6 Luna Max or equivalent
+→ GPT-6 Luna Max, native Codex
 
-strong specialist / independent review
-→ GPT-5.6 Sol Medium or equivalent
+focused strong specialist / independent review
+→ GPT-5.6 Sol, High effort, Web route
 
-exceptional unresolved high-risk reasoning
-→ Sol High, scoped to the hard question
+extra native reasoning gate when genuinely needed
+→ GPT-6.1 Sol, Medium effort, native Codex
 
 independent non-overlapping second worker / review
 → Antigravity
 ```
 
-Task duration, token volume, native code or repeated iterations do not justify escalation by themselves. Start strong review/architecture work at Medium; use High only for a concrete unresolved technical risk such as subtle ABI behavior, high-impact concurrency/security, contradictory evidence or a durable architectural decision that remains unclear.
+Treat model, effort and route as separate dimensions. `Web` is a route, not a separate model family.
 
-When Luna owns the task, Sol subagents are read-only by default. Once a hard reasoning question is settled, implementation returns to Luna unless another concrete escalation reason exists.
+Use GPT-5.6 Sol Web High freely for bounded, read-only specialist work: hostile review, semantic/API analysis, focused architecture, security/concurrency review and second opinions. Keep its context packet narrow and evidence-driven.
 
-Judge models by observed reliability and quota consumption, not brand loyalty.
+Use GPT-6.1 Sol Medium native only when an extra native reasoning tier is justified: conflicting reviews, unresolved durable architecture, subtle native ABI/interop, high-impact security/concurrency, contradictory runtime evidence, or reasoning that materially depends on the native harness/tool context.
+
+Task duration, token volume, native code or repeated iterations do not justify escalation by themselves. After a difficult reasoning question is settled, implementation returns to Luna unless another concrete escalation reason exists.
+
+Do not automatically escalate to GPT-6.1 Sol High/xHigh/Max, GPT-6 Astra or another premium tier; require an explicit per-task reason.
+
+When Luna owns the task, specialist/reviewer subagents are read-only by default.
+
+Judge routes and models by observed reliability, context fit and quota consumption, not brand loyalty.
 
 ## Graphify
 
