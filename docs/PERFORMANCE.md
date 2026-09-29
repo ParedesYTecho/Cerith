@@ -56,6 +56,18 @@ Maintain repeatable cases:
 
 Track regressions.
 
+## Diagnostic capture performance (future)
+
+Test / Diagnostic Session mode may intentionally collect denser evidence than the normal always-on path, but it still must not become the workload being measured.
+
+When implemented:
+
+- batch or buffer high-frequency writes instead of synchronously persisting every frame sample;
+- measure diagnostic-mode CPU, memory and I/O overhead on representative gaming sessions;
+- report that overhead with each validation methodology where it can affect the result;
+- do not use diagnostic-mode resource usage as a claim about normal always-on runtime;
+- do not hide a telemetry disagreement by reducing capture fidelity solely to meet a budget.
+
 ## IPC M0 prototype baseline
 
 Date: 2026-09-25

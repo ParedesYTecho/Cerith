@@ -76,16 +76,8 @@ No Electron or browser runtime in the always-on monitoring path.
 
 ## Current milestone
 
-`M0 — Foundation`
+`M2 — Gaming MVP` — INCOMPLETE.
 
-The first milestone is successful when a deterministic synthetic metric can travel through:
+M0 — Foundation and M1 — Hardware MVP are DONE. CER-M2-001 (Displayed FPS and displayed frame time through PresentMon) is integrated. CER-M2-002 (1% low) is the next slice.
 
-```text
-SyntheticProvider
-→ MetricSnapshot
-→ MetricBus
-→ WidgetHost
-→ visible value
-```
-
-with tests, diagnostics and a measured baseline.
+Current task truth lives in `.agent/STATE.md` and `.agent/TASKS.md`; `docs/ROADMAP.md` defines milestone scope.

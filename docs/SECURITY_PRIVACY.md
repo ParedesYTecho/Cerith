@@ -58,6 +58,22 @@ Use:
 - explicit user-agent;
 - no arbitrary untrusted endpoint execution.
 
+## Diagnostic sessions
+
+Future Test / Diagnostic Session capture is explicit, bounded and user-initiated.
+
+By default it stays local and may record all Cerith-observable metric samples for the selected session plus the sanitized diagnostics needed to interpret them. It must not expand “capture everything” into unrestricted collection of:
+
+- credentials or secrets;
+- cookies or authorization material;
+- arbitrary process command lines;
+- unnecessary file-system paths;
+- unrelated window titles;
+- unrelated user activity;
+- raw private provider payloads.
+
+The UI should clearly indicate when capture is active. Before export, the bundle should be inspectable and have a defined schema/content inventory. External comparison traces are imported or referenced deliberately; Cerith does not silently upload session data to a third party.
+
 ## Product analytics
 
 No analytics by default.

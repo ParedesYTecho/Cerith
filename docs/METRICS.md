@@ -172,6 +172,21 @@ LHM may catch errors internally or retain a prior sensor value. Cerith cannot id
 
 An elevated CER-M1-004 probe of the unchanged service and LHM 0.9.6 discovered four Storage devices. The existing local pipe published `storage.0.usage`, `storage.0.total.bytes` and `storage.0.free.bytes` as `Fresh`/`Measured` doubles: usage was about 33.8%, total positive, and free between zero and total. `100 × (1 - free/total)` agreed with usage within 0.000002 percentage points. The provider's Storage `Data` conversion remained ×1,000,000,000 bytes; no read/write throughput MetricIds were added. The same probe without elevation discovered zero Storage. This establishes a positive elevated path here, not non-elevated Storage support or independent sensor accuracy. Missing/error snapshots still have no value under the existing Core contract; absent hardware can emit no Storage snapshots at all.
 
+## Future hardware metric design constraints (not implemented)
+
+The hardware catalog may expand after the current milestone sequence, but future IDs are not committed by this section.
+
+Fan telemetry must distinguish physical observation from control intent:
+
+- RPM is an observed rotational speed when the provider exposes a valid Fan sensor;
+- a fan control/duty percentage is the provider-reported control level, not “percent of maximum RPM” unless a provider explicitly defines it that way;
+- GPU fan telemetry may expose both quantities independently;
+- a CPU-fan concept is registered only when the source can identify the CPU_FAN channel without guessing;
+- ambiguous motherboard fan channels are not automatically classified as CPU, chassis or PSU;
+- fan actuation/curves are outside the current read-only metric contract.
+
+Additional future CPU/GPU candidates include verified power, voltage, clocks, temperatures and vendor sensors. Their MetricIds, source mappings and units must be defined only when the relevant implementation slice validates them.
+
 ## Displayed gaming metrics (CER-M2-001)
 
 | MetricId | PresentMon source | Statistic | Semantic type / value / unit |
@@ -184,3 +199,10 @@ An elevated CER-M1-004 probe of the unchanged service and LHM 0.9.6 discovered f
 PresentMon v2.6.0's `pmPollDynamicQuery` output count is a per-poll result-row count, not an inventory of active swap-chain objects. Its implementation treats the caller's input count as the maximum row capacity, builds rows from swap chains with frame samples in the query time window, and returns one fallback row when that set is empty ([`FrameMetricsSource`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/FrameMetricsSource.cpp#L347-L377), [`DynamicQuery`](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/IntelPresentMon/PresentMonMiddleware/DynamicQuery.cpp#L470-L500)). TelemetryService polls the dynamic query about every 500 ms. It also consumes the frame query for `PM_METRIC_PRESENT_START_QPC` and `PM_METRIC_BETWEEN_DISPLAY_CHANGE`; a reading is `Fresh`/`Measured` only when the API returns exactly one result row, both averages are finite and positive, and a positive display-change sample has a QPC timestamp no more than two seconds old. This prevents a cached dynamic-query value from appearing Fresh after frame events stop. A poll reporting more than one result row is `Error` (`multiple_swap_chains`) because this baseline does not choose or combine chains; a later poll reporting exactly one may recover to `Fresh` when valid samples resume, without restarting capture.
 
 No target PID and a terminated target publish `Stopped` without values. A selected target with no usable display sample, including the API's zero/no-frame result, publishes `Unavailable` without values. An absent service or capability is also unavailable; operational API failures and invalid/non-finite values publish `Error` with a short sanitized code. No missing frame or error is converted to FPS or frame-time zero. Target selection is the explicit ephemeral `--pid` input; process paths, titles, command lines and PID values are not emitted by Cerith. PresentMon's ETW flush period is left unchanged.
+
+
+## Future gaming metric separation (not implemented)
+
+Future gaming work should preserve distinct provider semantics rather than collapsing multiple rates into one generic FPS value. Candidate concepts include Application FPS, Displayed FPS, Presented FPS, 0.1% low, frame pacing, dropped/repeated frames, frame type/generated-frame information and advanced latency.
+
+PresentMon v2.6.0 exposes separate Application, Displayed and Presented FPS metrics plus frame type information. Future Cerith slices must validate the exact provider semantics before fixing MetricIds or deriving relationships between them. In particular, Cerith must not infer “generated FPS” by subtracting one FPS rate from another unless the provider's frame classification makes that derivation valid.

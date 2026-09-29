@@ -137,6 +137,25 @@ hover
 pressed
 ```
 
+## Diagnostic Test session (future)
+
+ControlCenter should eventually expose a clear user-invoked Test / Diagnostic Session entry point for validating telemetry during a real workload.
+
+The interaction should make the session boundary obvious:
+
+```text
+Start test
+→ choose/confirm target or active session
+→ visible recording state + elapsed time
+→ Stop
+→ summary of captured metrics/diagnostics
+→ inspect/export/analyze
+```
+
+The UI must show when diagnostic capture is active and must not imply that ordinary monitoring is collecting the same dense diagnostic evidence. A future comparison view may align Cerith data with an independently captured trace from another telemetry tool and highlight semantic/timing differences instead of forcing false agreement.
+
+This is future validation tooling, not part of the current M2 UI or exit criteria.
+
 ## Reference library
 
 High-value references:

@@ -53,9 +53,15 @@ ANY SURFACE
 
 CPU, GPU, RAM, VRAM, storage, network, power, clocks, temperatures, fans and supported vendor sensors.
 
+The long-term read-only hardware catalog should be broad, but each metric enters only after its source, units and semantics are verified. Priority fan telemetry includes GPU fan speed and a CPU fan only when the CPU_FAN identity can be established without guessing. Where available, Cerith may expose both observed RPM and the provider's fan control/duty percentage; these are different quantities and must not be presented as interchangeable. Ambiguous motherboard channels are not automatically classified as chassis, CPU or PSU fans.
+
+Fan control and custom fan curves are not part of the current telemetry scope.
+
 ### Gaming
 
-FPS, frame time, 1% lows, 0.1% lows, frame pacing, presentation/display metrics, active sessions.
+FPS, frame time, 1% lows, 0.1% lows, frame pacing, presentation/display metrics, active sessions, dropped/repeated-frame information, and frame-type/generated-frame information where the provider exposes a verifiable distinction.
+
+Application FPS, Displayed FPS and Presented FPS are separate semantic metrics. Cerith must not collapse them into a generic “real FPS” number or infer generated frames from arithmetic between rates unless the underlying provider contract proves that interpretation.
 
 ### AI quotas
 
@@ -72,6 +78,14 @@ Authoritative or explicitly classified usage data for:
 ### Historical telemetry
 
 Local history with efficient retention/downsampling.
+
+### Diagnostic validation sessions
+
+Cerith should eventually provide an explicit **Test / Diagnostic Session** mode for development, troubleshooting and validation. A user starts and stops a bounded session while a game or workload is running. The session records all Cerith-observable metric samples relevant to that target, plus sanitized runtime/provider diagnostics and timing metadata needed to reproduce and analyze discrepancies.
+
+The resulting local bundle should be inspectable and exportable for offline analysis. Where useful, Cerith should support comparing a session against an independently captured trace from another hardware/game telemetry tool. External tools are comparison references, not product dependencies or automatic ground truth; differences in source, sampling window and semantics must remain visible.
+
+“Capture everything” in this mode means all relevant Cerith telemetry and diagnostic state for the selected session, not unrestricted collection of secrets, personal data or unrelated machine activity.
 
 ### Rules and alerts
 
