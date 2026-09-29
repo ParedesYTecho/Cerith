@@ -88,7 +88,7 @@ Later:
 
 Do not infer generated FPS by subtracting two rates unless the provider semantics and frame classification make that derivation valid.
 
-Current status: M2 INCOMPLETE. CER-M2-001 (displayed FPS and frame time) is DONE via product PR #31, squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf` (approved head `086db95e29124900854e29d2b70caa16b3f43889`). CER-M2-002 is NEXT / NOT STARTED.
+Current status: M2 INCOMPLETE. CER-M2-001 (displayed FPS and frame time) is DONE via product PR #31, squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf` (approved head `086db95e29124900854e29d2b70caa16b3f43889`). CER-M2-002 (displayed FPS P1) is DONE via product PR #36, squash `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf` (approved head `cf49247d53808f3cb0653708316c8cc732450c2a`). M2 remains open; CER-M2-003 is NEXT / NOT STARTED.
 
 ### Post-M2 diagnostic validation mode (future; non-blocking)
 

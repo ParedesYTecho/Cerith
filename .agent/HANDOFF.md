@@ -1,4 +1,29 @@
-# Handoff — CER-M2-001 PresentMon displayed telemetry vertical slice
+# Handoff — CER-M2-002 Displayed FPS P1 rolling window
+
+Status: CER-M2-002 DONE. Product PR #36 merged by squash as `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf`; approved product head `cf49247d53808f3cb0653708316c8cc732450c2a` and integrated tree match. M0, M1, CER-M2-001 and CER-M2-002 are DONE; M2 remains INCOMPLETE and CER-M2-003 is NEXT / NOT STARTED.
+
+## Implementation and semantics
+
+The existing PresentMon boundary publishes `game.fps.display.p01` using a separate `PM_STAT_PERCENTILE_01` query over a requested trailing 10 seconds. P1 warm-up starts at the first positive displayed-change observation and resets after more than two seconds without recent display evidence or on capture/target restart. It keeps its own state alongside the one-second FPS and frame-time metrics. The exact reciprocal-percentile semantics, zero-sample treatment and 4096-frame retention limit are canonical in D-021 and `docs/METRICS.md`.
+
+No package, new source file, Core/IPC contract, generic statistics abstraction or provider-specific WidgetHost binding was introduced. The P1 descriptor and MetricId reuse the existing provider/registry/bus/pipe path.
+
+## Verification and real evidence
+
+- Release restore/build PASS with 0 warnings/errors; Core 39/39, Telemetry 22/22 and Integration 9/9 PASS (70 total). Local repository hygiene and `git diff --check` PASS. PR #36 `build` and `hygiene` PASS; CodeQL SKIPPED under D-013. Fresh hostile Sol High review PASS, with no unresolved findings.
+- Visible D3D11 producer runs were positioned on the verified secondary display and did not appear on the primary display. The solution test suites are headless.
+- In the baseline producer mode, P1 became `Fresh`/`Measured`; a 15-second sample showed 31 fresh P1 observations with 499–501 ms gaps (median about 500 ms). P1 values during the run were 40.41–43.44 FPS. This is a local controlled workload result, not a claim that its presents were all displayed.
+- In the controlled high-drop mode, PresentMon P1 was 42.397098 FPS. The independent oracle received 640 positive `PM_METRIC_BETWEEN_DISPLAY_CHANGE` rows; because this query output contained no zero rows, it reconstructed 1121 zero-sample equivalents from the separate 10-second `PM_METRIC_DROPPED_FRAMES` fraction (0.63657), then calculated raw P99 interval 23.58652 ms / P1 42.397098 FPS. Cerith's adjacent Fresh/Measured P1 samples were 42.30–42.47 FPS. The reconstruction is explicitly an estimate based on the drop fraction, not direct observation of omitted zero rows.
+- Stopping `PresentMonSharedService` produced P1 `Error/presentmon_api_failure`, then valueless `Unavailable`; after the service returned to Running/Automatic, P1 recovered to Fresh without restarting TelemetryService. The first recovery sample followed the required display-evidence warm-up. No-frame/warm-up windows remained valueless `Unavailable`, and target exit published valueless `Stopped`.
+- The final 15-second performance sample used 0.250 CPU seconds for TelemetryService (1.67% of one logical core). Working set changed from 63.6 to 62.0 MiB. These are one-host observations; there was no controlled before/after comparison or reliable isolated PresentMon-service overhead measurement.
+
+## Remaining limits
+
+The 4096-frame ring can retain less than the requested 10 seconds above roughly 410 frames/s; PresentMon v2.6.0 does not implement `PM_STAT_COUNT` for dynamic queries. Validation used controlled D3D11 producers on this machine, not a commercial game, anti-cheat environment, multi-vendor GPU matrix or D3D12 workload. Do not claim those cases validated or claim M2 complete.
+
+---
+
+# Previous handoff — CER-M2-001 PresentMon displayed telemetry vertical slice
 
 Status: CER-M2-001 DONE. Advisor PASS; product PR #31 merged by squash as `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf`. The approved product head was `086db95e29124900854e29d2b70caa16b3f43889`, based on `89ddd69c13affd76b3b6085a25753bb7b83b0a3f`; the integrated product tree matches that approved head. M0 and M1 are DONE; M2 remains INCOMPLETE and CER-M2-002 is NEXT / NOT STARTED.
 

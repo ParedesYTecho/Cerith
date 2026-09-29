@@ -2,7 +2,7 @@
 
 ## CER-M2-002 — Displayed FPS P1 rolling window
 
-Status: IN PROGRESS
+Status: DONE
 Owner: GPT-6 Luna Max (Codex, sole repository writer)
 Priority: P1
 Depends on: CER-M2-001
@@ -12,6 +12,8 @@ Base: `029d3a254d5dc684b9f4c224c36b778671351015` (`origin/main`, confirmed after
 Scope: add truthful displayed-FPS P1 using the existing PresentMon boundary, MetricBus, Named Pipe v1 and MetricId-only WidgetHost. Keep the existing one-second FPS and frame-time metrics independent. No 0.1% low, process selection, IPC redesign, or M2 exit claim.
 
 Semantic gate: fresh GPT-6 Sol High read-only review completed and accepted before product edits. Use `PM_METRIC_DISPLAYED_FPS` / `PM_STAT_PERCENTILE_01` as PresentMon v2.6.0 defines it: reciprocal displayed interval percentile with reversed rank and upstream linear interpolation; finite zero intervals from non-displayed frames remain in the percentile input. MetricId `game.fps.display.p01`; requested trailing window 10 seconds, warmup from the first positive displayed-change observation. Reset after more than two seconds without recent positive display evidence and on capture/target restart. This is P1 FPS, not average worst 1% or integral low. The 4096-frame PresentMon ring may shorten retained history above roughly 410 frames/s; `PM_STAT_COUNT` is not implemented and is not a gate.
+
+Result: implementation and deterministic tests passed. Release restore/build PASS with 0 warnings/errors; Core 39/39, Telemetry 22/22, Integration 9/9 PASS; Repository Quality `hygiene` PASS; CodeQL SKIPPED under D-013. Fresh hostile Sol High review PASS; Ponytail diff/debt/repo audit and code-reviewer skill completed without new complexity or actionable findings. Controlled D3D11 runtime and independent numeric validation (including the high-drop zero-sample reconstruction), service-loss recovery and DISPLAY2 visibility are recorded in `.agent/HANDOFF.md`. Product PR #36 merged by squash as `0a7ce2ee87aa27e65efea804fa4c0767faa17cbf`; approved product head `cf49247d53808f3cb0653708316c8cc732450c2a` and integrated tree match. M2 remains INCOMPLETE; CER-M2-003 is NEXT / NOT STARTED.
 
 ## CER-M2-001 — PresentMon displayed telemetry vertical slice
 
