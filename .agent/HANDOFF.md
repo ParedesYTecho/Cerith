@@ -1,4 +1,29 @@
-# Handoff — CER-M2-003 selected game/session summary and M2 exit
+# Handoff — CER-M3-001 quota research and source contract
+
+Status: CER-M3-001 DONE (research/contract). M0/M1/M2 DONE; M3 ACTIVE / INCOMPLETE; CER-M3-002 NOT STARTED. No AI provider implementation, source file, package, UI, M4 or legacy quota code was added.
+
+## Canonical outputs
+
+- `docs/AI_QUOTA_REFERENCE_MATRIX.md`: three-provider evidence/provenance matrix, pinned official/external sources, discrepancies and unknowns; no private payloads.
+- `docs/PROVIDERS_AI_QUOTAS.md`: metadata audit, Codex six-ID minimum, read-only identity/routing boundary, cache/state rules and deterministic/live acceptance plan.
+- D-023 in `.agent/DECISIONS.md`: **Codex → Claude → Antigravity** implementation order. CER-M3-002 will implement only the ordinary Codex quota vertical slice, after a new task claim; widgets remain MetricId-only.
+- `docs/REFERENCE_PROJECTS.md` disambiguates OpenUsage and points to the single revision/evidence matrix. `docs/METRICS.md` removes misleading speculative Codex session/Antigravity weekly examples. Roadmap records actual M3 progress.
+
+## Evidence and verification
+
+Bootstrap: clean `main == origin/main` at `730ae6c5d518c812213c631eab4129c4bcbea1f6`, with routing PR #41 integrated. Sole write owner on `codex/CER-M3-001-quota-research`; two GPT-5.6 Sol High Web provider specialists were read-only. Independent GPT-6.1 Sol Medium native semantic/security review and final consolidated source/order review PASS, including verified Antigravity changelog 1.1.11.
+
+A single bounded Windows Codex usage GET returned HTTP 200 and verified used/duration/reset shape. Access token and selected account header stayed in memory; no token renewal, login/logout, auth copy or payload file. That observation is not a provider implementation or full UI cross-validation. Claude and Antigravity had no authenticated local probe. Antigravity CLI changelog 1.1.11 explicitly supports quota JSON in print mode without an agent turn; installed-version/schema/account/auth side effects remain unprobed. No Antigravity command was launched against user authentication.
+
+Release build PASS (0 warnings/errors); Core 39/39, Telemetry 26/26, Integration 9/9 PASS. These are the existing suites required by PR CI, not new AI conformance proof. `git diff --check` and tracked-file hygiene PASS during preparation. No structural source changes: Graphify was queried for MetricSnapshot/State/Confidence navigation, no graph refresh required. No probe/temp payload/auth files were generated.
+
+## Next boundary and retained risks
+
+CER-M3-001 closes at the single research PR boundary under required build/hygiene checks and squash protection. Verify clean integrated main and stop; CER-M3-002 remains NEXT / NOT STARTED. Its official UI/status live comparison is mandatory and not satisfied by the research GET. Undocumented Codex backend stability, file-auth-only standard routing coverage, later Claude identity/scope/event receiver and Antigravity machine-readable source/project/group/auth behavior are explicit limits, not hidden implementation claims. Previous hardware/native/dependency debts remain in STATE and canonical docs.
+
+---
+
+# Previous handoff — CER-M2-003 selected game/session summary and M2 exit
 
 Status: CER-M2-003 DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP NEXT / NOT STARTED. Product PR #38 was squash-merged as `5364ec7824f424e0206c9ebdecf826e16484d60d`; approved head `561450d391234c98294fdd5fc6e99336575a13d1` and integrated tree match. The reconciliation is docs/state only.
 

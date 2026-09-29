@@ -1,5 +1,29 @@
 # Tasks
 
+## CER-M3-001 — AI quota source reconnaissance and first-provider decision
+
+Status: DONE
+Owner: Codex (sole repository writer; read-only provider specialists)
+Priority: P0
+Depends on: M0/M1/M2 DONE; model-routing PR #41 integrated
+Branch: `codex/CER-M3-001-quota-research`
+Base: `730ae6c5d518c812213c631eab4129c4bcbea1f6` (`main == origin/main`, clean tree before claim)
+
+Scope: evidence for Claude/Codex/Antigravity sources, semantics, privacy and validation; minimal documentary contract and CER-M3-002 ordering. No provider implementation, packages, UI or M4. Canonical findings belong to the quota reference matrix and provider contract.
+
+Acceptance: sourced matrix, explicit uncertainty, minimum first-provider MetricIds and conformance/live test plan; independent semantic/security review; one research PR, CI, squash integration and clean local checkout.
+
+Result: three-provider sourced matrix and pinned comparisons complete; D-023 selects Codex via the official-client-observed read-only usage GET. Six prospective MetricIds and source/identity/auth/cache/error/live-validation contract are documentary only. No provider implemented. Final independent GPT-6.1 Sol Medium source/semantic/security review PASS, including the pinned Antigravity 1.1.11 quota command evidence; local Release build and 74 existing tests PASS. PR integration is subject to required build/hygiene and squash protection. M3 ACTIVE / INCOMPLETE.
+
+## CER-M3-002 — Codex quota vertical slice
+
+Status: NEXT / NOT STARTED
+Owner: Unclaimed
+Priority: P0
+Depends on: CER-M3-001
+
+Scope: the ordinary Codex bucket, read-only standard ChatGPT file-auth source, six minimum metrics and conformance/live acceptance from `docs/PROVIDERS_AI_QUOTAS.md`. Follow D-023; no generic AI framework, extra billing/model buckets or broader auth/routing support without evidence. This session must not start implementation.
+
 ## CER-M2-003 — selected game/session summary and M2 exit
 
 Status: DONE
