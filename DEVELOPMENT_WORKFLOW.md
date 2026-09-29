@@ -80,15 +80,22 @@ Model routing is operational and may change.
 Current default idea:
 
 ```text
-high-throughput bounded implementation
+default write/execution owner
 → GPT-6 Luna Max or equivalent
 
-critical architecture / concurrency / security / review
-→ strongest available reasoning model
+strong specialist / independent review
+→ GPT-5.6 Sol Medium or equivalent
 
-independent second worker / review
+exceptional unresolved high-risk reasoning
+→ Sol High, scoped to the hard question
+
+independent non-overlapping second worker / review
 → Antigravity
 ```
+
+Task duration, token volume, native code or repeated iterations do not justify escalation by themselves. Start strong review/architecture work at Medium; use High only for a concrete unresolved technical risk such as subtle ABI behavior, high-impact concurrency/security, contradictory evidence or a durable architectural decision that remains unclear.
+
+When Luna owns the task, Sol subagents are read-only by default. Once a hard reasoning question is settled, implementation returns to Luna unless another concrete escalation reason exists.
 
 Judge models by observed reliability and quota consumption, not brand loyalty.
 
