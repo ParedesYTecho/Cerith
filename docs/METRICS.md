@@ -205,6 +205,14 @@ PresentMon v2.6.0's `pmPollDynamicQuery` output count is a per-poll result-row c
 
 No target PID and a terminated target publish `Stopped` without values. A selected target with no usable display sample, including the API's zero/no-frame result, publishes `Unavailable` without values. An absent service or capability is also unavailable; operational API failures and invalid/non-finite values publish `Error` with a short sanitized code. No missing frame or error is converted to FPS or frame-time zero. Target selection is the explicit ephemeral `--pid` input; process paths, titles, command lines and PID values are not emitted by Cerith. PresentMon's ETW flush period is left unchanged.
 
+## Selected game/session summary (CER-M2-003)
+
+`game.session.application` is a string (`text`, no unit) describing only the one process selected by the explicit `--pid` argument. Windows `Process.ProcessName` supplies the executable name without its path or `.exe` extension ([Microsoft documentation](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.processname?view=net-10.0)). The snapshot source is `Windows`. Cerith does not publish the PID, executable path, command line, window title, package identity, process tree, or an automatically discovered process. WidgetHost subscribes by this MetricId and renders it as `Selected game`.
+
+The session is the lifetime of that selected operating-system process, not the lifetime of a PresentMon capture. TelemetryService retains the same `Process` object/handle across capture close/retry and checks that target before and after polling. It never binds a later process that happens to reuse the numeric PID. No `--pid`, an initially missing target, or observed target exit publishes valueless `Stopped` for this metric and the gaming metrics. While the process is alive and its name is available, this metric remains `Fresh`/`Measured` even when PresentMon is unavailable, has no displayed frames, or is retrying. Frame availability and session identity therefore remain independent.
+
+If Windows cannot read the process name, this metric is `Unavailable` without a value; malformed name data is `Error/invalid_application_name`, and other metadata failures are `Error/application_metadata_failure`. Failure to acquire the initial process handle is terminal for that configured `--pid`: the session publishes `Error/target_identity_failed` until TelemetryService restarts, because a later PID lookup cannot prove it found the same process. A later process-status query failure is `Error/target_status_failed` while the retained handle remains the identity anchor. These states do not convert a readable process name or valid frame metrics into zero. The metric uses the existing MetricBus, Named Pipe v1 and MetricId-only WidgetHost path; Core and the wire protocol do not change.
+
 
 ## Future gaming metric separation (not implemented)
 

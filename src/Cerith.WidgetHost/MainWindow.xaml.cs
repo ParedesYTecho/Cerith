@@ -23,7 +23,8 @@ public sealed partial class MainWindow : Window
         new("gpu.0.vram.used.bytes"), new("gpu.0.vram.total.bytes"), new("gpu.0.fan.rpm"),
         new("storage.0.usage"), new("storage.0.total.bytes"), new("storage.0.free.bytes"),
         new("network.0.download.bytes_per_second"), new("network.0.upload.bytes_per_second"), new("network.0.usage"),
-        new("game.fps.display"), new("game.frametime.display"), new("game.fps.display.p01")
+        new("game.fps.display"), new("game.frametime.display"), new("game.fps.display.p01"),
+        new("game.session.application")
     ];
     private readonly string[] _values = Enumerable.Repeat("Connecting…", MetricIds.Length).ToArray();
     private readonly CancellationTokenSource _stop = new();
@@ -110,6 +111,7 @@ public sealed partial class MainWindow : Window
                 value.AsDouble().ToString("F2", CultureInfo.InvariantCulture) + " ms",
             19 when value.Kind == MetricValueKind.Double =>
                 value.AsDouble().ToString("F1", CultureInfo.InvariantCulture) + " FPS",
+            20 when value.Kind == MetricValueKind.String => value.AsString(),
             _ => "unavailable"
         };
         return snapshot.State == MetricState.Stale && formatted != "unavailable" ? formatted + " (stale)" : formatted;
@@ -127,7 +129,8 @@ public sealed partial class MainWindow : Window
             $"Net 0  ↓ {_values[14]} · ↑ {_values[15]} · {_values[16]}\n" +
             $"Displayed FPS    {_values[17]}\n" +
             $"Displayed frame time    {_values[18]}\n" +
-            $"Displayed FPS P1 (10 s)    {_values[19]}";
+            $"Displayed FPS P1 (10 s)    {_values[19]}\n" +
+            $"Selected game    {_values[20]}";
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
