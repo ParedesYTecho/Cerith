@@ -24,21 +24,22 @@ effort = Medium
 route  = native Codex
 ```
 
-Route changes the surrounding harness, context surface, tools, quota path and reliability characteristics; it does not by itself define a different model family.
+Route changes the surrounding harness, context surface, latency, tools and quota path; it does not by itself define a different model family.
 
 Task duration, token volume or the number of iterations are not reasons by themselves to escalate.
 
-## Default write / execution owner
+## Default: Luna Max native
 
-Current default:
+Current default for both the root worker and ordinary subagents:
 
 ```text
 GPT-6 Luna Max
 route = native Codex
 ```
 
-Use Luna Max as the normal sole repository write owner for:
+Use Luna Max by default for:
 
+- repository write ownership;
 - implementation;
 - deterministic tests;
 - normal debugging and probe loops;
@@ -46,15 +47,17 @@ Use Luna Max as the normal sole repository write owner for:
 - CI/rebase/fix loops;
 - straightforward refactors;
 - documentation and repository maintenance;
-- long-running bounded tasks.
+- broad-context work;
+- long-running bounded tasks;
+- ordinary research/review subagents where Luna is sufficient.
 
 A task may remain with Luna Max for hours if it is progressing correctly.
 
 Do not escalate merely because the task is slow, native, large, or requires repeated iterations.
 
-## Default specialist / reviewer
+## Higher-quality bounded worker: GPT-5.6 Sol Web High
 
-Current preferred specialist path:
+Use:
 
 ```text
 GPT-5.6 Sol
@@ -62,39 +65,42 @@ effort = High
 route = Web
 ```
 
-Use **GPT-5.6 Sol Web High** freely for specific, bounded, read-only specialist work such as:
+as a **selective higher-quality worker/subagent**, not as the default reviewer for every task.
 
-- hostile code review;
-- semantic/API interpretation;
-- upstream/source review;
-- bounded architecture questions;
-- concurrency/IPC review;
-- security review;
-- native interop reasoning;
-- provider-contract review;
-- second opinions;
-- pre-implementation design gates;
-- focused post-implementation review.
+Choose Sol Web High when:
 
-Do not ration this route merely to preserve native Codex quota. The purpose of this routing preference is to obtain strong focused reasoning without spending the native worker path unnecessarily.
+- the task is short or tightly bounded;
+- stronger reasoning than a Luna subagent is useful;
+- the required context fits comfortably in the smaller Web context surface;
+- slower turnaround is acceptable;
+- using native GPT-6.1 Sol would be unnecessary.
 
-Keep Web specialist prompts narrow. Prefer a compact evidence packet:
+Good uses include:
+
+- a focused hostile review of a risky diff;
+- one semantic/API question;
+- a bounded architecture trade-off;
+- a specific concurrency/security question;
+- upstream/source interpretation;
+- one difficult bug hypothesis;
+- an independent second opinion.
+
+Do not route broad, long-running or context-heavy work to Sol Web High merely because it is a stronger reasoner. Its route is slower and has less usable context than the preferred native worker path.
+
+Keep Web prompts narrow and evidence-driven:
 
 ```text
-goal
-+ exact question
+exact question
 + relevant diff
-+ relevant contracts/files
++ minimum contracts/files
 + runtime/test evidence
 ```
 
-rather than whole-repository or whole-history dumps.
+When Luna owns the repository task, Sol Web subagents are read-only by default unless ownership is explicitly reassigned under the one-writer rule.
 
-Web specialists are **read-only by default** when Luna Max owns the repository task.
+The Web route is development tooling, not Cerith runtime architecture, and its availability or usage accounting is not a product guarantee.
 
-The Web route is development tooling, not Cerith runtime architecture, and its availability/usage accounting is not a product guarantee.
-
-## Native extra reasoning tier
+## Extra native reasoning tier: GPT-6.1 Sol Medium
 
 Use:
 
@@ -104,36 +110,39 @@ effort = Medium
 route = native Codex
 ```
 
-only when the task genuinely needs an **extra native reasoning gate** beyond the normal Luna + Sol Web High workflow.
+only when the work genuinely needs the **extra native reasoning level**.
 
 Typical reasons:
 
-- Web reviewers disagree on a material issue;
+- the problem is too context-heavy for the Web route;
+- latency/interaction characteristics make Web impractical;
+- the native harness/tool context materially matters;
+- Luna plus a bounded Sol Web pass did not resolve a material issue;
+- reviewers disagree on a high-impact question;
 - a durable architectural decision remains unresolved;
-- subtle native ABI/interoperability behavior needs a stronger native pass;
-- high-impact concurrency or security reasoning remains uncertain;
-- runtime evidence contradicts source/API expectations;
-- the native harness/context/tool boundary itself matters to the reasoning;
-- a critical final review warrants an independent native model pass.
+- subtle native ABI/interoperability behavior remains uncertain;
+- high-impact concurrency/security reasoning is still unclear;
+- runtime evidence contradicts source/API expectations.
 
-Use it on the specific difficult question or review gate, not automatically on the entire mission.
+Use 6.1 Sol Medium on the specific difficult question or gate, not automatically on the whole mission.
 
-After the extra reasoning point is resolved, implementation normally returns to Luna Max.
+After that reasoning point is resolved, implementation normally returns to Luna Max.
 
 ## Higher tiers
 
 Do not automatically escalate to GPT-6.1 Sol High/xHigh/Max, GPT-6 Astra or another premium tier.
 
-Those require an explicit per-task decision because the normal routing is:
+Those require an explicit per-task reason.
+
+Current preferred pattern:
 
 ```text
 Luna Max native
-→ GPT-5.6 Sol Web High for focused specialist/review work
-→ GPT-6.1 Sol Medium native only when an extra native tier is justified
+→ stay on Luna for normal work and normal subagents
+→ use GPT-5.6 Sol Web High selectively for short bounded work needing more reasoning
+→ use GPT-6.1 Sol Medium native only when a genuinely extra native tier is needed
 → Luna Max implements/fixes
 ```
-
-If that hierarchy is insufficient, explain the concrete unresolved risk before choosing a higher tier.
 
 ## Ownership
 
@@ -151,10 +160,10 @@ Optimize **quality per scarce native quota**, not minimum tokens at any cost.
 
 Prefer:
 
-- Luna Max for throughput and execution;
-- Sol Web High for strong bounded thinking/review;
-- GPT-6.1 Sol Medium native for genuinely extra reasoning.
+- Luna Max for default execution and ordinary subagents;
+- Sol Web High when a short bounded task deserves more reasoning than Luna but does not justify GPT-6.1 Sol native;
+- GPT-6.1 Sol Medium native for genuinely extra reasoning or when Web is the wrong route because of context, latency or harness needs.
 
-Do not downgrade a high-risk review to a weak model merely to save quota.
+Do not spend GPT-6.1 Sol native on a focused question that Sol Web High can answer well.
 
-Do not spend the native extra tier on mechanical work that Luna can perform reliably.
+Do not force Sol Web High onto broad/context-heavy work where Luna is the better operational worker.
