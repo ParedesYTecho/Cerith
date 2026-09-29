@@ -117,7 +117,7 @@ Audit del transitivo `Mono.Posix.NETStandard 1.0.0`: el `.nupkg` local firmado p
 
 ## D-020 — PresentMon displayed telemetry boundary (CER-M2-001)
 
-Status: implemented for Advisor review.
+Status: Advisor PASS; integrated by product PR #31 (squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf`).
 
 Use the official PresentMon Service/API, pinned to upstream v2.6.0. The local Service/API runtime reported API 3.4.0. Cerith tracks one explicit `--pid`, queries only average displayed FPS and displayed frame time, and publishes through the existing MetricBus, Named Pipe v1 and MetricId-only WidgetHost. A frame query validates that displayed samples continue; no-frame/zero results are Unavailable, process exit is Stopped, and operational failures are valueless Error snapshots with sanitized codes. Multiple swap chains produce `multiple_swap_chains`; this baseline does not choose or combine them. Exact metric semantics are in `docs/METRICS.md`.
 

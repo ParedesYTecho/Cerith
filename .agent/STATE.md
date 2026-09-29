@@ -2,9 +2,9 @@
 
 Proyecto: Cerith
 Nombre: provisional
-Hito: M1 — Hardware MVP DONE; CER-M2-001 lista para revisión del Advisor; M2 incompleto
+Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; CER-M2-001 DONE; M2 INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M2-001 — READY FOR ADVISOR REVIEW en `codex/CER-M2-001-presentmon-display`, basado en `main` `89ddd69c13affd76b3b6085a25753bb7b83b0a3f`; la corrección de Advisor parte de `c63e25110e4c18be3a6698e58b80cbbd4f411dba`. M0 y M1 completados; M2 no está completo y CER-M2-002 no ha comenzado.
+Estado: CER-M2-001 DONE. El head de producto aprobado `086db95e29124900854e29d2b70caa16b3f43889` se integró mediante PR #31 y squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf`. M0 y M1 están completados; M2 sigue INCOMPLETE y CER-M2-002 es NEXT / NOT STARTED.
 
 ## Listo
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-M0 — Foundation DONE tras Advisor y PR #20. CER-M1-001/002/003/004 están DONE e integradas en `main`. CER-M1-004 recibió PASS final del Advisor; PR #29 pasó Build and Test y Repository Quality (CodeQL SKIPPED según política) y se integró por squash en `59ecb648a9f714376578fc16cdaa446571bd4874`. M1 — Hardware MVP DONE tras la auditoría de `docs/ROADMAP.md`. CER-M2-001 implementa FPS y frame time mostrados con PresentMon oficial y ha pasado Release build, suites y validación D3D11 real por pipe y WidgetHost. Una ejecución same-PID observó `Fresh` antes y después de la fase de dos cadenas, con estados `Error/multiple_swap_chains`, `Unavailable` y `Fresh` intercalados durante esa fase. El rerun instrumentado confirmó `Present` exitosos en ambas cadenas, pero no reprodujo esa secuencia; el count de PresentMon es por filas de consulta, no por objetos activos. Los detalles y límite están en `.agent/HANDOFF.md`. DLL y licencia MIT están presentes en build/publish. Queda para revisión del Advisor. M2 sigue incompleto y CER-M2-002 no iniciada. La prueba elevada del servicio/LHM 0.9.6 descubrió cuatro Storage y publicó usage/total/free coherentes `Fresh`/`Measured` por IPC; sin elevación descubrió cero en esta máquina. Una señal de consola dirigida produjo `TelemetryService stopped.` y exit code 0. Read/write throughput, identidad física persistente y algunas topology changes siguen fuera del baseline. Los fallos internos de LHM pueden ser invisibles para Cerith.
+M0 — Foundation DONE tras Advisor y PR #20. CER-M1-001/002/003/004 están DONE e integradas en `main`. CER-M1-004 recibió PASS final del Advisor; PR #29 pasó Build and Test y Repository Quality (CodeQL SKIPPED según política) y se integró por squash en `59ecb648a9f714376578fc16cdaa446571bd4874`. M1 — Hardware MVP DONE tras la auditoría de `docs/ROADMAP.md`. CER-M2-001 DONE: Advisor PASS; PR #31 y Build and Test/Repository Quality PASS, CodeQL SKIPPED según D-013; squash `9902cc19ff0f2911ab4ee0ece2337d12b1d9edcf`. El árbol integrado coincide con el head aprobado `086db95e29124900854e29d2b70caa16b3f43889`. M2 sigue INCOMPLETE y CER-M2-002 es NEXT / NOT STARTED. Se conservan las limitaciones de PresentMon documentadas en `.agent/HANDOFF.md`. La prueba elevada del servicio/LHM 0.9.6 descubrió cuatro Storage y publicó usage/total/free coherentes `Fresh`/`Measured` por IPC; sin elevación descubrió cero en esta máquina. Una señal de consola dirigida produjo `TelemetryService stopped.` y exit code 0. Read/write throughput, identidad física persistente y algunas topology changes siguen fuera del baseline. Los fallos internos de LHM pueden ser invisibles para Cerith.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
