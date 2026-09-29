@@ -75,37 +75,39 @@ No two agents should simultaneously mutate the same files.
 
 ## Model routing
 
-Model routing is operational and may change.
+Model routing is operational and may change. The canonical policy is `.agent/MODEL_ROUTING.md`.
 
-Current default idea:
+Keep **model**, **reasoning effort** and **route** separate. `Web` is a route, not a model family.
+
+Current working policy:
 
 ```text
-default write/execution owner
+default execution / sole write owner
 → GPT-6 Luna Max, native Codex
 
-focused strong specialist / independent review
-→ GPT-5.6 Sol, High effort, Web route
+short bounded work needing stronger reasoning than Luna
+→ GPT-5.6 Sol High, Web route
 
-extra native reasoning gate when genuinely needed
-→ GPT-6.1 Sol, Medium effort, native Codex
+substantial/context-heavy strong reasoning gate
+→ GPT-6.1 Sol Medium, native Codex
 
-independent non-overlapping second worker / review
-→ Antigravity
+concrete unresolved critical question
+→ GPT-6.1 Sol High, native Codex
 ```
 
-Treat model, effort and route as separate dimensions. `Web` is a route, not a separate model family.
+Luna remains the normal executor even for long-running work.
 
-Use GPT-5.6 Sol Web High freely for bounded, read-only specialist work: hostile review, semantic/API analysis, focused architecture, security/concurrency review and second opinions. Keep its context packet narrow and evidence-driven.
+Sol is selected because the **reasoning risk** justifies it: architecture/contracts, concurrency/lifecycle, IPC/security, native ABI/interop, subtle provider semantics, difficult contradictory debugging or hostile review of high-risk changes. Do not weaken those gates merely to save quota.
 
-Use GPT-6.1 Sol Medium native only when an extra native reasoning tier is justified: conflicting reviews, unresolved durable architecture, subtle native ABI/interop, high-impact security/concurrency, contradictory runtime evidence, or reasoning that materially depends on the native harness/tool context.
+The Web and native Sol routes are alternatives chosen from task shape, not a mandatory escalation chain. Sol Web High is useful for short, tightly bounded, low-context work where slower turnaround is acceptable. GPT-6.1 Sol Medium native is appropriate when stronger reasoning also needs substantial context, native tools/harness or a critical review surface.
 
-Task duration, token volume, native code or repeated iterations do not justify escalation by themselves. After a difficult reasoning question is settled, implementation returns to Luna unless another concrete escalation reason exists.
+Task duration, token volume, native code, retry count or a first failed probe are not escalation reasons by themselves. Once a difficult reasoning point is settled, implementation normally returns to Luna.
 
-Do not automatically escalate to GPT-6.1 Sol High/xHigh/Max, GPT-6 Astra or another premium tier; require an explicit per-task reason.
+Independent reviewer/specialist agents are read-only by default when Luna owns the repository task.
 
-When Luna owns the task, specialist/reviewer subagents are read-only by default.
+Root model/effort/route are launcher choices. Do not assume that naming a different root model inside a task prompt changes the already selected root session model.
 
-Judge routes and models by observed reliability, context fit and quota consumption, not brand loyalty.
+Judge routing by observed reliability, technical risk, context fit, latency and quota consumption.
 
 ## Graphify
 
