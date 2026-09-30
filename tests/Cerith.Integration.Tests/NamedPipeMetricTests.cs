@@ -4,6 +4,7 @@ using System;
 using System.Buffers.Binary;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -198,6 +199,91 @@ public sealed class NamedPipeMetricTests
         var unlimited = await MetricIpcProtocol.ReadSnapshotAsync(missing);
         Assert.IsNull(unlimited.Value);
         Assert.AreEqual(MetricState.Unlimited, unlimited.State);
+    }
+
+    [TestMethod]
+    public async Task CodexQuotaIdsAndTypedValuesTraverseTheExistingNamedPipeContract()
+    {
+        string[] ids =
+        [
+            "ai.codex.quota.primary.remaining",
+            "ai.codex.quota.secondary.remaining",
+            "ai.codex.quota.primary.reset",
+            "ai.codex.quota.secondary.reset",
+            "ai.codex.quota.primary.duration",
+            "ai.codex.quota.secondary.duration"
+        ];
+        MetricValue[] values =
+        [
+            MetricValue.From(62.75),
+            MetricValue.From(87.5),
+            MetricValue.From(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+            MetricValue.From(new DateTimeOffset(2030, 1, 8, 0, 0, 0, TimeSpan.Zero)),
+            MetricValue.From(TimeSpan.FromHours(5)),
+            MetricValue.From(TimeSpan.FromDays(7))
+        ];
+        MetricValueKind[] kinds =
+        [
+            MetricValueKind.Double, MetricValueKind.Double,
+            MetricValueKind.DateTimeOffset, MetricValueKind.DateTimeOffset,
+            MetricValueKind.TimeSpan, MetricValueKind.TimeSpan
+        ];
+        var registry = new MetricRegistry();
+        for (var i = 0; i < ids.Length; i++)
+            Assert.IsTrue(registry.TryRegister(new MetricDescriptor(new MetricId(ids[i]), ids[i],
+                i < 2 ? "quota_remaining" : i < 4 ? "timestamp" : "duration", kinds[i], unit: i < 2 ? "%" : null)));
+        Assert.AreEqual(6, registry.Count);
+
+        using var bus = new MetricBus(1);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var pipeName = Name();
+        var server = new NamedPipeMetricServer(pipeName, bus);
+        var serverTask = server.RunAsync(stop.Token);
+        var clients = new NamedPipeMetricClient?[ids.Length];
+        var readers = new System.Collections.Generic.IAsyncEnumerator<MetricSnapshot>?[ids.Length];
+        var pending = new Task<bool>[ids.Length];
+        try
+        {
+            for (var i = 0; i < ids.Length; i++)
+            {
+                var client = new NamedPipeMetricClient(pipeName);
+                clients[i] = client;
+                await client.ConnectAsync(new MetricId(ids[i]), stop.Token);
+                var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+                readers[i] = reader;
+                pending[i] = reader.MoveNextAsync().AsTask();
+            }
+
+            for (var i = 0; i < ids.Length; i++)
+                await bus.PublishAsync(new MetricSnapshot(new MetricId(ids[i]), values[i],
+                    new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero), MetricState.Fresh,
+                    MetricConfidence.Measured, "Codex.Usage.ReadOnly.v1"), stop.Token);
+
+            Assert.IsTrue((await Task.WhenAll(pending)).All(result => result));
+            for (var i = 0; i < ids.Length; i++)
+            {
+                var snapshot = readers[i]!.Current;
+                var value = snapshot.Value!.Value;
+                Assert.AreEqual(ids[i], snapshot.MetricId.Value);
+                Assert.AreEqual(kinds[i], value.Kind);
+                Assert.AreEqual(values[i], value);
+                Assert.AreEqual(MetricState.Fresh, snapshot.State);
+                Assert.AreEqual(MetricConfidence.Measured, snapshot.Confidence);
+                Assert.AreEqual("Codex.Usage.ReadOnly.v1", snapshot.Source);
+            }
+        }
+        finally
+        {
+            stop.Cancel();
+            try { await serverTask.WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (OperationCanceledException) { }
+            catch (IOException) { }
+            for (var i = 0; i < ids.Length; i++)
+            {
+                if (readers[i] is { } reader) await reader.DisposeAsync();
+                if (clients[i] is { } client) await client.DisposeAsync();
+            }
+        }
     }
 
     [TestMethod]

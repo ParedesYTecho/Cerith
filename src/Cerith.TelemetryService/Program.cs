@@ -34,6 +34,7 @@ internal static class Program
         var registry = new MetricRegistry();
         using var provider = new HardwareTelemetryProvider(registry, bus);
         using var gamingProvider = new PresentMonTelemetryProvider(registry, bus, processId);
+        using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
@@ -46,13 +47,15 @@ internal static class Program
         var publisher = PublishAsync(provider, first, stop.Token);
         await gamingProvider.PublishNextAsync(stop.Token);
         var gamingPublisher = PublishGamingAsync(gamingProvider, stop.Token);
+        var codexQuotaRunner = codexQuotaProvider.RunAsync(stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
-            (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)"));
+            (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
+            "; Codex quota polling enabled for standard file auth");
 
-        try { await Task.WhenAny(server, publisher); }
+        try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
-        try { await Task.WhenAll(server, publisher, gamingPublisher); }
+        try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
     }

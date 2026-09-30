@@ -1,6 +1,6 @@
 # AI Quota Reference Matrix
 
-Status: CER-M3-001 research; no AI provider implemented. Evidence checked 2026-09-29. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
+Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation is local and live acceptance is pending. No provider has completed acceptance. Evidence checked 2026-09-29. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
 
 ## Purpose
 
@@ -9,7 +9,7 @@ Evidence classes: **D** = official documented behavior; **O** = official client/
 | Provider | Official source to investigate | Reference implementations | Initial Cerith status |
 |---|---|---|---|
 | Claude | Official account/OAuth/CLI behavior | CodexBar, OpenUsage, others | Not implemented |
-| Codex | Official authenticated usage source / CLI | CodexBar, OpenUsage, TokenTracker | Not implemented |
+| Codex | Official authenticated usage source / CLI | CodexBar, OpenUsage, TokenTracker | Implemented locally; acceptance pending |
 | Antigravity | Official local app/language server quota source | CodexBar, OpenUsage, TokenTracker | Not implemented |
 | Copilot | Official GitHub/Copilot usage surfaces | CodexBar, TokenTracker | Future |
 | Cursor | Official usage/billing surfaces | CodexBar, TokenTracker | Future |

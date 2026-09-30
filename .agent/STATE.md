@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M3-001 DONE (research/contract only); review independiente GPT-6.1 Sol Medium PASS. Bootstrap desde `main == origin/main` en `730ae6c5d518c812213c631eab4129c4bcbea1f6`, PR #41 integrado y working tree limpio antes del claim. La matriz canónica es `docs/AI_QUOTA_REFERENCE_MATRIX.md`; el contrato y plan del primer slice están en `docs/PROVIDERS_AI_QUOTAS.md`. D-023 elige Codex para CER-M3-002 (NEXT / NOT STARTED); ningún provider AI está implementado. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE.
+Estado: CER-M3-001 DONE; CER-M3-002 ACTIVE en codex/CER-M3-002-codex-quota, basado en 9b3d78db99fac5b4967479a9ab9b74259801a4e3. Codex ordinary quota provider y seis métricas implementados localmente; Release build y suites locales PASS (Core 39, Telemetry 54, Integration 10). Graphify refrescado: 838 nodos, 2034 aristas, 81 comunidades; integridad PASS. La comparación oficial /status/UI y el monitor independiente están pendientes: `openai_base_url` está configurado y no se envió una petición. CI del PR pendiente. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE. Contrato y evidencia: docs/PROVIDERS_AI_QUOTAS.md y docs/AI_QUOTA_REFERENCE_MATRIX.md.
 
 ## Listo
 

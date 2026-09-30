@@ -68,6 +68,8 @@ The additions are two field pairs and two individual fields; they specify metada
 
 Identity strategy: HMAC-SHA-256 over a length-delimited tuple `(provider, stable user subject, selected account/workspace)` with an installation key protected by Windows credential facilities. Keep the pseudonym out of ordinary logs/history/IPC; normalized cache is in-memory only for CER-M3-002. Reinstallation/key rotation invalidates continuity. Use only the minimum subject/workspace claims in memory; decoding an official local token is identity partitioning, not independent signature validation or permission to contact arbitrary URLs. Compare response account and user identifiers when present and reread the auth owner before publication; mismatches/unknown ownership discard the response. If a source cannot supply a stable identity, no cross-session cache is allowed. Never hash the access/refresh token as account identity: rotation is not account switching.
 
+Provider disposal cancels in-flight polling/publication and clears cached quota values and auth references; no normalized cache is written to disk.
+
 ## Semantic distinctions
 
 Never merge:
@@ -174,7 +176,7 @@ TTL
 
 Account/source changes invalidate incompatible cache.
 
-## CER-M3-002 — Codex first vertical slice (design only)
+## CER-M3-002 — Codex first vertical slice (implemented locally; live acceptance pending)
 
 D-023 selects a single read-only acquisition lifecycle in TelemetryService for the ordinary ChatGPT-backed Codex bucket. Use `GET https://chatgpt.com/backend-api/wham/usage`, an **official-client-observed, undocumented backend endpoint**, with the existing official local access token and selected account header held only in memory. The public official app-server schema is the semantic cross-check, not a production dependency on this chat's tools. The choice and rejected alternatives are substantiated in the reference matrix.
 
@@ -195,7 +197,9 @@ Initial capability is standard ChatGPT file auth under the effective official `C
 
 All six use snapshot Source `Codex.Usage.ReadOnly.v1`; measured valid fields are Fresh/Measured. A verified source percentage is sufficient for its complement; an absolute token/message denominator is neither provided nor invented. Zero remaining is real exhaustion, not Error. No numeric clamping, no slot swapping, no fallback 300/10080 minutes, no extrapolation of consumption. Optional fields are independent: absent reset/duration is Unavailable/Unknown for that metric, while a valid percentage can remain Fresh. A malformed supplied field is Error/Unknown for that metric. An absent window makes its family Unavailable/Unknown. Invalid container/schema makes affected families Error/schema_invalid. Invalid percent is Error/invalid_quota; invalid timestamp or duration uses invalid_reset / invalid_duration. Do not reuse a previous field to fill a missing field in a newly successful response.
 
-Reset is a reported future boundary, not proof of a sliding-window algorithm, local midnight or an automatic refill. A supplied valid reset already elapsed at acquisition makes that window family Unavailable/reset_elapsed pending a new valid observation. Crossing reset invalidates cached family values; never publish an assumed 100%. If reset_after_seconds disagrees with reset_at, preserve reset_at and flag source_disagreement; do not silently reconstruct it from the countdown. Small countdown differences due to request latency must be investigated as timing, not averaged.
+Reset is a reported future boundary, not proof of a sliding-window algorithm, local midnight or an automatic refill. A supplied valid reset already elapsed at acquisition makes that window family Unavailable/reset_elapsed pending a new valid observation. Crossing reset invalidates cached family values; never publish an assumed 100%. If reset_after_seconds disagrees with reset_at, preserve reset_at and flag source_disagreement; do not silently reconstruct it from the countdown. The implementation allows only request round-trip duration plus one second for countdown quantization; larger disagreement remains flagged for investigation, never averaged.
+
+A malformed reset_after_seconds does not replace or erase a valid reset_at; the reset metric retains that expiry boundary and reports invalid_reset_after.
 
 `plan_type` is subscription metadata; credits.has_credits, credits.balance and credits.unlimited concern credits only. Additional metered buckets, spend controls, usage activity and reset-credit inventories are recorded as out-of-slice capabilities, not exported as these six metrics. Remaining percentage alone does **not** promise a request can run: `rate_limit.allowed`, `limit_reached`, spend-control restrictions and additional limits can block usage. This slice is informational quota telemetry, not admission control. In particular credits.unlimited cannot yield quota Unlimited.
 
@@ -216,6 +220,8 @@ These are Cerith design defaults, **not upstream polling guarantees**. One reque
 | Owner/workspace/source change or removal | Clear all prior families immediately, cancel obsolete request, discard late response; publish new-owner Unavailable until success. Same-owner token rotation rereads the credential without claiming a new account. |
 | Disabled/shutdown | Stopped/Unknown without values; clear in-memory cache. |
 
+MetricBus v1 has bounded subscriber queues but no retract or acknowledgement. A snapshot accepted into a queue before the provider observes an account change can still be read afterward; it is a pre-transition publication. A blocked publication and any in-flight response are canceled after the change is observed, and no old-owner result is queued afterward. Consumers that require a hard account boundary must reset their subscription when the selected owner changes.
+
 Errors/backoff are acquisition policy, not widget polling. Do not claim durable account metadata already exists on the v1 wire. WidgetHost continues to depend only on MetricId.
 
 ### Tests required before implementation acceptance
@@ -232,7 +238,7 @@ Create hand-built sanitized fixtures with origin URL/revision, capture date, syn
 - Account A→B, workspace change, auth removal, same-owner token rotation, owner change while request is in flight, response/local identity disagreement and late completions; no A value may reach B's subscription or cache. Scope/source/duration changes invalidate incompatible families.
 - Source disagreement is a failure to investigate, not a tolerance that averages two percentages. Fixtures exercise percentage/reset/identity disagreement with explicit sanitized outcome.
 
-Parser tests alone do not accept CER-M3-002. Live validation must compare the same account/workspace and near-simultaneous observation with the official Codex `/status` or official account usage UI, then one independently implemented monitor as corroboration. Match reported duration/bucket/used-vs-remaining/reset, account for UI rounding (at most its displayed precision), record timestamps/version and sanitized values only. Prefer a quiet account and repeat once after genuine official-client activity or a natural reset; never generate a paid workload just to test, buy/consume a reset or refresh credentials on Cerith's behalf. Source or identity mismatch blocks acceptance until explained. A screenshot containing private data is not a fixture. The M3-001 HTTP 200 probe establishes access/shape on one Windows host only; it does not satisfy this future live cross-validation gate or validate all plans/auth modes.
+Parser and provider tests alone do not accept CER-M3-002. Live validation must compare the same account/workspace and near-simultaneous observation with the official Codex `/status` or official account usage UI, then one independently implemented monitor as corroboration. Match reported duration/bucket/used-vs-remaining/reset, account for UI rounding (at most its displayed precision), record timestamps/version and sanitized values only. Prefer a quiet account and repeat once after genuine official-client activity or a natural reset; never generate a paid workload just to test, buy/consume a reset or refresh credentials on Cerith's behalf. Source or identity mismatch blocks acceptance until explained. A screenshot containing private data is not a fixture. The M3-001 HTTP 200 probe establishes access/shape on one Windows host only; it does not satisfy this live cross-validation gate or validate all plans/auth modes.
 
 ## UI contract
 

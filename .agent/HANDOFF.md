@@ -1,4 +1,22 @@
-# Handoff — CER-M3-001 quota research and source contract
+# Handoff — CER-M3-002 Codex quota vertical slice
+
+Status: ACTIVE / INCOMPLETE. Implementation and local conformance tests pass. Live official status or usage-UI comparison and independent-monitor corroboration are pending. The current Codex configuration contains an `openai_base_url` override, so Cerith sent no live request; the override value is not recorded and user config was not changed. PR CI is pending.
+
+## Implementation
+
+TelemetryService registers and publishes the six ordinary Codex quota metrics through the existing MetricRegistry, MetricBus and Named Pipe contracts. The provider reads only standard ChatGPT file auth, uses the fixed HTTPS usage endpoint, rejects custom/managed routing and redirects, bounds auth/body reads, checks response and local identity, and never refreshes credentials. Parser, owner-generation cancellation, cache expiry, 429 backoff, slow-subscriber behavior and valueless Stopped shutdown publication have offline coverage. Core, IPC and WidgetHost contracts were not changed. MetricBus v1 cannot retract a snapshot already queued before an owner switch; the blocked publish and late HTTP result are canceled, and subscribers needing a strict account boundary must reset.
+
+## Verification
+
+Release solution build PASS (0 warnings/errors). Core 39/39, Telemetry 54/54 and Integration 10/10 PASS. `git diff --check` and repository filename hygiene PASS (83 tracked/untracked paths checked). Independent read-only security/lifecycle review PASS with no remaining actionable findings. Graphify code and document graph refreshed to 838 nodes/2,034 edges/81 communities; integrity check found no missing, dangling or self-loop edges.
+
+## Remaining acceptance
+
+After Codex is using the standard ChatGPT route, run a bounded live read compared with the official status/usage UI for the same account/workspace and an independently implemented monitor. Record timestamps and sanitized comparison results only. Obtain PR CI and the required review/integration boundary. Do not claim CER-M3-002 DONE or close M3 until those gates pass.
+
+---
+
+# Previous handoff — CER-M3-001 quota research and source contract
 
 Status: CER-M3-001 DONE (research/contract). M0/M1/M2 DONE; M3 ACTIVE / INCOMPLETE; CER-M3-002 NOT STARTED. No AI provider implementation, source file, package, UI, M4 or legacy quota code was added.
 

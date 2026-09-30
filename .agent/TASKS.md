@@ -17,12 +17,18 @@ Result: three-provider sourced matrix and pinned comparisons complete; D-023 sel
 
 ## CER-M3-002 — Codex quota vertical slice
 
-Status: NEXT / NOT STARTED
-Owner: Unclaimed
+Status: ACTIVE
+Owner: Codex (sole repository write owner)
 Priority: P0
 Depends on: CER-M3-001
+Branch: `codex/CER-M3-002-codex-quota`
+Base: `9b3d78db99fac5b4967479a9ab9b74259801a4e3` (`main == origin/main`, clean working tree before claim)
 
-Scope: the ordinary Codex bucket, read-only standard ChatGPT file-auth source, six minimum metrics and conformance/live acceptance from `docs/PROVIDERS_AI_QUOTAS.md`. Follow D-023; no generic AI framework, extra billing/model buckets or broader auth/routing support without evidence. This session must not start implementation.
+Scope: implement only the ordinary Codex bucket using the read-only standard ChatGPT file-auth source, six minimum metrics, and conformance/live acceptance in `docs/PROVIDERS_AI_QUOTAS.md`, following D-023. No generic AI framework, extra billing/model buckets, broader auth/routing support without evidence, or unrelated task work.
+
+Acceptance: all six typed metrics through the existing pipeline; bounded read-only standard file auth and fixed HTTPS source; offline parser/lifecycle/identity tests; Release build and all suites; repository hygiene; independent security/lifecycle review; official UI and independent-monitor live comparison. Late account-A responses must not be queued for account B. MetricBus v1 may still deliver an immutable snapshot already queued before the owner transition; strict-boundary subscribers reset on owner change.
+
+Result: local implementation complete; Release build PASS (0 warnings/errors), Core 39/39, Telemetry 54/54 and Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 paths); independent security/lifecycle review PASS with no remaining actionable findings. Graphify refreshed to 838 nodes/2,034 edges/81 communities; integrity check PASS. Live UI/monitor comparison is not run because local Codex config contains an `openai_base_url` override; no live request was sent. Draft PR CI pending. Keep ACTIVE until remaining gates pass.
 
 ## CER-M2-003 — selected game/session summary and M2 exit
 

@@ -109,7 +109,7 @@ This future capability does not change M2 acceptance criteria and does not start
 
 ## M3 — AI Quotas MVP
 
-Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract DONE; D-023 selects **Codex** for CER-M3-002 (NEXT / NOT STARTED). Claude and Antigravity follow. No AI provider is implemented. Evidence is canonical in `AI_QUOTA_REFERENCE_MATRIX.md`; source/MetricId/state/cache/validation design is in `PROVIDERS_AI_QUOTAS.md`. Research completion does not close M3.
+Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract DONE; CER-M3-002 implements **Codex** locally with all six metrics and automated conformance coverage. Official `/status` or usage-UI comparison, independent-monitor corroboration and PR CI remain incomplete. Claude and Antigravity follow. Evidence is canonical in `AI_QUOTA_REFERENCE_MATRIX.md`; source/MetricId/state/cache/validation design is in `PROVIDERS_AI_QUOTAS.md`. Research or local tests alone do not close M3.
 
 Clean implementation:
 
