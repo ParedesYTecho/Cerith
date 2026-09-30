@@ -48,17 +48,37 @@ Result: first GPT-6.1 Sol High adversarial review returned FIXES REQUIRED / NO-G
 
 ## CER-M3-004 — AI quota expansion wave 1
 
-Status: NEXT / NOT STARTED
-Owner: Unassigned integration owner; each provider subtask gets one separate Luna Max write owner
+Status: IN PROGRESS
+Owner: Codex (sole shared-file integration owner; coordinator is read-mostly)
 Priority: P0
 Depends on: CER-M3-003
-Base: canonical `main` at/after `2aa865ef35000680a3110ff7134b836bd966ef82`
+Branch: `codex/CER-M3-004-integration`
+Base: `72b43b268b4992d0b0ea45b6e29067d10450274f` (verified clean isolated worktree)
 
 Goal: implement the remaining 16 reference-backed usage-limit integrations in parallel where evidence supports a safe bounded path, while preserving one write owner per provider path and one integration owner for shared files.
 
-No speculative runtime foundation is required before provider work. Do not create ProviderManager, ProviderFactory, universal auth framework, generic DI, empty provider folders or shared helpers merely to prepare the wave.
+Provider worker claims (one Luna Max worker and staging branch per provider; workers do not edit TASKS):
 
-Provider subtasks (all initially NOT STARTED): Claude; Antigravity; Cursor; Gemini CLI / Code Assist; Kimi; Kiro; Grok Build; GitHub Copilot; ZCode; OpenCode Go; Command Code; Qoder; Qoder CN; Ark Coding Plan; Ark Agent Plan; Devin. Codex is already DONE via CER-M3-002 and is not reimplemented.
+| Provider | Branch | Status |
+| --- | --- | --- |
+| Claude | `codex/CER-M3-004-claude` | ACTIVE — first batch |
+| Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — first batch |
+| Cursor | `codex/CER-M3-004-cursor` | ACTIVE — first batch |
+| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini-cli` | ACTIVE — first batch |
+| Kimi | `codex/CER-M3-004-kimi` | ACTIVE — first batch |
+| Kiro | `codex/CER-M3-004-kiro` | QUEUED — replace a completed worker immediately |
+| Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — replace a completed worker immediately |
+| GitHub Copilot | `codex/CER-M3-004-github-copilot` | QUEUED — replace a completed worker immediately |
+| ZCode | `codex/CER-M3-004-zcode` | QUEUED — replace a completed worker immediately |
+| OpenCode Go | `codex/CER-M3-004-opencode-go` | QUEUED — replace a completed worker immediately |
+| Command Code | `codex/CER-M3-004-command-code` | QUEUED — replace a completed worker immediately |
+| Qoder | `codex/CER-M3-004-qoder` | QUEUED — replace a completed worker immediately |
+| Qoder CN | `codex/CER-M3-004-qoder-cn` | QUEUED — replace a completed worker immediately |
+| Ark Coding Plan | `codex/CER-M3-004-ark-coding-plan` | QUEUED — replace a completed worker immediately |
+| Ark Agent Plan | `codex/CER-M3-004-ark-agent-plan` | QUEUED — replace a completed worker immediately |
+| Devin | `codex/CER-M3-004-devin` | QUEUED — replace a completed worker immediately |
+
+Codex is already DONE via CER-M3-002 and is not reimplemented. No speculative runtime foundation is required before provider evidence exists. The coordinator confirmed the integration claim; provider staging branches may rely on it.
 
 Provider-worker write boundary, created only when that provider starts:
 - `src/Cerith.TelemetryService/Providers/AI/<Provider>/`
@@ -78,7 +98,11 @@ Each worker must:
 - stop rather than guess when source semantics, auth ownership or identity remain unresolved;
 - return a sanitized live-validation plan and any human authorization needed.
 
-Integration owner owns shared registration/lifecycle, `Program.cs`, dependencies, canonical MetricIds/docs/state, coexistence tests, shared secret/setup infrastructure if multiple accepted providers prove it necessary, and staged integration into `main`.
+Integration owner owns shared registration/lifecycle, `Program.cs`, dependencies, canonical MetricIds/docs/state, coexistence tests, shared secret/setup infrastructure only if accepted providers prove it necessary, and staged integration. No shared secret infrastructure is approved yet; initial routes should preserve official credential ownership.
+
+Coordinator review constraints: provider IDs follow source semantics; do not force primary/secondary slots. Copilot's current first-party terminology is AI credits; keep legacy premium-request names explicitly legacy unless a current first-party schema proves their mapping.
+
+Lifecycle gate: `Program.RunAsync` includes the pipe server and provider/publisher tasks in `Task.WhenAny` and awaits them together, so an unexpected provider-runner fault can terminate TelemetryService. Add only the smallest integration-boundary failure isolation justified by accepted providers. Coexistence tests must cover absent, slow and auth-failed sources, an unexpected provider failure and shutdown cancellation, proving other accepted providers plus hardware/gaming/Codex continue.
 
 Integration policy: all provider workers may research/implement concurrently, but merge accepted providers in small verified groups with CI between groups. A slow/absent/auth-failed provider must not stop hardware, gaming, Codex or other AI integrations.
 
