@@ -89,7 +89,7 @@ Repository: https://github.com/napxlexn/ailimits
 
 Pinned reference revision: `a42bbd043070538ff5c4161b7eda952720173345`.
 
-Primary Cerith role: **compact native visual-system and lightweight runtime reference**, plus independent quota-source corroboration.
+Primary Cerith role: **compact native visual-system and lightweight runtime reference**, plus corroboration through an independently implemented adapter. Shared-upstream limitations must be recorded; a second client hitting the same backend is not an independent quota oracle.
 
 High-value lessons:
 
