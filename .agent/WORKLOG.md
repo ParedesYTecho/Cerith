@@ -350,3 +350,10 @@ Event: product/reference/roadmap planning
 Summary: audited TokenTracker, Gengchou and AI Limits as complementary references and opened the M3 direction beyond the completed Codex slice. Added the canonical AI telemetry breadth target (42 local AI tools + 17 usage-limit integrations), D-024, zero-config/one-time-setup policy, provider-isolation/parallel ownership rules, compact-surface M4 direction and local analytics/dashboard M7 direction. No product code or provider runtime implementation changed.
 Files: `docs/AI_TELEMETRY.md`, `docs/PRODUCT_SPEC.md`, `docs/ROADMAP.md`, `docs/REFERENCE_PROJECTS.md`, `docs/UI_UX.md`, `docs/ARCHITECTURE.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `AGENTS.md`.
 Result: pending PR/CI/Advisor review. Branch `docs/CER-M3-003-ai-telemetry-direction`; base `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`.
+
+## 2026-09-30 — Advisor — CER-M3-003 adversarial review fixes
+
+Event: bounded documentation correction after GPT-6.1 Sol High review
+Summary: first review approved the broad product direction but returned NO-GO for PR #45 head `5b0f6e45ecd230189033afa304e2a7300e1f48fe`. Corrected the runtime publication contract, D-024/matrix status, historical pre-Codex wording, heterogeneous 42-tool classification, 17-limit naming/acquisition caveats, M3 minimum-delivery exit gate, Codex no-renewal preservation and shared-upstream wording. Reduced duplicate UI/milestone prose in AI_TELEMETRY to canonical links.
+Files: `docs/ARCHITECTURE.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_TELEMETRY.md`, `docs/ROADMAP.md`, `docs/REFERENCE_PROJECTS.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: pending new-head CI and bounded re-review; no product code/tests/dependencies changed.
