@@ -4,7 +4,7 @@ Status: CER-M3-004 IN PROGRESS; M3 remains ACTIVE / INCOMPLETE. Integration bran
 
 Provider status: five first-batch drafts remain under implementation/coordinator review. Kimi's draft telemetry test command passed before owner-monitor revisions; final provider checks remain pending. No verified individual result is recorded for the other four. No provider commit has been imported.
 
-Next: wait for the coordinator-reviewed provider SHA, inspect and import only that accepted commit, then implement the coexistence gate described in `.agent/TASKS.md`. Do not merge main or import unfinished drafts. Keep shared identity/token infrastructure unapproved unless accepted provider evidence proves an exact need.
+Next: hold for provider MID handoffs under the two-gate cadence in `.agent/TASKS.md`; import only an explicit coordinator FINALPASS SHA, then implement the coexistence gate there. Do not merge main or import unfinished drafts. Keep shared identity/token infrastructure unapproved unless accepted provider evidence proves an exact need.
 
 ---
 

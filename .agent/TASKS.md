@@ -57,7 +57,7 @@ Base: `72b43b268b4992d0b0ea45b6e29067d10450274f` (verified clean isolated worktr
 
 Goal: implement the remaining 16 reference-backed usage-limit integrations in parallel where evidence supports a safe bounded path, while preserving one write owner per provider path and one integration owner for shared files.
 
-Provider worker claims (one Luna Max worker and staging branch per provider; workers do not edit TASKS):
+Provider worker claims (one Luna Max owner per provider; queued branch names are planned, not proof of creation; workers do not edit TASKS):
 
 | Provider | Branch | Status |
 | --- | --- | --- |
@@ -66,17 +66,31 @@ Provider worker claims (one Luna Max worker and staging branch per provider; wor
 | Cursor | `codex/CER-M3-004-cursor` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
 | Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
 | Kimi | `codex/CER-M3-004-kimi` | ACTIVE — draft telemetry test command passed before owner-monitor revisions; final provider checks pending |
-| Kiro | `codex/CER-M3-004-kiro` | QUEUED — replace a completed worker immediately |
-| Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — replace a completed worker immediately |
-| GitHub Copilot | `codex/CER-M3-004-copilot` | QUEUED — replace a completed worker immediately |
-| ZCode | `codex/CER-M3-004-zcode` | QUEUED — replace a completed worker immediately |
-| OpenCode Go | `codex/CER-M3-004-opencode-go` | QUEUED — replace a completed worker immediately |
-| Command Code | `codex/CER-M3-004-command-code` | QUEUED — replace a completed worker immediately |
-| Qoder | `codex/CER-M3-004-qoder` | QUEUED — replace a completed worker immediately |
-| Qoder CN | `codex/CER-M3-004-qoder-cn` | QUEUED — replace a completed worker immediately |
-| Ark Coding Plan | `codex/CER-M3-004-ark-coding` | QUEUED — replace a completed worker immediately |
-| Ark Agent Plan | `codex/CER-M3-004-ark-agent` | QUEUED — replace a completed worker immediately |
-| Devin | `codex/CER-M3-004-devin` | QUEUED — replace a completed worker immediately |
+| Kiro | `codex/CER-M3-004-kiro` (planned; not created) | QUEUED — preservation checkpoint retained; agent closed |
+| Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| GitHub Copilot | `codex/CER-M3-004-copilot` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| ZCode | `codex/CER-M3-004-zcode` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| OpenCode Go | `codex/CER-M3-004-opencode-go` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Command Code | `codex/CER-M3-004-command-code` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Qoder | `codex/CER-M3-004-qoder` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Qoder CN | `codex/CER-M3-004-qoder-cn` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Ark Coding Plan | `codex/CER-M3-004-ark-coding` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Ark Agent Plan | `codex/CER-M3-004-ark-agent` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+| Devin | `codex/CER-M3-004-devin` | QUEUED — start when a slot is released by FINALPASS or genuine BLOCKED |
+
+Provider cadence (supersedes continuous draft supervision): exactly two scheduled Sol gates per provider: MID direction gate and FINAL complete gate. At MID, return a committed compact handoff with SHA, scope, evidence and open questions, then pause for Sol MIDPASS or MIDFIXES; apply MIDFIXES within that gate and resume autonomous completion after MIDPASS. Request FINAL only when CODECOMPLETE + TESTSCOMPLETE + HANDOFFREADY. Between gates, escalate only concrete high-risk issues. Follow canonical privacy/source boundaries in `docs/PROVIDERS_AI_QUOTAS.md` and `docs/SECURITY_PRIVACY.md`, and testing policy in `docs/TESTING_QA.md`.
+
+Concurrency: preserve one integration owner plus the five original active providers (Claude, Antigravity, Cursor, Gemini and Kimi); no sixth parallel provider. MID does not release a slot. Reuse a provider slot immediately after FINALPASS or genuine BLOCKED; queued Kiro remains at its preservation checkpoint with no branch created and its agent closed. Integration remains available and imports only an explicit FINALPASS SHA from the coordinator.
+
+Proven common provider correctness checklist (provider-owned implementations/tests; no shared framework or dependency):
+
+- Preserve the original `ObservedAt` on Stale snapshots (reviewed Kimi/Antigravity).
+- Use monotonic finite cache age independently of wall-clock reset timing (Kimi/Antigravity).
+- Honor long valid Retry-After independently of cache TTL (Kimi/Antigravity).
+- Cancel pending bus publication on observed owner/scope transitions and cache-expiry/reset crossings (Kimi/Gemini/Antigravity drafts). MetricBus samples already queued before a transition cannot be retracted.
+- Bound Stopped publication and cover drain faults through nested-finally cleanup (Kimi/Antigravity).
+
+These reviewed multi-provider findings support correctness rules, not a provider-wave PASS or shared infrastructure approval. Auth renewal ownership remains provider-specific; Antigravity loopback/CSRF/proxy settings are not generalized.
 
 Codex is already DONE via CER-M3-002 and is not reimplemented. No speculative runtime foundation is required before provider evidence exists. The coordinator confirmed the integration claim; provider staging branches may rely on it.
 
@@ -106,9 +120,9 @@ Lifecycle gate: `Program.RunAsync` includes the pipe server and provider/publish
 
 Integration progress (2026-09-30): shared failure isolation is implemented in `Program.cs` at commit `6e99d608c7df039c4c591420ec80b845e5fb6d22`. The small `Func<Task>` supervisor encloses Codex construction and `RunAsync`, contains synchronous construction/start and asynchronous runner failures, emits only a fixed provider ID and sanitized category, and waits for service cancellation after an unexpected exit. It adds no provider framework or dependency. Baseline at `412daad424bc7d85e1180611ded41fbab30cbe5c`: Release build 0 warnings/errors; Core 39/39, Telemetry 58/58, Integration 10/10; hygiene 84 tracked paths. After the seam: Release build 0 warnings/errors; Core 39/39, Telemetry 62/62, Integration 10/10; `git diff --check` and hygiene PASS. Current evidence proves Codex runner isolation only, not provider-wave coexistence.
 
-Next integration test, gated on the first coordinator-reviewed provider commit: add a focused composition test within `tests/Cerith.Telemetry.Tests` reusing the existing Codex harness's registry and one actual shared `MetricBus`; instantiate the real `HardwareTelemetryProvider` against the current machine, the production `PresentMonTelemetryProvider` with its existing `IPresentMonCapture` fake boundary, Codex on the shared bus, and the reviewed provider using its deterministic synthetic-auth/server test seam. Subscribe before publication. Assert actual bus delivery and source lifecycle, not synthetic device values: hardware may publish a valid Fresh/Measured value or a truthful valueless Unavailable snapshot; never force either result. Exercise absent/slow/auth-failed/unexpected-failure/cancellation behavior using only the accepted provider's source seam while verifying hardware, gaming and Codex publications continue on that same bus. Do not add hardware fake injection, a shared abstraction, a generic fixture layer, or a fake bus. Reuse existing harness setup; choose exact method/API and assertions after reviewing the accepted SHA. Do not import an unfinished provider draft. No shared identity primitive or token/auth storage is approved; provider setup gates must come from concrete official routes and accepted evidence.
+Next integration test, gated on the first explicit coordinator FINALPASS SHA: add a focused composition test within `tests/Cerith.Telemetry.Tests` reusing the existing Codex harness's registry and one actual shared `MetricBus`; instantiate the real `HardwareTelemetryProvider` against the current machine, the production `PresentMonTelemetryProvider` with its existing `IPresentMonCapture` fake boundary, Codex on the shared bus, and the reviewed provider using its deterministic synthetic-auth/server test seam. Subscribe before publication. Assert actual bus delivery and source lifecycle, not synthetic device values: hardware may publish a valid Fresh/Measured value or a truthful valueless Unavailable snapshot; never force either result. Exercise absent/slow/auth-failed/unexpected-failure/cancellation behavior using only the accepted provider's source seam while verifying hardware, gaming and Codex publications continue on that same bus. Do not add hardware fake injection, a shared abstraction, a generic fixture layer, or a fake bus. Reuse existing harness setup; choose exact method/API and assertions after reviewing the accepted SHA. Do not import an unfinished provider draft. No shared identity primitive or token/auth storage is approved; provider setup gates must come from concrete official routes and accepted evidence.
 
-Integration policy: all provider workers may research/implement concurrently, but merge accepted providers in small verified groups with CI between groups. A slow/absent/auth-failed provider must not stop hardware, gaming, Codex or other AI integrations.
+Integration policy: stage FINALPASS provider commits in small verified groups with CI between groups under the concurrency limit above. The final integration PR remains draft for Advisor review and required CI before any main merge; the integration owner does not merge main. A slow/absent/auth-failed provider must not stop hardware, gaming, Codex or other AI integrations.
 
 Wave acceptance: every subtask ends as accepted implementation or evidence-backed blocked/deferred; at least several additional quota integrations must be accepted, not merely classified. Integrated providers pass Release build/tests, repository hygiene, identity/auth/failure tests, bounded live comparison against the same account/workspace where practical, and Advisor review.
 

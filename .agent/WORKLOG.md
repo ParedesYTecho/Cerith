@@ -373,3 +373,10 @@ Summary: commit `6e99d608c7df039c4c591420ec80b845e5fb6d22` wraps Codex construct
 Verification: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 62/62, Integration 10/10; hygiene PASS (84 tracked paths); `git diff --check` PASS. Baseline before the seam: Core 39/39, Telemetry 58/58, Integration 10/10; Release build and hygiene PASS.
 Files: `Program.cs`, Codex telemetry tests, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
 Status: CER-M3-004 IN PROGRESS; awaiting coordinator-reviewed provider SHA. The detailed coexistence gate is in `.agent/TASKS.md`; no provider draft imported or main merge performed.
+
+## 2026-09-30 — Codex — CER-M3-004 two-gate cadence checkpoint
+
+Event: preserved clean `66fcbce` checkpoint; recorded user-directed MID/FINAL cadence and reviewed multi-provider correctness checklist once in TASKS.
+Status: one integration owner plus five original active providers; Kiro queued at preservation checkpoint, branch not created, agent closed. Awaiting MID handoffs or explicit coordinator FINALPASS SHA; no provider import, main merge, graph refresh or auth action.
+Files: `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`; documentation only.
+Verification: final diff inspected; git diff --check and tracked-file hygiene PASS (84 paths).
