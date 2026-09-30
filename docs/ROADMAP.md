@@ -107,24 +107,55 @@ This mode must not collect secrets, arbitrary personal data, command lines, priv
 
 This future capability does not change M2 acceptance criteria and does not start before M2 closes.
 
-## M3 — AI Quotas MVP
+## M3 — AI Telemetry & Quotas
 
-Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server `account/rateLimits/read` terminal corroboration, and final-head CI completed. Advisor approved CER-M3-002; product PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`, and the integrated tree matches approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42`. Build and Test and Repository Quality passed on the integrated commit; CodeQL was skipped under D-013. CER-M3-003 Claude is NEXT / NOT STARTED; Antigravity follows after Claude. M3 remains ACTIVE / INCOMPLETE. Evidence is canonical in `AI_QUOTA_REFERENCE_MATRIX.md`; source/MetricId/state/cache/validation design is in `PROVIDERS_AI_QUOTAS.md`.
+Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract is DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server corroboration and CI completed; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`.
 
-Clean implementation:
+D-024 supersedes only the **future sequential ordering** portion of D-023. D-023 remains historical authority for why Codex was the first vertical slice. M3 now continues as a broad AI-telemetry expansion rather than a fixed Claude-then-Antigravity sequence.
 
-- Claude;
-- Codex;
-- Antigravity.
+### M3.A — quota / allowance acquisition
+
+Target the current verified reference catalog of **17 usage-limit integrations** recorded in `AI_TELEMETRY.md`, starting from the working Codex contract and validating each provider independently.
 
 Requirements:
 
-- provider conformance tests;
-- sanitized fixtures;
-- source/confidence metadata;
-- independent cross-validation.
+- prefer safe reuse of existing official local authorization;
+- allow a one-time explicit setup when genuinely required;
+- ordinary future startups must not require repeated provider setup;
+- preserve account/workspace/project identity boundaries;
+- keep quota, credits, balance, billing and activity semantically separate;
+- never invent missing values;
+- use sanitized fixtures and bounded live validation;
+- record shared-upstream limitations instead of pretending multiple clients are independent sources;
+- isolate provider-specific implementation paths so bounded workers can proceed in parallel without sharing write ownership.
 
-## M4 — Widget Engine
+The exact acquisition mechanism remains provider-specific: documented API, official-client-observed endpoint, CLI, local RPC, credential-backed request or another verified source. An undocumented/internal source is a risk to manage, not automatically a reason to discard an integration already demonstrated by a current reference implementation.
+
+### M3.B — local AI tool activity acquisition
+
+Target the **42-tool local activity catalog** recorded in `AI_TELEMETRY.md`, using passive files/databases/event streams or narrowly scoped official hooks where appropriate.
+
+The goal is local-first structured telemetry such as:
+
+- model/provider identity;
+- input/output/cache/reasoning token counters when actually reported;
+- timestamps and bounded session/activity identity;
+- project attribution when the source exposes it safely;
+- cost inputs/estimates with explicit provenance.
+
+Do not ingest prompt/completion bodies or source code merely because a log contains them. Cost estimates are derived telemetry and never substitute provider-reported billing/quota.
+
+### CER-M3-003 — expansion foundation
+
+NEXT / NOT STARTED after the planning/research reconciliation is integrated.
+
+It must establish only the minimum shared foundation proven necessary by multiple real providers: provider path/write isolation, setup/auth state semantics, secure-secret ownership where required, and integration boundaries. Do not introduce a generic ProviderManager/Factory/framework merely because the catalog is large.
+
+Provider implementation may then run in parallel under one write owner per provider boundary, with one integration owner for shared files. Integrate in small verified waves even when research/implementation runs concurrently.
+
+M3 exit requires the target catalogs to be either implemented with verified semantics or explicitly documented as blocked/deferred with concrete evidence. Breadth targets are not permission to fabricate parity.
+
+## M4 — Widget Engine & Compact Surfaces
 
 - text;
 - metric;
@@ -135,7 +166,13 @@ Requirements:
 - container;
 - binding;
 - persistence;
-- themes.
+- themes;
+- compact floating surface;
+- taskbar surface;
+- tray indicators;
+- detail popup / expanded inspection surface.
+
+The same MetricId-driven component semantics must feed every surface. Gengchou and AI Limits are interaction/compactness references, not architecture bases. Adaptive density, truthful stale/error states, DPI/theme correctness and measured idle overhead are acceptance concerns. Provider-specific drawing logic is not.
 
 ## M5 — Visual Editor
 
@@ -155,12 +192,20 @@ Requirements:
 - visual reactions;
 - contextual profiles.
 
-## M7 — History
+## M7 — History & Analytics Dashboard
 
 - SQLite;
 - retention/downsampling;
 - charts;
-- sessions.
+- sessions;
+- AI usage trends;
+- model/provider breakdown;
+- local cost analysis with explicit pricing provenance;
+- GitHub-style activity heatmap;
+- safe project attribution;
+- dashboard composition over the same metric/history contracts used by widgets.
+
+TokenTracker is a product/information-architecture reference for the dashboard, not a mandate to embed its web stack or cloud features. Local history remains authoritative by default.
 
 ## M8 — Public Plugin SDK
 

@@ -84,6 +84,26 @@ AI
 System
 ```
 
+## AI telemetry acquisition
+
+AI observability has two acquisition classes that share Core contracts but not necessarily implementation machinery:
+
+```text
+quota / allowance
+  → provider API / official client source / CLI / local RPC
+  → normalized MetricSnapshot
+
+local activity / usage
+  → passive log / database / structured event / narrowly scoped hook
+  → normalized MetricSnapshot or history event
+```
+
+Do not force both classes through one speculative provider framework. Provider-specific code may remain separate until repeated concrete implementations prove a smaller shared primitive is worthwhile.
+
+Quota credentials and local activity sources have different privacy/lifecycle rules. A hook that reports local token counters is not authorization to query a subscription endpoint; a quota token is not permission to ingest conversation content.
+
+Provider implementation should be physically isolatable enough that bounded workers can own one provider without editing surface/rendering code. Shared integration files, secure-secret storage and any reusable auth/setup primitive require one integration owner.
+
 ## Cerith.WidgetHost
 
 Lightweight always-on runtime.
@@ -91,8 +111,13 @@ Lightweight always-on runtime.
 Future responsibilities:
 
 - desktop widgets;
-- taskbar widgets;
-- overlays.
+- compact floating monitoring surfaces;
+- taskbar widgets/panels;
+- tray indicators;
+- overlays;
+- expanded/detail inspection surfaces.
+
+All surfaces consume normalized MetricId state. Compact views may choose density/headline presentation policy, but provider acquisition/auth logic never belongs in WidgetHost.
 
 It should not host the heavy visual editor.
 

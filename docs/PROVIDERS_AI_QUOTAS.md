@@ -6,6 +6,12 @@ The old WidgetOSD quota implementation is **not trusted and must not be ported**
 
 Cerith quota providers are implemented cleanly from zero.
 
+Broader AI activity/token/cost telemetry is specified separately in `AI_TELEMETRY.md`. Quota remains a distinct semantic contract even when the same external reference application displays both.
+
+D-024 expands M3 beyond the original post-Codex sequential plan. The current reference target is the 17-provider usage-limit catalog recorded in `AI_TELEMETRY.md`; every provider still requires source/identity/semantics validation before its metrics are accepted.
+
+Default setup policy: first reuse a safe existing official local authorization when possible. If that cannot provide the desired quota, one explicit provider setup/authorization is acceptable. Once configured, ordinary Cerith restarts must not require repeated setup. Credential/refresh ownership remains provider-specific and must be documented; silent renewal is acceptable only when Cerith legitimately owns renewable authorization or an official client owns and maintains the session.
+
 ## Reference hierarchy
 
 For each provider compare:

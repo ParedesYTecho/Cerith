@@ -65,34 +65,63 @@ The original Cerith design explicitly studied AI quota monitors. These repositor
 
 Repository: https://github.com/ynjmxn/gengchou
 
-Why it matters:
-- native Windows quota monitoring for Claude, Codex, Antigravity and Grok;
-- useful evidence around local credential/session discovery, reset windows, stale/auth/refresh states, WSL behavior, privacy and taskbar/tray surfaces;
-- useful comparison for truthful handling of provider-reported windows instead of fabricated percentages.
+Pinned reference revision: `4d02b9d1f85e806c92c4defc8e8c4c822467b6f3`.
 
-Do not assume its provider endpoints, credential precedence, cache rules or semantics are correct for Cerith without independent validation.
+Primary Cerith role: **Windows compact-surface and shell-integration reference**, plus provider-acquisition corroboration.
+
+High-value lessons:
+
+- taskbar widget, compact floating monitor, provider tray icons and detail popup expose the same quota state at different density levels;
+- compact surfaces select a stable headline window but allow an urgent/high-usage window to take over, keeping detail available on hover/click;
+- semantic placement survives Explorer/taskbar rebuilds, monitor changes and RDP/lock transitions better than raw saved screen coordinates;
+- exact-DPI/theme rendering and deterministic dump modes make visual regressions reviewable instead of relying on hand screenshots;
+- provider detection spans Windows files, Credential Manager, existing Desktop/CLI sessions and already-running WSL distributions without waking WSL just to poll;
+- stale/auth/rate-limit states keep last-known values visible without pretending they are fresh;
+- `compact_view.rs` is a useful example of keeping compact product semantics independent of HWND/DPI/drawing code.
+
+Important negative lesson: `docs/ADDING_A_PROVIDER.md` documents that provider identity is spread across many files and adding a provider can become a tree-wide diff. Cerith should not repeat that coupling; provider acquisition must remain isolated from surface rendering and WidgetHost must remain MetricId-driven.
+
+License: MIT at the pinned revision. Code adaptation is possible only after explicit provenance/attribution review; the project is still not Cerith's architectural base.
 
 ### AI Limits
 
 Repository: https://github.com/napxlexn/ailimits
 
-Why it matters:
-- native Windows quota overlay covering Claude, Codex, Copilot and Antigravity;
-- useful evidence around read-only local auth sources, provider-specific usage retrieval, stale values, reset handling, low-overhead runtime and compact surfaces;
-- another independent implementation against which provider behavior can be compared.
+Pinned reference revision: `a42bbd043070538ff5c4161b7eda952720173345`.
 
-Its source is GPL-3.0-or-later. Treat it as research unless any future code reuse is explicitly license-reviewed; do not copy implementation casually.
+Primary Cerith role: **compact native visual-system and lightweight runtime reference**, plus independent quota-source corroboration.
+
+High-value lessons:
+
+- Compact / Medium / Expanded detail levels preserve hierarchy while changing density live;
+- horizontal/vertical bars, width tiers, provider-count growth, palette, opacity and brightness show how one semantic view can adapt without becoming multiple unrelated widgets;
+- the taskbar panel and two-ring tray indicator keep useful state visible when the main floating widget is hidden;
+- one renderer, one layout system and one theme source reduce visual drift;
+- provider fetches run independently, last-known data survives transient failure, and stale age is visible;
+- monotonic freshness logic is separated from wall-clock reset/countdown presentation;
+- performance claims are backed by a reproducible audit rather than intuition.
+
+Boundary: AI Limits is GPL-3.0-or-later. Treat implementation code as research unless a future license decision explicitly permits reuse. Visual/interaction ideas may be reinterpreted originally in Cerith's native component system; do not transplant code or branding.
 
 ### TokenTracker
 
 Repository: https://github.com/xiufengsun/TokenTracker
 
-Why it matters:
-- broad AI usage/token/cost tracking;
-- useful independent implementation for local tool discovery, parsing, accounting and usage-limit behavior;
-- valuable cross-check when the narrower quota monitors disagree.
+Pinned current reference revision: `a8520617ece3f15a07c342e2c7909eb311234522` (v1.1.3 release commit). CER-M3-001 quota research used the earlier `daa6c55099d34458ff773f6c1edd777f16fb7693`; re-check current code before implementation-significant reuse.
 
-Its broader token/cost model is not automatically equivalent to provider rate-limit or subscription-quota semantics.
+Primary Cerith role: **broad AI acquisition, zero-config onboarding, local analytics and dashboard reference**.
+
+High-value lessons:
+
+- 42 AI tools are discovered through provider-appropriate passive readers, structured local databases/files, official hooks or provider APIs instead of forcing one universal acquisition technique;
+- 17 real-time usage-limit integrations coexist with broader token/activity tracking while remaining a separate product concept;
+- local-first/zero-config behavior auto-installs narrowly scoped hooks where appropriate and otherwise reads existing local state;
+- the Windows/macOS/Linux product surfaces share normalized usage data across dashboard, desktop widgets and native shells;
+- the dashboard demonstrates useful information architecture for trends, model breakdown, cost, activity heatmaps and project attribution;
+- per-provider parsers have dedicated tests and TokenTracker's own lessons document several real normalization failures, reinforcing that token/cost semantics must be verified rather than copied blindly;
+- last-good caching and provider-specific setup hints keep partial provider availability from making the whole product unusable.
+
+Boundary: TokenTracker's broad Node/dashboard architecture is not Cerith's runtime architecture, cloud/leaderboard/skills/pet features are not automatically Cerith requirements, and activity/cost telemetry is not quota. Its license is MIT at the pinned revision, so focused code adaptation may be considered after explicit license/provenance review and semantic validation; wholesale copying is neither necessary nor desired.
 
 ### Additional quota references
 
