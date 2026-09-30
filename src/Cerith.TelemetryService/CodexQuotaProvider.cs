@@ -503,7 +503,7 @@ internal sealed class CodexQuotaProvider : IDisposable
                 _cache[i] = cached with
                 {
                     ForceStale = true,
-                    ErrorCode = cached.ErrorCode == "source_disagreement" ? cached.ErrorCode : errorCode
+                    ErrorCode = errorCode
                 };
                 continue;
             }

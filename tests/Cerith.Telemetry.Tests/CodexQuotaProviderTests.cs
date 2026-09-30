@@ -249,6 +249,76 @@ public sealed class CodexQuotaProviderTests
     }
 
     [TestMethod]
+    [DataRow("offline", "offline")]
+    [DataRow("timeout", "timeout")]
+    [DataRow("http_5xx", "upstream_unavailable")]
+    [DataRow("http_429", "rate_limited")]
+    public async Task CacheableAcquisitionFailureUsesCurrentCodeAndPreservesResetCache(
+        string failureKind, string expectedErrorCode)
+    {
+        using var harness = new Harness();
+        var disputedFixture = harness.Fixture.Replace("\"reset_at\": 1893456000,",
+            "\"reset_at\": 1893456000, \"reset_after_seconds\": 1,");
+        Assert.AreNotEqual(harness.Fixture, disputedFixture);
+        harness.Handler.EnqueueJson(disputedFixture);
+        await harness.Provider.PollOnceAsync();
+
+        var cached = await ReadOneAsync(harness, Ids[2]);
+        Assert.AreEqual(MetricState.Fresh, cached.State);
+        Assert.AreEqual(MetricConfidence.Measured, cached.Confidence);
+        Assert.AreEqual("source_disagreement", cached.ErrorCode);
+        var cachedReset = cached.Value!.Value.AsDateTimeOffset();
+
+        harness.Time.Advance(CodexQuotaProvider.PollInterval);
+        switch (failureKind)
+        {
+            case "offline":
+                harness.Handler.Enqueue((_, _) => throw new HttpRequestException());
+                await harness.Provider.PollOnceAsync();
+                break;
+            case "timeout":
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                harness.Handler.Enqueue(async (_, cancellationToken) =>
+                {
+                    entered.SetResult();
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+                var pending = harness.Provider.PollOnceAsync();
+                await entered.Task;
+                harness.Time.Advance(CodexQuotaProvider.RequestTimeout);
+                await pending;
+                break;
+            case "http_5xx":
+                harness.Handler.EnqueueStatus(HttpStatusCode.ServiceUnavailable);
+                await harness.Provider.PollOnceAsync();
+                break;
+            case "http_429":
+                harness.Handler.EnqueueStatus(HttpStatusCode.TooManyRequests, "1200");
+                await harness.Provider.PollOnceAsync();
+                break;
+            default:
+                Assert.Fail($"Unexpected failure kind: {failureKind}");
+                break;
+        }
+
+        var stale = await ReadOneAsync(harness, Ids[2]);
+        Assert.AreEqual(MetricState.Stale, stale.State);
+        Assert.AreEqual(MetricConfidence.Measured, stale.Confidence);
+        Assert.AreEqual(expectedErrorCode, stale.ErrorCode);
+        Assert.AreEqual(cachedReset, stale.Value!.Value.AsDateTimeOffset());
+        Assert.AreEqual(cached.ObservedAt, stale.ObservedAt);
+
+        if (failureKind == "http_429")
+        {
+            harness.Time.Advance(CodexQuotaProvider.PollInterval);
+            await harness.Provider.PollOnceAsync();
+            Assert.AreEqual(2, harness.Handler.Requests.Length,
+                "A long Retry-After must suppress the next request.");
+        }
+    }
+
+    [TestMethod]
     public async Task UnauthorizedClearsCacheSuppressesSameTokenAndAcceptsOfficialTokenRotation()
     {
         using var harness = new Harness();
