@@ -34,7 +34,6 @@ internal static class Program
         var registry = new MetricRegistry();
         using var provider = new HardwareTelemetryProvider(registry, bus);
         using var gamingProvider = new PresentMonTelemetryProvider(registry, bus, processId);
-        using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
@@ -47,7 +46,11 @@ internal static class Program
         var publisher = PublishAsync(provider, first, stop.Token);
         await gamingProvider.PublishNextAsync(stop.Token);
         var gamingPublisher = PublishGamingAsync(gamingProvider, stop.Token);
-        var codexQuotaRunner = codexQuotaProvider.RunAsync(stop.Token);
+        var codexQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
+            await codexQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "codex", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
             "; Codex quota polling enabled for standard file auth");
@@ -58,6 +61,20 @@ internal static class Program
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
+    }
+
+    internal static async Task KeepServiceAliveAfterProviderExitAsync(Func<Task> startProvider, string providerId,
+        CancellationToken serviceStop)
+    {
+        var errorCode = "provider_stopped";
+        try { await startProvider().ConfigureAwait(false); }
+        catch (OperationCanceledException) when (serviceStop.IsCancellationRequested) { return; }
+        catch (Exception) { errorCode = "provider_failure"; }
+
+        if (serviceStop.IsCancellationRequested) return;
+        Console.Error.WriteLine($"AI quota provider stopped: {providerId}; {errorCode}");
+        try { await Task.Delay(Timeout.InfiniteTimeSpan, serviceStop).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (serviceStop.IsCancellationRequested) { }
     }
 
     private static bool TryParseTarget(string[] args, out int? processId)

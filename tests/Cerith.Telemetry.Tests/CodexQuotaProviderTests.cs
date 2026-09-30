@@ -547,8 +547,10 @@ public sealed class CodexQuotaProviderTests
             return JsonResponse(harness.Fixture);
         });
         using var stop = new CancellationTokenSource();
-        var run = harness.Provider.RunAsync(stop.Token);
+        var run = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
         await entered.Task;
+        Assert.IsFalse(run.IsCompleted);
 
         var initial = await Task.WhenAll(initialReads);
         Assert.IsTrue(initial.All(result => result));
@@ -564,6 +566,100 @@ public sealed class CodexQuotaProviderTests
         try { await run; }
         catch (OperationCanceledException) { }
         foreach (var reader in readers) await reader.DisposeAsync();
+    }
+
+    [TestMethod]
+    public async Task MissingCodexAuthKeepsServiceRunnerAliveUntilShutdown()
+    {
+        using var harness = new Harness();
+        File.Delete(Path.Combine(harness.Home, "auth.json"));
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        using var stop = new CancellationTokenSource();
+        var first = reader.MoveNextAsync().AsTask();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
+
+        Assert.IsTrue(await first.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.IsFalse(runner.IsCompleted);
+
+        var stopped = reader.MoveNextAsync().AsTask();
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+    }
+
+    [TestMethod]
+    public async Task RejectedCodexAuthKeepsServiceRunnerAliveUntilShutdown()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueStatus(HttpStatusCode.Unauthorized);
+        await harness.Provider.PollOnceAsync();
+
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        using var stop = new CancellationTokenSource();
+        var first = reader.MoveNextAsync().AsTask();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
+
+        Assert.IsTrue(await first.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Error, reader.Current.State);
+        Assert.AreEqual("auth_required", reader.Current.ErrorCode);
+        Assert.IsFalse(runner.IsCompleted);
+
+        var stopped = reader.MoveNextAsync().AsTask();
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+    }
+
+    [TestMethod]
+    public async Task UnexpectedCodexRunnerFailureDoesNotCompleteServiceWait()
+    {
+        using var harness = new Harness();
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        var stopped = reader.MoveNextAsync().AsTask();
+        harness.Time.ThrowOnNextTimestamp = true;
+        using var stop = new CancellationTokenSource();
+        Task? providerRun = null;
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(() =>
+        {
+            providerRun = harness.Provider.RunAsync(stop.Token);
+            return providerRun;
+        }, "codex", stop.Token);
+        Assert.IsNotNull(providerRun);
+        try
+        {
+            await providerRun.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.Fail("The injected clock failure should fault the provider runner.");
+        }
+        catch (InvalidOperationException) { }
+
+        var serviceTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var serviceWait = Task.WhenAny(serviceTask.Task, runner);
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+        Assert.IsFalse(serviceWait.IsCompleted);
+
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        serviceTask.SetResult();
+        await serviceWait.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    public async Task SynchronousProviderStartFailureDoesNotEscapeServiceRunner()
+    {
+        using var stop = new CancellationTokenSource();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            static () => throw new InvalidOperationException("Synthetic start failure."), "codex", stop.Token);
+
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
     [TestMethod]
@@ -896,10 +992,22 @@ public sealed class CodexQuotaProviderTests
         private readonly ConcurrentBag<ManualTimer> _timers = new();
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
+        public bool ThrowOnNextTimestamp { get; set; }
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
-        public override long GetTimestamp() { lock (_gate) return _timestamp; }
+        public override long GetTimestamp()
+        {
+            lock (_gate)
+            {
+                if (ThrowOnNextTimestamp)
+                {
+                    ThrowOnNextTimestamp = false;
+                    throw new InvalidOperationException("Synthetic clock failure.");
+                }
+                return _timestamp;
+            }
+        }
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             var timer = new ManualTimer(this, callback, state);
