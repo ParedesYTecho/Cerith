@@ -109,7 +109,7 @@ This future capability does not change M2 acceptance criteria and does not start
 
 ## M3 — AI Quotas MVP
 
-Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract DONE. CER-M3-002 Codex implementation and automated conformance are complete locally; the official usage-UI live comparison, bounded official Codex app-server `account/rateLimits/read` terminal corroboration, and final-head PR CI are complete. CER-M3-002 remains ACTIVE only pending final Advisor approval and PR #43 merge; PR #43 remains draft and unmerged. Claude and Antigravity follow, in that order. M3 itself remains ACTIVE / INCOMPLETE. Evidence is canonical in `AI_QUOTA_REFERENCE_MATRIX.md`; source/MetricId/state/cache/validation design is in `PROVIDERS_AI_QUOTAS.md`.
+Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server `account/rateLimits/read` terminal corroboration, and final-head CI completed. Advisor approved CER-M3-002; product PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`, and the integrated tree matches approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42`. Build and Test and Repository Quality passed on the integrated commit; CodeQL was skipped under D-013. CER-M3-003 Claude is NEXT / NOT STARTED; Antigravity follows after Claude. M3 remains ACTIVE / INCOMPLETE. Evidence is canonical in `AI_QUOTA_REFERENCE_MATRIX.md`; source/MetricId/state/cache/validation design is in `PROVIDERS_AI_QUOTAS.md`.
 
 Clean implementation:
 

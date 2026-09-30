@@ -176,7 +176,7 @@ TTL
 
 Account/source changes invalidate incompatible cache.
 
-## CER-M3-002 — Codex first vertical slice (implementation and live validation complete; final Advisor approval pending)
+## CER-M3-002 — Codex first vertical slice (DONE; merged via PR #43)
 
 D-023 selects a single read-only acquisition lifecycle in TelemetryService for the ordinary ChatGPT-backed Codex bucket. Use `GET https://chatgpt.com/backend-api/wham/usage`, an **official-client-observed, undocumented backend endpoint**, with the existing official local access token and selected account header held only in memory. The public official app-server schema is the semantic cross-check, not a production dependency on this chat's tools. The choice and rejected alternatives are substantiated in the reference matrix.
 
