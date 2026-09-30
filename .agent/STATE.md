@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M3-001 está cerrado como research/contract. CER-M3-002 — Codex es NEXT / NOT STARTED; su contrato y gates están en `docs/PROVIDERS_AI_QUOTAS.md`. No se ha implementado ningún provider ni se inicia la siguiente task en esta sesión. M0/M1/M2 siguen DONE; su evidencia histórica permanece en TASKS/HANDOFF y las decisiones canónicas.
+CER-M3-001 está cerrado como research/contract. CER-M3-002 sigue ACTIVE mientras espera la aprobación final del Advisor y el merge de PR #43. Su implementación Codex, conformance automatizada, comparación live con la UI oficial, corroboración terminal acotada del app-server oficial y CI están completas. PR #43 permanece draft y sin merge. Después de cerrar CER-M3-002, Claude y Antigravity siguen en ese orden; M3 permanece ACTIVE / INCOMPLETE. Contratos y evidencia en `docs/PROVIDERS_AI_QUOTAS.md` y `docs/AI_QUOTA_REFERENCE_MATRIX.md`. M0/M1/M2 siguen DONE; su evidencia histórica permanece en TASKS/HANDOFF y las decisiones canónicas.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 

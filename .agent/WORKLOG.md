@@ -329,3 +329,10 @@ Provenance: current Gengchou, TokenTracker and AI Limits Codex adapters are dist
 Safety: no credentials, auth/config files, login/logout state or reset credits were modified/used; no paid model workload was generated. Evidence retained is sanitized. Earlier short service attempts may have issued normal read-only GETs; exact count was not observable.
 Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
 Status: CER-M3-002 remains ACTIVE pending final Advisor audit; PR #43 remains draft and unmerged.
+
+## 2026-09-30 — Codex — CER-M3-002 documentation consistency
+
+Event: documentation aligned to completed validation; final Advisor approval remains pending.
+Summary: reconciled the operational state, M3 roadmap, Codex validation contract and reference matrix. The official UI and bounded official app-server corroboration are complete; the app-server and inspected public adapters share `/wham/usage`, so the evidence is implementation-level, not an independent upstream oracle. CER-M3-002 remains ACTIVE; Claude and Antigravity follow; M3 remains ACTIVE / INCOMPLETE.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`.
+Status: documentation only; no product/test code or live request. PR #43 remains draft and unmerged pending final Advisor approval.

@@ -1,15 +1,15 @@
 # AI Quota Reference Matrix
 
-Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation is local and live acceptance is pending. No provider has completed acceptance. Evidence checked 2026-09-29. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
+Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance and live validation are complete. Final Advisor approval and PR #43 merge remain pending; M3 remains ACTIVE / INCOMPLETE, with Claude and Antigravity still to follow. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
 
 ## Purpose
 
 Evidence classes: **D** = official documented behavior; **O** = official client/backend behavior observed in first-party source or a sanitized local probe, without a supported public backend API promise; **R** = independently implemented reference. R is corroboration, never authority. Windows availability of the provider/source does not imply a reference monitor itself runs on Windows.
 
-| Provider | Official source to investigate | Reference implementations | Initial Cerith status |
+| Provider | Official source to investigate | Reference implementations | Cerith status |
 |---|---|---|---|
 | Claude | Official account/OAuth/CLI behavior | CodexBar, OpenUsage, others | Not implemented |
-| Codex | Official authenticated usage source / CLI | CodexBar, OpenUsage, TokenTracker | Implemented locally; acceptance pending |
+| Codex | Official authenticated usage source / CLI | Gengchou, TokenTracker, AI Limits, CodexBar, OpenUsage | Implemented locally; automated and live validation complete; Advisor approval/merge pending |
 | Antigravity | Official local app/language server quota source | CodexBar, OpenUsage, TokenTracker | Not implemented |
 | Copilot | Official GitHub/Copilot usage surfaces | CodexBar, TokenTracker | Future |
 | Cursor | Official usage/billing surfaces | CodexBar, TokenTracker | Future |
@@ -43,7 +43,7 @@ Primary sources:
 | Rate limiting / timeout | Treat HTTP 429 with Retry-After/backoff and cancellation deadline. No contractual unlimited reads/no-429 guarantee. R sources use divergent retry/cache defaults; do not adopt their claims as provider guarantees. |
 | Account switching | Snapshot auth owner before GET and recheck before publication; selected workspace is part of identity; discard old in-flight results and cache. C3 contains first-party identity/routing protection, not proof Cerith already implements it. |
 | Privacy / fragility | Body can contain account ID, billing, banner or other metadata beyond quota; whitelist fields immediately. Undocumented backend schema/host/routing may change. App-server managed authentication also has side effects. Public source support for local/open-source clients is not a blanket license to copy tokens or bypass policy (C1/C2). |
-| Cross-validation | Official /status or usage UI for same account/workspace/bucket/time, plus independently implemented monitor. C1 app-server normalization and C3 direct GET share a backend, so agreement proves mapping more than independent quota truth. Live comparison is a CER-M3-002 acceptance gate, not completed by C5. |
+| Cross-validation | Completed 2026-09-30: required same-account/workspace official usage-UI comparison plus bounded official app-server `account/rateLimits/read` terminal corroboration. Duration, used/remaining direction with rounding, and `reset_at` matched; `reset_after_seconds` conflict remains `source_disagreement`. Gengchou, TokenTracker, AI Limits and app-server are distinct implementations of the same `/wham/usage` upstream, not independent upstream sources. See the Codex contract for scope and sanitized evidence. |
 
 ## Claude — documented observation versus external endpoint
 

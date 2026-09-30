@@ -18,7 +18,7 @@ Release solution build PASS (0 warnings/errors). Core 39/39, Telemetry 58/58 and
 
 ## Remaining acceptance
 
-The specified live implementation-level corroboration is complete using the official app-server read-only method and the preserved official UI comparison. Its shared `/wham/usage` upstream is an explicit evidence limit, not an independent source. Before stopping, verify checks on the pushed final head and confirm PR #43 remains draft and unmerged. Then stop for final Advisor audit; keep CER-M3-002 ACTIVE until that audit passes.
+The specified live implementation-level corroboration is complete using the official app-server read-only method and the preserved official UI comparison. Its shared `/wham/usage` upstream is an explicit evidence limit, not an independent source. Final-head CI must be green on the latest pushed documentation update. PR #43 remains draft and unmerged; final Advisor approval is the only remaining acceptance gate. Keep CER-M3-002 ACTIVE until that approval and merge.
 
 ---
 
