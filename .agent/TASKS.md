@@ -32,18 +32,57 @@ Result: implementation and Advisor approval complete; cacheable stale snapshots 
 
 ## CER-M3-003 — AI telemetry expansion plan and foundation contract
 
-Status: ACTIVE
+Status: DONE
 Owner: Advisor (docs-only sole repository write owner)
 Priority: P0
 Depends on: CER-M3-002
 Branch: `docs/CER-M3-003-ai-telemetry-direction`
 Base: `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`
+Merge: PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`
 
 Scope: turn the post-Codex product decision into canonical, implementation-ready direction before parallel provider work. Audit TokenTracker, Gengchou and AI Limits as complementary references; record the 42-tool local-activity target and 17-provider usage-limit target; define zero-config/one-time-setup policy; define compact-surface/dashboard roadmap placement; define provider-isolation and single-owner parallelization boundaries. Documentation/decision only: no product code, packages, provider implementation, WidgetHost surface implementation or UI framework changes.
 
 Acceptance: D-024 and canonical AI telemetry document; PRODUCT_SPEC/ROADMAP/ARCHITECTURE/UI_UX/REFERENCE_PROJECTS/quota contract agree; current reference revisions and license boundaries recorded; no external project becomes Cerith's architecture; CER-M3-002 remains untouched; next implementation work can be split into bounded provider/foundation tasks without repeating product research; CI/hygiene and Advisor review pass.
 
-Result: first GPT-6.1 Sol High adversarial review returned FIXES REQUIRED / NO-GO on head `5b0f6e45ecd230189033afa304e2a7300e1f48fe`, while approving the product direction. Bounded documentation fixes are applied on the same PR branch; product implementation has not started.
+Result: first GPT-6.1 Sol High adversarial review returned FIXES REQUIRED / NO-GO on `5b0f6e45...`; all findings were corrected. Bounded second review PASS on `5b38464ed1313d44cb3ce8d71f02b1c634f43c56`; Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED under D-013. PR #45 was squash-merged as `2aa865ef35000680a3110ff7134b836bd966ef82`; approved and integrated trees are identical. No product/test/dependency code changed.
+
+## CER-M3-004 — AI quota expansion wave 1
+
+Status: NEXT / NOT STARTED
+Owner: Unassigned integration owner; each provider subtask gets one separate Luna Max write owner
+Priority: P0
+Depends on: CER-M3-003
+Base: canonical `main` at/after `2aa865ef35000680a3110ff7134b836bd966ef82`
+
+Goal: implement the remaining 16 reference-backed usage-limit integrations in parallel where evidence supports a safe bounded path, while preserving one write owner per provider path and one integration owner for shared files.
+
+No speculative runtime foundation is required before provider work. Do not create ProviderManager, ProviderFactory, universal auth framework, generic DI, empty provider folders or shared helpers merely to prepare the wave.
+
+Provider subtasks (all initially NOT STARTED): Claude; Antigravity; Cursor; Gemini CLI / Code Assist; Kimi; Kiro; Grok Build; GitHub Copilot; ZCode; OpenCode Go; Command Code; Qoder; Qoder CN; Ark Coding Plan; Ark Agent Plan; Devin. Codex is already DONE via CER-M3-002 and is not reimplemented.
+
+Provider-worker write boundary, created only when that provider starts:
+- `src/Cerith.TelemetryService/Providers/AI/<Provider>/`
+- `tests/Cerith.Telemetry.Tests/Providers/AI/<Provider>/`
+- `tests/Cerith.Telemetry.Tests/Fixtures/<Provider>/` when fixtures are justified.
+
+Provider workers must not edit `Program.cs`, project/solution files, Core, IPC, ControlCenter, WidgetHost, canonical docs, agent state, another provider path, shared auth/storage code or dependencies. If a provider genuinely requires one of those, stop and return the exact shared requirement to the integration owner.
+
+Each worker must:
+- start from the pinned/current evidence in AI_TELEMETRY, AI_QUOTA_REFERENCE_MATRIX, TokenTracker/Gengchou/AI Limits and first-party sources;
+- prefer safe reuse of an existing official session;
+- implement one-time setup only when truly necessary;
+- never require normal reconfiguration on every app start;
+- preserve provider/account/workspace identity and missing != zero;
+- keep quota, credits, balance, billing and activity semantically separate;
+- add deterministic parser/lifecycle/auth/cache tests inside its boundary;
+- stop rather than guess when source semantics, auth ownership or identity remain unresolved;
+- return a sanitized live-validation plan and any human authorization needed.
+
+Integration owner owns shared registration/lifecycle, `Program.cs`, dependencies, canonical MetricIds/docs/state, coexistence tests, shared secret/setup infrastructure if multiple accepted providers prove it necessary, and staged integration into `main`.
+
+Integration policy: all provider workers may research/implement concurrently, but merge accepted providers in small verified groups with CI between groups. A slow/absent/auth-failed provider must not stop hardware, gaming, Codex or other AI integrations.
+
+Wave acceptance: every subtask ends as accepted implementation or evidence-backed blocked/deferred; at least several additional quota integrations must be accepted, not merely classified. Integrated providers pass Release build/tests, repository hygiene, identity/auth/failure tests, bounded live comparison against the same account/workspace where practical, and Advisor review.
 
 ## CER-M2-003 — selected game/session summary and M2 exit
 

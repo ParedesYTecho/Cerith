@@ -1,3 +1,24 @@
+# Handoff — CER-M3-003 closure / CER-M3-004 quota wave plan
+
+Status: CER-M3-003 DONE. PR #45 was squash-merged as `2aa865ef35000680a3110ff7134b836bd966ef82`; approved head `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` and integrated tree `031351c287d0bbef17ee6862018af94bd2a073c4` match exactly. Final bounded GPT-6.1 Sol High review PASS. Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED under D-013.
+
+M3 remains ACTIVE / INCOMPLETE. D-024 is now canonical. CER-M3-004 — AI quota expansion wave 1 is NEXT / NOT STARTED.
+
+CER-M3-004 intent:
+- run the remaining 16 usage-limit providers in parallel with Luna Max provider-specific write owners;
+- keep one integration owner for shared registration/lifecycle/docs/dependencies;
+- no generic runtime foundation before evidence proves one necessary;
+- workers own only their provider source/tests/fixtures paths;
+- workers stop and escalate any shared dependency/auth/storage/Core/IPC requirement;
+- normal setup is zero-config where possible, one-time authorization when genuinely required, never repeated startup configuration;
+- integrate accepted providers in small verified groups even if implementation happens concurrently.
+
+Remaining quota targets: Claude; Antigravity; Cursor; Gemini CLI / Code Assist; Kimi; Kiro; Grok Build; GitHub Copilot; ZCode; OpenCode Go; Command Code; Qoder; Qoder CN; Ark Coding Plan; Ark Agent Plan; Devin.
+
+No provider implementation starts in this reconciliation branch.
+
+---
+
 # Handoff — CER-M3-003 AI telemetry expansion plan and foundation contract
 
 ## PR #45 first adversarial review

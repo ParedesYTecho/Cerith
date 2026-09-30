@@ -147,11 +147,17 @@ Do not ingest prompt/completion bodies or source code merely because a log conta
 
 ### CER-M3-003 — expansion plan and foundation contract
 
-ACTIVE as a documentation/decision task. It records the reference audit, target catalogs, auth/setup policy, milestone mapping and parallel ownership boundaries. It does not implement providers or shared runtime infrastructure.
+DONE via PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`. It records the reference audit, target catalogs, auth/setup policy, milestone mapping and parallel ownership boundaries. It introduced no product runtime infrastructure.
 
-After this contract is integrated, the next implementation task must establish only the minimum shared foundation proven necessary by multiple real providers: provider path/write isolation, setup/auth state semantics, secure-secret ownership where required, and integration boundaries. Do not introduce a generic ProviderManager/Factory/framework merely because the catalog is large.
+### CER-M3-004 — AI quota expansion wave 1
 
-Provider implementation may then run in parallel under one write owner per provider boundary, with one integration owner for shared files. Integrate in small verified waves even when research/implementation runs concurrently.
+NEXT / NOT STARTED.
+
+The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
+
+The 16 remaining usage-limit targets may be researched and implemented concurrently from the same canonical base. Provider workers do not edit shared integration files. Integrate accepted providers in small verified groups with CI and coexistence checks between groups.
+
+A worker that proves one-time human authorization is necessary documents the exact mechanism and returns any shared setup/storage requirement to the integration owner instead of silently introducing a global auth system.
 
 M3 cannot exit by classifying the entire target catalog as blocked/deferred. Before each implementation wave starts, its committed provider/collector set must be explicit. M3 exit requires, at minimum:
 

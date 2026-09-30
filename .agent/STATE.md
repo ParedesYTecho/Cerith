@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M3-001 DONE; CER-M3-002 DONE mediante PR #43 squash `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; M3 sigue ACTIVE / INCOMPLETE. CER-M3-003 está ACTIVE como task documental de dirección/foundation contract en `docs/CER-M3-003-ai-telemetry-direction`, sin cambios de producto. D-024 amplía la continuación de M3: el objetivo de referencia pasa a 17 integraciones de usage limits y 42 fuentes/herramientas de actividad AI local, con TokenTracker como referencia principal de adquisición/zero-config/dashboard, Gengchou como referencia principal de superficies Windows compactas y AI Limits como referencia principal de densidad visual/runtime ligero. D-023 conserva la decisión histórica del primer slice Codex, pero su orden futuro Claude→Antigravity queda superseded. La adquisición sigue siendo provider-specific, MetricId sigue siendo el contrato de widgets, y quota/credits/billing/activity/cost permanecen separados. No se ha iniciado ninguna implementación paralela.
+Estado: CER-M3-001 DONE; CER-M3-002 DONE; CER-M3-003 DONE mediante PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`, con head aprobado `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` y árbol integrado idéntico. M3 sigue ACTIVE / INCOMPLETE bajo D-024. El target canónico es 17 usage-limit integrations (Codex ya DONE + 16 restantes) y 42 productos de actividad AI como cobertura de referencia heterogénea. CER-M3-004 — AI quota expansion wave 1 es NEXT / NOT STARTED: implementación paralela por provider con Luna Max, paths de escritura disjuntos y un único integration owner para archivos compartidos. No hay runtime foundation genérica justificada antes de empezar.
 
 ## Listo
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M3-001 y CER-M3-002 están DONE. CER-M3-003 — AI telemetry expansion plan and foundation contract está ACTIVE en una rama documental; no hay implementación de providers en curso. Tras integrar y revisar este contrato, el siguiente trabajo debe preparar la mínima foundation compartida y lanzar providers/collectors bajo ownership aislado, no volver automáticamente al antiguo orden Claude→Antigravity. Contratos: `docs/AI_TELEMETRY.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md` y D-024. M0/M1/M2 siguen DONE.
+CER-M3-001/002/003 están DONE. CER-M3-004 — AI quota expansion wave 1 es NEXT / NOT STARTED. No se requiere crear infraestructura runtime genérica antes de los workers: cada provider empieza en su propio path y escala cualquier necesidad compartida al integration owner. Los 16 targets restantes son Claude, Antigravity, Cursor, Gemini CLI / Code Assist, Kimi, Kiro, Grok Build, GitHub Copilot, ZCode, OpenCode Go, Command Code, Qoder, Qoder CN, Ark Coding Plan, Ark Agent Plan y Devin. Implementación/investigación puede correr en paralelo; integración debe hacerse en grupos pequeños con CI y verificación. M0/M1/M2 siguen DONE.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
