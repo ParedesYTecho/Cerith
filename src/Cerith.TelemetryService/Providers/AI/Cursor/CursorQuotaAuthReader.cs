@@ -65,7 +65,8 @@ internal sealed class CursorQuotaAuthReader
                 tokenSubject.Length == 0)
                 return CursorAuthRead.Error("auth_invalid");
 
-            var configuredSubject = ReadConfiguredSubject(configPath);
+            var configuredSubject = ReadConfiguredSubject(configPath, out var configError);
+            if (configError is not null) return CursorAuthRead.Error(configError);
             if (configuredSubject is not null &&
                 !StringComparer.Ordinal.Equals(configuredSubject, tokenSubject))
                 return CursorAuthRead.Error("auth_identity_mismatch");
@@ -89,24 +90,51 @@ internal sealed class CursorQuotaAuthReader
         return buffer;
     }
 
-    private static string? ReadConfiguredSubject(string path)
+    private static string? ReadConfiguredSubject(string path, out string? errorCode)
     {
+        errorCode = null;
         byte[]? configBytes = null;
         try
         {
-            if (!File.Exists(path)) return null;
-            configBytes = ReadBounded(path, MaxConfigBytes);
-            using var config = JsonDocument.Parse(configBytes, new JsonDocumentOptions { MaxDepth = 16 });
-            if (config.RootElement.ValueKind != JsonValueKind.Object ||
-                !config.RootElement.TryGetProperty("authInfo", out var authInfo) ||
-                authInfo.ValueKind != JsonValueKind.Object ||
-                !authInfo.TryGetProperty("authId", out var authId) ||
-                authId.ValueKind != JsonValueKind.String)
+            try
+            {
+                configBytes = ReadBounded(path, MaxConfigBytes);
+            }
+            catch (FileNotFoundException) { return null; }
+            catch (DirectoryNotFoundException) { return null; }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                errorCode = "config_invalid";
                 return null;
-            return NormalizeSubject(authId.GetString());
+            }
+
+            using var config = JsonDocument.Parse(configBytes, new JsonDocumentOptions { MaxDepth = 16 });
+            if (config.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                errorCode = "config_invalid";
+                return null;
+            }
+            if (!config.RootElement.TryGetProperty("authInfo", out var authInfo))
+                return null;
+            if (authInfo.ValueKind != JsonValueKind.Object)
+            {
+                errorCode = "config_invalid";
+                return null;
+            }
+            if (!authInfo.TryGetProperty("authId", out var authId)) return null;
+            if (authId.ValueKind != JsonValueKind.String)
+            {
+                errorCode = "config_invalid";
+                return null;
+            }
+
+            var subject = NormalizeSubject(authId.GetString());
+            if (subject is null) errorCode = "config_invalid";
+            return subject;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        catch (JsonException)
         {
+            errorCode = "config_invalid";
             return null;
         }
         finally

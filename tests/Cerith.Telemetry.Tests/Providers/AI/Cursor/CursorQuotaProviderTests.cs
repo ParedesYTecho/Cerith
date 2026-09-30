@@ -169,6 +169,21 @@ public sealed class CursorQuotaProviderTests
     }
 
     [TestMethod]
+    [DataRow("{}")]
+    [DataRow("{\"authInfo\":{}}")]
+    public void MissingOptionalCliIdentityFieldsUseDesktopStateToken(string config)
+    {
+        using var harness = new Harness();
+        harness.WriteAuth("auth0|user_syntheticA", cliSubject: null);
+        harness.WriteCliConfig(config);
+
+        var read = harness.AuthReader.Read();
+
+        Assert.AreEqual(CursorAuthStatus.Ready, read.Status);
+        Assert.AreEqual("user_syntheticA", read.Identity!.AccountId);
+    }
+
+    [TestMethod]
     public void CliSubjectMustMatchTokenSubjectAfterReferenceNormalization()
     {
         using var harness = new Harness();
@@ -180,6 +195,39 @@ public sealed class CursorQuotaProviderTests
         Assert.AreEqual(CursorAuthStatus.Error, mismatch.Status);
         Assert.AreEqual("auth_identity_mismatch", mismatch.ErrorCode);
         Assert.IsNull(mismatch.Identity);
+    }
+
+    [TestMethod]
+    [DataRow("{")]
+    [DataRow("{\"authInfo\":null}")]
+    [DataRow("{\"authInfo\":{\"authId\":42}}")]
+    [DataRow("{\"authInfo\":{\"authId\":\"invalid\"}}")]
+    public async Task InvalidPresentCliConfigFailsClosedWithoutRequestsOrQuotaValues(string config)
+    {
+        using var harness = new Harness();
+        harness.WriteCliConfig(config);
+
+        var snapshots = await PollAndReadAllAsync(harness);
+
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
+            snapshot.ErrorCode == "config_invalid" && snapshot.Value is null &&
+            snapshot.Confidence == MetricConfidence.Unknown));
+    }
+
+    [TestMethod]
+    public async Task UnreadablePresentCliConfigFailsClosedWithoutRequestsOrQuotaValues()
+    {
+        using var harness = new Harness();
+        harness.WriteCliConfig("{\"authInfo\":{\"authId\":\"auth0|user_syntheticA\"}}");
+        using var configLock = harness.LockCliConfig();
+
+        var snapshots = await PollAndReadAllAsync(harness);
+
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
+            snapshot.ErrorCode == "config_invalid" && snapshot.Value is null &&
+            snapshot.Confidence == MetricConfidence.Unknown));
     }
 
     [TestMethod]
@@ -752,6 +800,19 @@ public sealed class CursorQuotaProviderTests
             }
             Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
             File.WriteAllText(configPath, JsonSerializer.Serialize(new { authInfo = new { authId = cliSubject } }));
+        }
+
+        public void WriteCliConfig(string contents)
+        {
+            var configPath = Path.Combine(ProfilePath, ".cursor", "cli-config.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+            File.WriteAllText(configPath, contents);
+        }
+
+        public FileStream LockCliConfig()
+        {
+            var configPath = Path.Combine(ProfilePath, ".cursor", "cli-config.json");
+            return new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.None);
         }
 
         public void SetSuccessfulAccountResponse()
