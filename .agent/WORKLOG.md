@@ -1,11 +1,18 @@
 # Worklog
 
+## 2026-09-30 10:12 — Codex — CER-M3-002
+
+Event: test
+Summary: Effective standard-route check passed; bounded live provider comparison against the official usage UI matched the reported durations, rounded remaining values and authoritative reset timestamps.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: All six snapshots were Fresh/Measured and co-temporal with the UI. Both reset metrics retained `source_disagreement` for conflicting `reset_after_seconds`; the UI corroborated `reset_at` to displayed precision. Process, Start menu, PATH and AppX checks found no independent current monitor on this host, so CER-M3-002 remains ACTIVE and is not ready for Advisor audit. No raw quota values/payloads or identity data written to the repository/PR; no credentials/auth/config changed, no paid workload/reset credit used. Cerith's protected identity key was initialized. The first service run may have made multiple normal-cadence read-only GETs while the local pipe reader was corrected; exact count was not observable.
+
 ## 2026-09-30 — Codex — CER-M3-002
 
 Event: test
 Summary: Implemented the ordinary Codex quota reader/parser/provider and six-ID pipe coverage; closed both Advisor cache-failure findings with four deterministic cached-failure cases; documented the outstanding live acceptance gate.
 Files: TelemetryService quota source and tests, existing integration coverage, canonical quota docs, and agent state.
-Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 58/58, Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 tracked paths); independent security/lifecycle review PASS; both Advisor cache-failure findings closed; PR #43 Build and Test and Repository Quality PASS, CodeQL skipped under D-013; Graphify 838 nodes/2,034 edges/81 communities with integrity PASS. Live official/independent cross-validation remains pending because the configured route is nonstandard; no live request or config change was made.
+Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 58/58, Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 tracked paths); independent security/lifecycle review PASS; both Advisor cache-failure findings closed; PR #43 Build and Test and Repository Quality PASS, CodeQL skipped under D-013; Graphify 838 nodes/2,034 edges/81 communities with integrity PASS. At the time of this entry, live official/independent cross-validation was pending because the effective route was nonstandard; no live request or configuration change had been made.
 
 Keep entries compact.
 
