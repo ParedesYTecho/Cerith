@@ -1,5 +1,20 @@
 # Handoff — CER-M3-003 AI telemetry expansion plan and foundation contract
 
+## PR #45 first adversarial review
+
+GPT-6.1 Sol High reviewed head `5b0f6e45ecd230189033afa304e2a7300e1f48fe` and returned **FIXES REQUIRED / NO-GO for that head; GO for the product direction**.
+
+Applied corrections:
+- one current runtime publication path: source → MetricSnapshot → MetricBus → IPC → MetricId consumer; any richer M7 history contract requires a later explicit decision;
+- D-024 now governs the quota matrix's future expansion and the pre-Codex "No AI provider" statement is explicitly historical;
+- the 42-tool catalog is classified as heterogeneous reference coverage, including remote, WSL, shared-parser and multi-source cases;
+- Gemini CLI / Code Assist and Grok Build are named precisely; OpenCode Go's preferred API-key route is recorded;
+- M3 now has a real minimum-delivery gate so blocked/deferred classification cannot close the entire breadth target;
+- CER-M3-002 Codex retains its accepted non-renewing auth policy;
+- AI Limits is independent-adapter corroboration, not an independent upstream oracle.
+
+No product/test/dependency code changed. New-head CI and a bounded re-review remain before merge.
+
 Status: ACTIVE / DOCS ONLY. Branch `docs/CER-M3-003-ai-telemetry-direction` is based on canonical main `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`. No product code, tests, packages, credentials or provider runtime behavior changed.
 
 The durable direction is now:
