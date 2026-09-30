@@ -86,19 +86,22 @@ System
 
 ## AI telemetry acquisition
 
-AI observability has two acquisition classes that share Core contracts but not necessarily implementation machinery:
+AI observability has multiple acquisition mechanisms but one committed runtime publication path in the current architecture:
 
 ```text
-quota / allowance
-  → provider API / official client source / CLI / local RPC
-  → normalized MetricSnapshot
-
-local activity / usage
-  → passive log / database / structured event / narrowly scoped hook
-  → normalized MetricSnapshot or history event
+source
+  → provider/collector normalization
+  → MetricSnapshot
+  → MetricBus
+  → IPC
+  → MetricId-driven consumers
 ```
 
-Do not force both classes through one speculative provider framework. Provider-specific code may remain separate until repeated concrete implementations prove a smaller shared primitive is worthwhile.
+Quota/allowance sources may be provider APIs, official-client sources, CLIs or local RPCs. Local activity sources may be passive logs/databases, structured events or narrowly scoped hooks. Those acquisition mechanisms do not create a second shared runtime contract.
+
+M7 may later require a richer persistence/history event contract for detailed sessions, projects or model breakdowns. If so, design and record that contract explicitly at M7; M3 collectors must not bypass MetricBus, write directly to a dashboard, or smuggle an undeclared event schema through JSON strings.
+
+Do not force both acquisition classes through one speculative provider framework. Provider-specific code may remain separate until repeated concrete implementations prove a smaller shared primitive is worthwhile.
 
 Quota credentials and local activity sources have different privacy/lifecycle rules. A hook that reports local token counters is not authorization to query a subscription endpoint; a quota token is not permission to ingest conversation content.
 
