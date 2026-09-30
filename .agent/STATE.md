@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M3-001 DONE; CER-M3-002 ACTIVE en codex/CER-M3-002-codex-quota, basado en 9b3d78db99fac5b4967479a9ab9b74259801a4e3. Codex ordinary quota provider y seis métricas implementados localmente; Release build y suites locales PASS (Core 39, Telemetry 54, Integration 10). Graphify refrescado: 838 nodos, 2034 aristas, 81 comunidades; integridad PASS. La comparación oficial /status/UI y el monitor independiente están pendientes: `openai_base_url` está configurado y no se envió una petición. CI del PR pendiente. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE. Contrato y evidencia: docs/PROVIDERS_AI_QUOTAS.md y docs/AI_QUOTA_REFERENCE_MATRIX.md.
+Estado: CER-M3-001 DONE; CER-M3-002 ACTIVE en codex/CER-M3-002-codex-quota, basado en 9b3d78db99fac5b4967479a9ab9b74259801a4e3. Codex ordinary quota provider y seis métricas implementados localmente; Release build y suites locales PASS (Core 39, Telemetry 54, Integration 10). Graphify refrescado: 838 nodos, 2034 aristas, 81 comunidades; integridad PASS. PR draft #43: Build and Test y Repository Quality PASS; CodeQL omitido según D-013. La comparación oficial /status/UI y el monitor independiente están pendientes: `openai_base_url` está configurado y no se envió una petición. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE. Contrato y evidencia: docs/PROVIDERS_AI_QUOTAS.md y docs/AI_QUOTA_REFERENCE_MATRIX.md.
 
 ## Listo
 

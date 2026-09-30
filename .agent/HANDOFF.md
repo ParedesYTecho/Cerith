@@ -1,6 +1,6 @@
 # Handoff — CER-M3-002 Codex quota vertical slice
 
-Status: ACTIVE / INCOMPLETE. Implementation and local conformance tests pass. Live official status or usage-UI comparison and independent-monitor corroboration are pending. The current Codex configuration contains an `openai_base_url` override, so Cerith sent no live request; the override value is not recorded and user config was not changed. PR CI is pending.
+Status: ACTIVE / INCOMPLETE. Draft PR #43 is open. Local implementation and conformance tests pass; the implementation commit's GitHub build and hygiene checks pass. Live official status or usage-UI comparison and independent-monitor corroboration are pending. The current Codex configuration contains an `openai_base_url` override, so Cerith sent no live request; the override value is not recorded and user config was not changed.
 
 ## Implementation
 
@@ -8,11 +8,11 @@ TelemetryService registers and publishes the six ordinary Codex quota metrics th
 
 ## Verification
 
-Release solution build PASS (0 warnings/errors). Core 39/39, Telemetry 54/54 and Integration 10/10 PASS. `git diff --check` and repository filename hygiene PASS (83 tracked/untracked paths checked). Independent read-only security/lifecycle review PASS with no remaining actionable findings. Graphify code and document graph refreshed to 838 nodes/2,034 edges/81 communities; integrity check found no missing, dangling or self-loop edges.
+Release solution build PASS (0 warnings/errors). Core 39/39, Telemetry 54/54 and Integration 10/10 PASS. `git diff --check` and repository filename hygiene PASS (83 tracked/untracked paths checked). Independent read-only security/lifecycle review PASS with no remaining actionable findings. PR #43 Build and Test and Repository Quality checks PASS; CodeQL was skipped under D-013. Graphify code and document graph refreshed to 838 nodes/2,034 edges/81 communities; integrity check found no missing, dangling or self-loop edges.
 
 ## Remaining acceptance
 
-After Codex is using the standard ChatGPT route, run a bounded live read compared with the official status/usage UI for the same account/workspace and an independently implemented monitor. Record timestamps and sanitized comparison results only. Obtain PR CI and the required review/integration boundary. Do not claim CER-M3-002 DONE or close M3 until those gates pass.
+After Codex is using the standard ChatGPT route, run a bounded live read compared with the official status/usage UI for the same account/workspace and an independently implemented monitor. Record timestamps and sanitized comparison results only. Keep PR #43 draft until live acceptance and the required review/integration boundary pass. Do not claim CER-M3-002 DONE or close M3 until those gates pass.
 
 ---
 
