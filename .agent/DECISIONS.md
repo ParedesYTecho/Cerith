@@ -146,3 +146,33 @@ Codex has a publicly inspectable official client/protocol mapping, demonstrable 
 Claude follows because its documented statusline is event-fed, version/session-dependent and needs an explicitly configured receiver with proven identity; its broader OAuth usage endpoint/scope/schema is corroborated externally rather than by an auditable official implementation here. Antigravity follows after that because shared group/window semantics are now documented, but CLI quota JSON schema/account binding/auth side effects and internal project/group/RPC mappings still require validation. Do not upgrade older per-model availability or apparently full fractions into verified quota, and do not treat CLI-owned authentication as proof of no renewal.
 
 This ordering balances verifiable semantics, credential safety, useful live quota, validation access and one concrete lifecycle. It does not claim the selected backend is a supported public API or all plans are covered. Parser fixtures alone cannot accept CER-M3-002: independent official UI/status comparison, identity isolation, no-renewal transport proof and reset/failure conformance remain required. M3 stays ACTIVE / INCOMPLETE; CER-M3-002 is NEXT / NOT STARTED.
+
+## D-024 — Broad AI telemetry expansion and reference roles
+
+Status: accepted product/architecture direction after CER-M3-002.
+
+D-023 remains the historical decision that selected Codex as the first M3 vertical slice. Its **future sequential order** (Claude, then Antigravity) is superseded by this decision; the completed Codex rationale and contract remain valid.
+
+M3 now targets broad AI telemetry acquisition:
+
+- the current 17-provider usage-limit catalog recorded in `docs/AI_TELEMETRY.md`;
+- the current 42-tool local AI activity catalog recorded there;
+- provider-by-provider verification rather than parity claims.
+
+Reference roles are deliberately split:
+
+- TokenTracker is the primary operational reference for broad local acquisition, zero-config onboarding, usage-limit breadth and analytics/dashboard information architecture;
+- Gengchou is the primary reference for Windows taskbar/floating/tray/detail compact surfaces and resilient shell placement;
+- AI Limits is the primary reference for compact adaptive visual density and measured lightweight native runtime;
+- first-party sources remain higher authority for provider semantics when available.
+
+Cerith does not adopt any of those projects as its architecture. Widget-facing behavior remains MetricId-driven and provider-specific auth/acquisition stays outside Core and WidgetHost.
+
+For provider setup, prefer safe automatic reuse of already-authorized official local state. One explicit human authorization/setup is allowed when genuinely required, but successful setup must persist and ordinary app startup must not repeatedly demand configuration. Refresh/session ownership is provider-specific; administrator rights do not substitute provider authorization.
+
+Quota, credits, balance, billing, token activity, derived cost and service status are separate semantics. Missing telemetry is never zero.
+
+Parallel provider work is allowed only with isolated write ownership. One worker owns one provider boundary; shared integration/auth infrastructure has one integration owner. Do not create a generic ProviderManager/Factory/framework until multiple implemented providers prove the abstraction.
+
+Licensing remains part of implementation acceptance: Gengchou and TokenTracker are MIT at the pinned references and may be considered for focused adaptation with provenance/notice review; AI Limits is GPL-3.0-or-later and remains research-only unless a separate license decision permits reuse.
+

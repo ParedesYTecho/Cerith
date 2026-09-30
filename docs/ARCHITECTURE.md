@@ -84,6 +84,29 @@ AI
 System
 ```
 
+## AI telemetry acquisition
+
+AI observability has multiple acquisition mechanisms but one committed runtime publication path in the current architecture:
+
+```text
+source
+  → provider/collector normalization
+  → MetricSnapshot
+  → MetricBus
+  → IPC
+  → MetricId-driven consumers
+```
+
+Quota/allowance sources may be provider APIs, official-client sources, CLIs or local RPCs. Local activity sources may be passive logs/databases, structured events or narrowly scoped hooks. Those acquisition mechanisms do not create a second shared runtime contract.
+
+M7 may later require a richer persistence/history event contract for detailed sessions, projects or model breakdowns. If so, design and record that contract explicitly at M7; M3 collectors must not bypass MetricBus, write directly to a dashboard, or smuggle an undeclared event schema through JSON strings.
+
+Do not force both acquisition classes through one speculative provider framework. Provider-specific code may remain separate until repeated concrete implementations prove a smaller shared primitive is worthwhile.
+
+Quota credentials and local activity sources have different privacy/lifecycle rules. A hook that reports local token counters is not authorization to query a subscription endpoint; a quota token is not permission to ingest conversation content.
+
+Provider implementation should be physically isolatable enough that bounded workers can own one provider without editing surface/rendering code. Shared integration files, secure-secret storage and any reusable auth/setup primitive require one integration owner.
+
 ## Cerith.WidgetHost
 
 Lightweight always-on runtime.
@@ -91,8 +114,13 @@ Lightweight always-on runtime.
 Future responsibilities:
 
 - desktop widgets;
-- taskbar widgets;
-- overlays.
+- compact floating monitoring surfaces;
+- taskbar widgets/panels;
+- tray indicators;
+- overlays;
+- expanded/detail inspection surfaces.
+
+All surfaces consume normalized MetricId state. Compact views may choose density/headline presentation policy, but provider acquisition/auth logic never belongs in WidgetHost.
 
 It should not host the heavy visual editor.
 

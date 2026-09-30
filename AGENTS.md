@@ -25,6 +25,7 @@ product goal       docs/PRODUCT_SPEC.md
 architecture       docs/ARCHITECTURE.md
 roadmap            docs/ROADMAP.md
 metrics            docs/METRICS.md
+AI telemetry       docs/AI_TELEMETRY.md
 AI quotas          docs/PROVIDERS_AI_QUOTAS.md
 research provenance docs/REFERENCE_PROJECTS.md
 UI/UX              docs/UI_UX.md

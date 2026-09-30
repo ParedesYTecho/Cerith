@@ -63,17 +63,17 @@ FPS, frame time, 1% lows, 0.1% lows, frame pacing, presentation/display metrics,
 
 Application FPS, Displayed FPS and Presented FPS are separate semantic metrics. Cerith must not collapse them into a generic “real FPS” number or infer generated frames from arithmetic between rates unless the underlying provider contract proves that interpretation.
 
-### AI quotas
+### AI telemetry
 
-Authoritative or explicitly classified usage data for:
+Cerith treats AI observability as two related but distinct capability families.
 
-- Claude;
-- Codex;
-- Antigravity;
-- Copilot;
-- Cursor;
-- Grok;
-- future providers/plugins.
+**Provider quota / allowance telemetry** exposes verified subscription windows, credits and reset information without confusing quota, balance, billing, activity or API rate limits. The current expansion target follows the verified provider catalog in `AI_TELEMETRY.md`; Codex is the completed first vertical slice.
+
+**Local AI tool activity telemetry** reads or receives the minimum structured local usage data needed for tokens, model activity, project attribution and cost analysis. The current breadth target follows the 42-tool catalog recorded in `AI_TELEMETRY.md`. Passive local sources and official hooks are preferred; prompts, completions, source code and credentials are not telemetry.
+
+The default experience is zero-config when an existing official local session/source can be detected safely. A provider may require one explicit setup/authorization when no safe reusable source exists, but normal app restarts must not ask the user to configure it again. Credentials and renewal ownership remain provider-specific and must be verified rather than generalized.
+
+Quota, credits, billing, token activity, model cost and service status remain separate semantics even when one external product displays them together.
 
 ### Historical telemetry
 
@@ -132,6 +132,8 @@ install
 ```
 
 UX target: when detection and preset selection succeed normally, a new user should reach a useful, polished first setup in about 30 seconds. This is a product-experience target, not a measured performance claim.
+
+For AI telemetry, first run should auto-detect supported local tools, sessions and passive data sources. Optional hooks or explicit provider authorization may be offered once when they unlock materially better data. Successful setup persists; repeated reconfiguration on ordinary startup is a UX defect.
 
 Advanced:
 
@@ -208,7 +210,7 @@ Do not attempt:
 - marketplace;
 - remote telemetry;
 - mobile companion;
-- dozens of AI providers;
+- unverified provider-parity claims or blind imports of external telemetry semantics;
 - full RTSS feature parity;
 - every vendor hardware API;
 - advanced AI insights.

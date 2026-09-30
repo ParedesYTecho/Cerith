@@ -137,6 +137,38 @@ hover
 pressed
 ```
 
+## Compact monitoring surfaces
+
+Cerith should support a continuum of information density rather than treating each shell location as a separate product.
+
+Reference roles:
+
+- **Gengchou**: taskbar badges, floating rows, tray indicators and a detail popup that expose one quota model at different densities; warning takeover, hover detail, Explorer/RDP recovery and deterministic render fixtures are especially valuable.
+- **AI Limits**: Compact / Medium / Expanded detail levels, responsive width tiers, horizontal/vertical bars, adaptive provider count, palette/opacity controls and a minimal taskbar/tray fallback.
+- **TokenTracker**: information-rich dashboard and desktop-widget composition for usage, activity, model breakdown and limits.
+
+Cerith interpretation:
+
+```text
+MetricId / history
+      ↓
+semantic component
+      ↓
+density/layout policy
+      ↓
+desktop · floating · taskbar · tray · dashboard
+```
+
+Rules:
+
+- the same metric state must mean the same thing on every surface;
+- a compact surface may select a headline/urgent metric, but it must not invent or rewrite provider semantics;
+- hover/click/expanded views reveal detail rather than cramming every field into the smallest surface;
+- stale, unavailable, error and action-required states remain visually honest at every density;
+- width/DPI/theme changes reflow deliberately instead of overlapping or truncating silently;
+- taskbar/tray work must survive ordinary Explorer rebuilds and multi-monitor changes;
+- surface implementations remain MetricId-driven; no Claude/Codex-specific widget classes.
+
 ## Diagnostic Test session (future)
 
 ControlCenter should eventually expose a clear user-invoked Test / Diagnostic Session entry point for validating telemetry during a real workload.
