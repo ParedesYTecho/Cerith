@@ -12,6 +12,8 @@ D-024 expands M3 beyond the original post-Codex sequential plan. The current ref
 
 Default setup policy: first reuse a safe existing official local authorization when possible. If that cannot provide the desired quota, one explicit provider setup/authorization is acceptable. Once configured, ordinary Cerith restarts must not require repeated setup. Credential/refresh ownership remains provider-specific and must be documented; silent renewal is acceptable only when Cerith legitimately owns renewable authorization or an official client owns and maintains the session.
 
+This broader policy does **not** retroactively change CER-M3-002 Codex: its accepted production path remains read-only and non-renewing. A provider-specific reconnect after genuine expiration/revocation is different from asking the user to repeat configuration on every Cerith startup.
+
 ## Reference hierarchy
 
 For each provider compare:
@@ -49,7 +51,7 @@ Never persist raw credentials.
 
 ### CER-M3-001 contract audit
 
-This is a documentary acquisition/normalization contract, not an existing DTO or a reason to change Core/IPC. Evidence and upstream revisions live in [AI_QUOTA_REFERENCE_MATRIX.md](AI_QUOTA_REFERENCE_MATRIX.md); implementation order is D-023. No AI provider is implemented.
+This subsection records the **historical CER-M3-001 contract audit** before provider implementation. It is a documentary acquisition/normalization contract, not an existing DTO or a reason to change Core/IPC. Evidence and upstream revisions live in [AI_QUOTA_REFERENCE_MATRIX.md](AI_QUOTA_REFERENCE_MATRIX.md). At the time of that audit no AI provider was implemented; CER-M3-002 subsequently implemented Codex, and D-024 now governs future expansion.
 
 The original fields are necessary but insufficient to distinguish multiple quota buckets, units and cache policy. Define them as follows and add only the four metadata entries below:
 
