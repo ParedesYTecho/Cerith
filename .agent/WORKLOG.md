@@ -3,9 +3,9 @@
 ## 2026-09-30 — Codex — CER-M3-002
 
 Event: test
-Summary: Implemented the ordinary Codex quota reader/parser/provider and six-ID pipe coverage; added owner-switch queue-boundary and shutdown-state coverage; documented the outstanding live acceptance gate.
-Files: TelemetryService quota source, existing integration/telemetry tests, canonical quota docs, and agent state.
-Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 54/54, Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 paths); independent read-only security/lifecycle review PASS; PR #43 Build and Test and Repository Quality PASS, CodeQL skipped under D-013; Graphify 838 nodes/2,034 edges/81 communities with integrity PASS. Live official/independent cross-validation remains pending because the configured route is nonstandard.
+Summary: Implemented the ordinary Codex quota reader/parser/provider and six-ID pipe coverage; closed both Advisor cache-failure findings with four deterministic cached-failure cases; documented the outstanding live acceptance gate.
+Files: TelemetryService quota source and tests, existing integration coverage, canonical quota docs, and agent state.
+Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 58/58, Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 tracked paths); independent security/lifecycle review PASS; both Advisor cache-failure findings closed; PR #43 Build and Test and Repository Quality PASS, CodeQL skipped under D-013; Graphify 838 nodes/2,034 edges/81 communities with integrity PASS. Live official/independent cross-validation remains pending because the configured route is nonstandard; no live request or config change was made.
 
 Keep entries compact.
 
