@@ -1,6 +1,6 @@
 # AI Quota Reference Matrix
 
-Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance and live validation are complete. Final Advisor approval and PR #43 merge remain pending; M3 remains ACTIVE / INCOMPLETE, with Claude and Antigravity still to follow. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
+Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance, live validation and Advisor review DONE. PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated tree match. M3 remains ACTIVE / INCOMPLETE; Claude is next, followed by Antigravity. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
 
 ## Purpose
 
@@ -9,7 +9,7 @@ Evidence classes: **D** = official documented behavior; **O** = official client/
 | Provider | Official source to investigate | Reference implementations | Cerith status |
 |---|---|---|---|
 | Claude | Official account/OAuth/CLI behavior | CodexBar, OpenUsage, others | Not implemented |
-| Codex | Official authenticated usage source / CLI | Gengchou, TokenTracker, AI Limits, CodexBar, OpenUsage | Implemented locally; automated and live validation complete; Advisor approval/merge pending |
+| Codex | Official authenticated usage source / CLI | Gengchou, TokenTracker, AI Limits, CodexBar, OpenUsage | DONE via PR #43; implementation, conformance, live validation and Advisor review complete |
 | Antigravity | Official local app/language server quota source | CodexBar, OpenUsage, TokenTracker | Not implemented |
 | Copilot | Official GitHub/Copilot usage surfaces | CodexBar, TokenTracker | Future |
 | Cursor | Official usage/billing surfaces | CodexBar, TokenTracker | Future |

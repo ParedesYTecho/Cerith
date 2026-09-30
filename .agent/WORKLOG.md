@@ -336,3 +336,10 @@ Event: documentation aligned to completed validation; final Advisor approval rem
 Summary: reconciled the operational state, M3 roadmap, Codex validation contract and reference matrix. The official UI and bounded official app-server corroboration are complete; the app-server and inspected public adapters share `/wham/usage`, so the evidence is implementation-level, not an independent upstream oracle. CER-M3-002 remains ACTIVE; Claude and Antigravity follow; M3 remains ACTIVE / INCOMPLETE.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`.
 Status: documentation only; no product/test code or live request. PR #43 remains draft and unmerged pending final Advisor approval.
+
+## 2026-09-30 — Codex — CER-M3-002 post-merge operational reconciliation
+
+Event: Advisor PASS; PR #43 squash-merged; minimal state reconciliation completed.
+Summary: approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated product tree `2c2be61a7ac9cf4dcb82f5acae0b83680f18649b` match. CER-M3-002 is DONE; M3 remains ACTIVE / INCOMPLETE. Claude is NEXT / NOT STARTED, followed by Antigravity. The shared `/wham/usage` upstream limitation, `source_disagreement` reset evidence and MetricBus v1 queued-snapshot account-boundary limitation remain documented. No Claude implementation or product/test changes were made.
+Verification: squash commit `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; Build and Test and Repository Quality passed; CodeQL was skipped under D-013. `git diff --check` and tracked-file hygiene passed for this docs-only reconciliation. The final main state and CI are verified after the reconciliation push.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`.
