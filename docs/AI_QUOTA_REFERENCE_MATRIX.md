@@ -1,6 +1,6 @@
 # AI Quota Reference Matrix
 
-Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance, live validation and Advisor review DONE. PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated tree match. M3 remains ACTIVE / INCOMPLETE; Claude is next, followed by Antigravity. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); implementation ordering belongs to D-023.
+Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance, live validation and Advisor review DONE. PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated tree match. M3 remains ACTIVE / INCOMPLETE. D-024 governs future broad expansion; Claude and Antigravity remain targets but no longer have a mandatory sequential order. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); D-023 remains historical evidence for the Codex-first decision and D-024 governs subsequent expansion.
 
 ## Purpose
 
