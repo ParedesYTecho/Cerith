@@ -31,7 +31,7 @@ Exact provider semantics can decay independently of these revisions; revalidate 
 
 ### Local AI activity: 42-tool reference catalog
 
-TokenTracker's current reference catalog demonstrates automatic/local acquisition for:
+TokenTracker's pinned reference advertises and implements a 42-product activity catalog. The catalog is evidence that broad coverage is practical, but it is **not** 42 homogeneous local adapters and it is not a claim of Windows runtime acceptance in Cerith. It mixes passive readers, managed hooks, local databases, remote queries and shared parser families:
 
 1. Claude Code
 2. Codex CLI
@@ -76,7 +76,20 @@ TokenTracker's current reference catalog demonstrates automatic/local acquisitio
 41. MiniMax Code
 42. Command Code
 
-This is a **coverage target and research catalog**, not a claim that Cerith already supports all 42. Each collector enters only after its source, fields, privacy boundary, deduplication and semantics are verified.
+This is a **coverage target and research catalog**, not a claim that Cerith already supports all 42. Each collector enters only after its source, fields, platform behavior, privacy boundary, deduplication and semantics are verified.
+
+Reference-specific caveats that matter before task decomposition:
+
+| Reference item | Acquisition/platform caveat |
+| --- | --- |
+| Cursor | Activity includes a remote usage query authenticated from local state; it is not purely passive local-log telemetry. |
+| TRAE Work CN | Uses a remote internal API path and is opt-in in the reference; network/auth/privacy are part of acceptance. |
+| Claude Science | Reference Windows support goes through WSL for its inspected local database path. |
+| Devin CLI | Reference Windows activity acquisition also relies on WSL for the inspected path. |
+| Dots | Reuses the `pi` acquisition/parser family rather than defining an independent installation/parser. |
+| GitHub Copilot | Combines multiple sources (current SQLite usage, legacy baseline and OTEL paths); overlap/dedup is part of the contract. |
+| Qoder CN | Regional variant with separate paths/endpoints; do not collapse it into international Qoder. |
+| Shared parser families | Codex-family, Claude-family, pi/OMP-family and OpenCode-family implementations reduce repeated mechanics but do not erase product-specific semantics. |
 
 ### Usage limits: 17-provider reference catalog
 
@@ -85,10 +98,10 @@ The current TokenTracker limits registry covers:
 1. Claude
 2. Codex
 3. Cursor
-4. Gemini / Code Assist scope to be named precisely during implementation
+4. Gemini CLI / Code Assist
 5. Kimi
 6. Kiro
-7. Grok / Grok Build scope to be named precisely during implementation
+7. Grok Build
 8. GitHub Copilot
 9. Antigravity
 10. ZCode
@@ -101,6 +114,16 @@ The current TokenTracker limits registry covers:
 17. Devin
 
 Codex is already implemented in Cerith. The remaining providers are targets for evidence-driven expansion, not permission to import TokenTracker's labels or normalization unchanged.
+
+Notable acquisition distinctions in the pinned reference:
+
+| Usage-limit integration | Reference acquisition note |
+| --- | --- |
+| OpenCode Go | API key + official usage API is the preferred route at this pin; dashboard scraping is a compatibility fallback and local-cost estimation is explicit opt-in, not equivalent quota truth. |
+| Gemini CLI / Code Assist | OAuth-backed Code Assist quota; do not relabel this as generic Gemini consumer/API quota. |
+| Grok Build | Billing/credit-period semantics; keep included quota, on-demand/prepaid balance and ordinary activity separate. |
+| Qoder / Qoder CN | Separate regional/product paths and auth; treat them as distinct integrations. |
+| Ark Coding Plan / Agent Plan | Separate plan surfaces and units; do not merge because branding is shared. |
 
 ## Acquisition principles
 
@@ -155,32 +178,15 @@ At minimum verify:
 
 Derived cost must retain pricing provenance and must not become provider-reported billing. Unknown pricing yields unknown/partial cost, not fabricated zero-cost meaning.
 
-## Product analytics target
+## Product surfaces and analytics ownership
 
-Once history exists, ControlCenter should be able to compose a local dashboard with:
+This document owns acquisition semantics, not duplicate UI requirements.
 
-- usage trends;
-- model/provider breakdown;
-- cost analysis with provenance;
-- activity heatmap;
-- safe project attribution;
-- quota/usage-limit status.
+- Dashboard/history product scope is canonical in `ROADMAP.md` (M7) and `PRODUCT_SPEC.md`.
+- Compact floating/taskbar/tray/detail behavior is canonical in `UI_UX.md` and `ROADMAP.md` (M4).
+- This acquisition layer only guarantees truthful normalized MetricIds and safe attribution inputs for those later surfaces.
 
-TokenTracker demonstrates the value of this information architecture. Cerith should implement it through its own native/history contracts rather than importing TokenTracker's dashboard runtime.
-
-## Compact surfaces target
-
-Gengchou and AI Limits demonstrate that the same provider state can remain useful without opening a dashboard.
-
-Cerith's widget/surface engine should support:
-
-- desktop/floating metric views;
-- taskbar compact views;
-- tray indicators;
-- expanded/detail inspection;
-- adaptive density and truthful stale/error states.
-
-These surfaces consume MetricIds/history; they do not know provider auth or acquisition details.
+TokenTracker, Gengchou and AI Limits remain the reference products recorded in `REFERENCE_PROJECTS.md`; their UI/runtime stacks are not imported.
 
 ## Parallel implementation boundary
 
@@ -212,10 +218,6 @@ Do not inherit:
 - GPL implementation code without an explicit license decision;
 - external normalization assumptions without verification.
 
-## Milestone mapping
+## Milestone ownership
 
-- **M3**: AI acquisition, quota expansion, local activity collectors and setup/auth semantics.
-- **M4**: generic widget engine plus compact floating/taskbar/tray/detail surfaces.
-- **M7**: local history and analytics dashboard.
-
-This mapping keeps acquisition, rendering and historical analysis separate while still delivering the reference-product capabilities through Cerith's universal metric architecture.
+The canonical milestone split lives in `ROADMAP.md`: M3 owns acquisition/setup, M4 owns generic compact surfaces, and M7 owns persistence/analytics. Keep this document focused on what collectors must acquire and normalize.
