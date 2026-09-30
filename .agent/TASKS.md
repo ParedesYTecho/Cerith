@@ -61,11 +61,11 @@ Provider worker claims (one Luna Max worker and staging branch per provider; wor
 
 | Provider | Branch | Status |
 | --- | --- | --- |
-| Claude | `codex/CER-M3-004-claude` | ACTIVE — first batch |
-| Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — first batch |
-| Cursor | `codex/CER-M3-004-cursor` | ACTIVE — first batch |
-| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — first batch |
-| Kimi | `codex/CER-M3-004-kimi` | ACTIVE — first batch |
+| Claude | `codex/CER-M3-004-claude` | ACTIVE — draft tests passing; owner-monitor additions pending |
+| Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — draft tests passing; owner-monitor additions pending |
+| Cursor | `codex/CER-M3-004-cursor` | ACTIVE — draft tests passing; owner-monitor additions pending |
+| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — draft tests passing; owner-monitor additions pending |
+| Kimi | `codex/CER-M3-004-kimi` | ACTIVE — draft tests passing; owner-monitor additions pending |
 | Kiro | `codex/CER-M3-004-kiro` | QUEUED — replace a completed worker immediately |
 | Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — replace a completed worker immediately |
 | GitHub Copilot | `codex/CER-M3-004-copilot` | QUEUED — replace a completed worker immediately |
@@ -103,6 +103,10 @@ Integration owner owns shared registration/lifecycle, `Program.cs`, dependencies
 Coordinator review constraints: provider IDs follow source semantics; do not force primary/secondary slots. For Copilot, preserve `token_based_billing`, `quota_remaining`, and `credits_used` as distinct source fields, and retain legacy premium-request fields under their legacy semantics when reported.
 
 Lifecycle gate: `Program.RunAsync` includes the pipe server and provider/publisher tasks in `Task.WhenAny` and awaits them together, so an unexpected provider-runner fault can terminate TelemetryService. Add only the smallest integration-boundary failure isolation justified by accepted providers. Coexistence tests must cover absent, slow and auth-failed sources, an unexpected provider failure and shutdown cancellation, proving other accepted providers plus hardware/gaming/Codex continue.
+
+Integration progress (2026-09-30): shared failure isolation is implemented in `Program.cs` at commit `6e99d608c7df039c4c591420ec80b845e5fb6d22`. The small `Func<Task>` supervisor encloses Codex construction and `RunAsync`, contains synchronous construction/start and asynchronous runner failures, emits only a fixed provider ID and sanitized category, and waits for service cancellation after an unexpected exit. It adds no provider framework or dependency. Baseline at `412daad424bc7d85e1180611ded41fbab30cbe5c`: Release build 0 warnings/errors; Core 39/39, Telemetry 58/58, Integration 10/10; hygiene 84 tracked paths. After the seam: Release build 0 warnings/errors; Core 39/39, Telemetry 62/62, Integration 10/10; `git diff --check` and hygiene PASS. Current evidence proves Codex runner isolation only, not provider-wave coexistence.
+
+Next integration test, gated on the first coordinator-reviewed provider commit: add a focused composition test within `tests/Cerith.Telemetry.Tests` reusing the existing Codex harness's registry and one actual shared `MetricBus`; instantiate the real `HardwareTelemetryProvider` against the current machine, the production `PresentMonTelemetryProvider` with its existing `IPresentMonCapture` fake boundary, Codex on the shared bus, and the reviewed provider using its deterministic synthetic-auth/server test seam. Subscribe before publication. Assert actual bus delivery and source lifecycle, not synthetic device values: hardware may publish a valid Fresh/Measured value or a truthful valueless Unavailable snapshot; never force either result. Exercise absent/slow/auth-failed/unexpected-failure/cancellation behavior using only the accepted provider's source seam while verifying hardware, gaming and Codex publications continue on that same bus. Do not add hardware fake injection, a shared abstraction, a generic fixture layer, or a fake bus. Reuse existing harness setup; choose exact method/API and assertions after reviewing the accepted SHA. Do not import an unfinished provider draft. No shared identity primitive or token/auth storage is approved; provider setup gates must come from concrete official routes and accepted evidence.
 
 Integration policy: all provider workers may research/implement concurrently, but merge accepted providers in small verified groups with CI between groups. A slow/absent/auth-failed provider must not stop hardware, gaming, Codex or other AI integrations.
 

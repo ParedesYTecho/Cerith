@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M3-001 DONE; CER-M3-002 DONE; CER-M3-003 DONE mediante PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`, con head aprobado `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` y árbol integrado idéntico. M3 sigue ACTIVE / INCOMPLETE bajo D-024. El target canónico es 17 usage-limit integrations (Codex ya DONE + 16 restantes) y 42 productos de actividad AI como cobertura de referencia heterogénea. CER-M3-004 — AI quota expansion wave 1 es NEXT / NOT STARTED: implementación paralela por provider con Luna Max, paths de escritura disjuntos y un único integration owner para archivos compartidos. No hay runtime foundation genérica justificada antes de empezar.
+Estado: CER-M3-001 DONE; CER-M3-002 DONE; CER-M3-003 DONE mediante PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`, con head aprobado `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` y árbol integrado idéntico. M3 sigue ACTIVE / INCOMPLETE bajo D-024. El target canónico es 17 usage-limit integrations (Codex ya DONE + 16 restantes) y 42 productos de actividad AI como cobertura de referencia heterogénea. CER-M3-004 — AI quota expansion wave 1 está IN PROGRESS: providers con ownership de escritura disjunto y un único integration owner para archivos compartidos; la rama `codex/CER-M3-004-integration` contiene el seam mínimo de aislamiento de fallos en `6e99d608c7df039c4c591420ec80b845e5fb6d22`. Los provider commits siguen pendientes de revisión del coordinator. No hay runtime foundation genérica ni infraestructura compartida de identidad/token aprobada.
 
 ## Listo
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M3-001/002/003 están DONE. CER-M3-004 — AI quota expansion wave 1 es NEXT / NOT STARTED. No se requiere crear infraestructura runtime genérica antes de los workers: cada provider empieza en su propio path y escala cualquier necesidad compartida al integration owner. Los 16 targets restantes son Claude, Antigravity, Cursor, Gemini CLI / Code Assist, Kimi, Kiro, Grok Build, GitHub Copilot, ZCode, OpenCode Go, Command Code, Qoder, Qoder CN, Ark Coding Plan, Ark Agent Plan y Devin. Implementación/investigación puede correr en paralelo; integración debe hacerse en grupos pequeños con CI y verificación. M0/M1/M2 siguen DONE.
+CER-M3-001/002/003 están DONE; CER-M3-004 — AI quota expansion wave 1 está IN PROGRESS. El integration owner ha committed el seam mínimo de lifecycle; los workers mantienen sus paths disjuntos y shared requirements se escalan para revisión. Los 16 targets restantes son Claude, Antigravity, Cursor, Gemini CLI / Code Assist, Kimi, Kiro, Grok Build, GitHub Copilot, ZCode, OpenCode Go, Command Code, Qoder, Qoder CN, Ark Coding Plan, Ark Agent Plan y Devin. Implementación/investigación puede correr en paralelo; integración sigue condicionada a commits revisados, pruebas compartidas y grupos pequeños con CI. M0/M1/M2 siguen DONE.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 

@@ -1,21 +1,18 @@
-# Handoff — CER-M3-003 closure / CER-M3-004 quota wave plan
+# Handoff — CER-M3-004 quota wave integration
 
-Status: CER-M3-003 DONE. PR #45 was squash-merged as `2aa865ef35000680a3110ff7134b836bd966ef82`; approved head `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` and integrated tree `031351c287d0bbef17ee6862018af94bd2a073c4` match exactly. Final bounded GPT-6.1 Sol High review PASS. Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED under D-013.
+Status: CER-M3-004 IN PROGRESS; M3 remains ACTIVE / INCOMPLETE. This isolated integration worktree is on `codex/CER-M3-004-integration`, based on `72b43b268b4992d0b0ea45b6e29067d10450274f`. The canonical checkout remains untouched. Ownership claim `0cff1b949b97e0a182976bce06a4ac68102b6519` and branch-name correction `412daad424bc7d85e1180611ded41fbab30cbe5c` precede the shared lifecycle seam commit `6e99d608c7df039c4c591420ec80b845e5fb6d22`.
 
-M3 remains ACTIVE / INCOMPLETE. D-024 is now canonical. CER-M3-004 — AI quota expansion wave 1 is NEXT / NOT STARTED.
+The lifecycle seam wraps the existing Codex provider's construction and `RunAsync` in a narrow `Func<Task>` supervisor. An unexpected normal exit or fault is reduced to a fixed provider ID and sanitized category; the supervisor then waits for service cancellation, so this runner cannot win `Program.RunAsync`'s `Task.WhenAny` while the service remains active. Service cancellation returns normally. The boundary also contains constructor/start exceptions. No general framework, dependency, shared identity code or token storage was added.
 
-CER-M3-004 intent:
-- run the remaining 16 usage-limit providers in parallel with Luna Max provider-specific write owners;
-- keep one integration owner for shared registration/lifecycle/docs/dependencies;
-- no generic runtime foundation before evidence proves one necessary;
-- workers own only their provider source/tests/fixtures paths;
-- workers stop and escalate any shared dependency/auth/storage/Core/IPC requirement;
-- normal setup is zero-config where possible, one-time authorization when genuinely required, never repeated startup configuration;
-- integrate accepted providers in small verified groups even if implementation happens concurrently.
+Verification after the seam: Release solution build PASS (0 warnings/errors); Core 39/39, Telemetry 62/62, Integration 10/10; repository filename hygiene PASS (84 tracked paths); `git diff --check` PASS. The baseline at `412daad` was also green (39/39, 58/58, 10/10; build and hygiene PASS). The new tests exercise Codex absent auth, rejected auth, slow request, unexpected runner fault, synchronous start failure and shutdown. They prove the supervision seam only; they do not establish full wave-provider coexistence.
 
-Remaining quota targets: Claude; Antigravity; Cursor; Gemini CLI / Code Assist; Kimi; Kiro; Grok Build; GitHub Copilot; ZCode; OpenCode Go; Command Code; Qoder; Qoder CN; Ark Coding Plan; Ark Agent Plan; Devin.
+Provider workers remain in their TASKS.md-owned boundaries. No provider commit has been imported; the coordinator will provide a reviewed SHA. Wait for that SHA, inspect the accepted implementation/tests and official auth/setup route, then integrate only the accepted commit. Do not import drafts, merge main, invent a login route, mutate auth for validation, or extract shared identity/token infrastructure absent an accepted proven requirement.
 
-No provider implementation starts in this reconciliation branch.
+Prepared next test gate (not yet implemented): add one focused composition test in the existing Telemetry.Tests project, reusing the Codex harness's registry/shared `MetricBus`; publish through the real `HardwareTelemetryProvider` against this machine; use PresentMon's existing `IPresentMonCapture` fake; and run Codex plus the first coordinator-reviewed provider against deterministic synthetic auth/server inputs on that same bus. Subscribe before publication and assert actual delivery/lifecycle, not fabricated hardware numbers. Hardware may produce a valid Fresh/Measured reading or a truthful valueless Unavailable snapshot. Exercise the accepted provider's absent/slow/auth-failed/unexpected-failure/cancellation path while asserting hardware, gaming and Codex continue publishing. No hardware fake injection, fake bus, shared abstraction or generic fixture layer. Reuse existing harness setup; fix exact APIs/metric IDs after reviewing the accepted SHA. No claim of wave PASS is made until this coexistence gate and remaining acceptance criteria pass.
+
+Worker progress: the five active first-batch drafts (Claude, Antigravity, Cursor, Gemini and Kimi) have passing draft tests; owner-monitor additions remain pending. They are not accepted/importable until the coordinator supplies a reviewed SHA.
+
+Current worker claim/status table and provider contract constraints are in `.agent/TASKS.md`. No runtime provider behavior or canonical metric terminology was changed by the integration seam.
 
 ---
 
