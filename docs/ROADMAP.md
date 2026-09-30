@@ -115,7 +115,7 @@ D-024 supersedes only the **future sequential ordering** portion of D-023. D-023
 
 ### M3.A — quota / allowance acquisition
 
-Target the current verified reference catalog of **17 usage-limit integrations** recorded in `AI_TELEMETRY.md`, starting from the working Codex contract and validating each provider independently.
+Target the **17 usage-limit integrations confirmed to exist in the pinned reference source** and recorded in `AI_TELEMETRY.md`. This is reference-source coverage, not proof that all 17 semantics or Windows/runtime paths are already validated in Cerith. Start from the working Codex contract and validate each provider independently.
 
 Requirements:
 
@@ -133,7 +133,7 @@ The exact acquisition mechanism remains provider-specific: documented API, offic
 
 ### M3.B — local AI tool activity acquisition
 
-Target the **42-tool local activity catalog** recorded in `AI_TELEMETRY.md`, using passive files/databases/event streams or narrowly scoped official hooks where appropriate.
+Target the **42-product activity catalog confirmed in the pinned TokenTracker reference** and recorded in `AI_TELEMETRY.md`. The catalog mixes passive, hook-driven, local-database and remote acquisition paths; Cerith validates platform/source semantics per collector rather than claiming blanket local/Windows parity.
 
 The goal is local-first structured telemetry such as:
 
@@ -153,7 +153,14 @@ After this contract is integrated, the next implementation task must establish o
 
 Provider implementation may then run in parallel under one write owner per provider boundary, with one integration owner for shared files. Integrate in small verified waves even when research/implementation runs concurrently.
 
-M3 exit requires the target catalogs to be either implemented with verified semantics or explicitly documented as blocked/deferred with concrete evidence. Breadth targets are not permission to fabricate parity.
+M3 cannot exit by classifying the entire target catalog as blocked/deferred. Before each implementation wave starts, its committed provider/collector set must be explicit. M3 exit requires, at minimum:
+
+- the completed Codex quota slice plus additional accepted quota integrations from the broad catalog;
+- at least one accepted passive/local activity collector flowing through MetricSnapshot → MetricBus → IPC → a MetricId consumer;
+- verified coexistence showing absent, slow or failing AI integrations do not stop quota, hardware or gaming acquisition;
+- every remaining target either implemented with verified semantics or explicitly tracked as blocked/deferred with concrete evidence.
+
+Breadth targets are not permission to fabricate parity, and blocked/deferred classification cannot substitute for delivering the committed wave.
 
 ## M4 — Widget Engine & Compact Surfaces
 
