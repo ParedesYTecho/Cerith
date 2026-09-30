@@ -61,11 +61,11 @@ Provider worker claims (one Luna Max worker and staging branch per provider; wor
 
 | Provider | Branch | Status |
 | --- | --- | --- |
-| Claude | `codex/CER-M3-004-claude` | ACTIVE — draft tests passing; owner-monitor additions pending |
-| Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — draft tests passing; owner-monitor additions pending |
-| Cursor | `codex/CER-M3-004-cursor` | ACTIVE — draft tests passing; owner-monitor additions pending |
-| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — draft tests passing; owner-monitor additions pending |
-| Kimi | `codex/CER-M3-004-kimi` | ACTIVE — draft tests passing; owner-monitor additions pending |
+| Claude | `codex/CER-M3-004-claude` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
+| Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
+| Cursor | `codex/CER-M3-004-cursor` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
+| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — implementation/tests progressing; no verified individual result recorded |
+| Kimi | `codex/CER-M3-004-kimi` | ACTIVE — draft telemetry test command passed before owner-monitor revisions; final provider checks pending |
 | Kiro | `codex/CER-M3-004-kiro` | QUEUED — replace a completed worker immediately |
 | Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — replace a completed worker immediately |
 | GitHub Copilot | `codex/CER-M3-004-copilot` | QUEUED — replace a completed worker immediately |
