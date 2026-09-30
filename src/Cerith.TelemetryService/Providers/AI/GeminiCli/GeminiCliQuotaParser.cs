@@ -52,7 +52,7 @@ internal static class GeminiCliQuotaParser
                 var modelId = modelProperty.GetString();
                 if (string.IsNullOrWhiteSpace(modelId)) continue;
                 if (!IsSafeModelId(modelId)) return GeminiCliQuotaReading.Failure("schema_invalid");
-                if (models.ContainsKey(modelId)) return GeminiCliQuotaReading.Failure("duplicate_model_bucket");
+                if (models.ContainsKey(modelId)) return GeminiCliQuotaReading.Failure("ambiguous_bucket_identity");
                 if (models.Count >= MaxModelCount) return GeminiCliQuotaReading.Failure("model_limit_exceeded");
 
                 var remaining = ReadRemaining(bucket);

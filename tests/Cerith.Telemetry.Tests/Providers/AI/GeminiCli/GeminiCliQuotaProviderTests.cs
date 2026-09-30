@@ -55,6 +55,13 @@ public sealed class GeminiCliQuotaProviderTests
     }
 
     [TestMethod]
+    public void ParserRejectsRepeatedModelIdWithDifferentTokenTypesAsAmbiguous()
+    {
+        var ambiguous = Parse("""{"buckets":[{"modelId":"gemini-2.5-pro","tokenType":"synthetic-dimension-a","remainingFraction":0.8},{"modelId":"gemini-2.5-pro","tokenType":"synthetic-dimension-b","remainingFraction":0.2}]}""");
+        Assert.IsFalse(ambiguous.IsValid);
+        Assert.AreEqual("ambiguous_bucket_identity", ambiguous.ErrorCode);
+    }
+    [TestMethod]
     public void ParserKeepsMissingInvalidDuplicateAndElapsedValuesDistinct()
     {
         Assert.AreEqual("schema_invalid", Parse("{").ErrorCode);
@@ -77,7 +84,7 @@ public sealed class GeminiCliQuotaProviderTests
 
         var duplicate = Parse("{\"buckets\":[{\"modelId\":\"gemini-2.5-pro\",\"remainingFraction\":0.8},{\"modelId\":\"gemini-2.5-pro\",\"remainingFraction\":0.2}]}");
         Assert.IsFalse(duplicate.IsValid);
-        Assert.AreEqual("duplicate_model_bucket", duplicate.ErrorCode);
+        Assert.AreEqual("ambiguous_bucket_identity", duplicate.ErrorCode);
 
         var noBuckets = Parse("{\"buckets\":[]}");
         Assert.IsTrue(noBuckets.IsValid);
@@ -106,6 +113,32 @@ public sealed class GeminiCliQuotaProviderTests
             GeminiCliQuotaAuthReader.ResolveGlobalGeminiDirectory("relative-home", userHome, tempPath));
     }
 
+    [TestMethod]
+    public void AuthReaderRequiresExplicitSelectedTypeDespiteEnvironmentDefault()
+    {
+        using var harness = new Harness();
+        File.WriteAllText(Path.Combine(harness.GeminiDirectory, "settings.json"), "{}");
+        var reader = new GeminiCliQuotaAuthReader(harness.Home, harness.Time,
+            name => name == "GEMINI_DEFAULT_AUTH_TYPE" ? "oauth-personal" : null);
+
+        var result = reader.Read();
+
+        Assert.AreEqual(GeminiCliAuthStatus.Unsupported, result.Status);
+        Assert.AreEqual("auth_mode_unselected", result.ErrorCode);
+    }
+
+    [TestMethod]
+    public void AuthReaderRejectsApplicationDefaultCredentialsAlongsideCachedOAuth()
+    {
+        using var harness = new Harness();
+        var reader = new GeminiCliQuotaAuthReader(harness.Home, harness.Time,
+            name => name == "GOOGLE_APPLICATION_CREDENTIALS" ? "synthetic-adc.json" : null);
+
+        var result = reader.Read();
+
+        Assert.AreEqual(GeminiCliAuthStatus.Unsupported, result.Status);
+        Assert.AreEqual("auth_mode_unsupported", result.ErrorCode);
+    }
     [TestMethod]
     public void AuthReaderAcceptsOnlyFreshLocalOAuthAndNeverWritesCredentials()
     {

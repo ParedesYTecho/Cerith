@@ -71,7 +71,11 @@ internal sealed class GeminiCliQuotaAuthReader
                 return GeminiCliAuthRead.Unsupported("auth_mode_unsupported");
 
             var selectedType = ReadSelectedAuthType(Path.Combine(home, "settings.json"));
-            if (selectedType is not null && !StringComparer.Ordinal.Equals(selectedType, "oauth-personal"))
+            if (selectedType is null)
+                return GeminiCliAuthRead.Unsupported("auth_mode_unselected");
+            if (!StringComparer.Ordinal.Equals(selectedType, "oauth-personal"))
+                return GeminiCliAuthRead.Unsupported("auth_mode_unsupported");
+            if (!string.IsNullOrEmpty(_environmentReader("GOOGLE_APPLICATION_CREDENTIALS")))
                 return GeminiCliAuthRead.Unsupported("auth_mode_unsupported");
 
             var authPath = Path.Combine(home, "oauth_creds.json");
