@@ -1,0 +1,33 @@
+{
+  "_cerith_fixture": {
+    "provenance": "Hand-built synthetic fixture; fields selected from the pinned OpenAI Codex usage mapping at revision 2a34aef79484bf769b4b225f3f595755f2962170.",
+    "contains_real_account_data": false
+  },
+  "account_id": "synthetic-account-primary",
+  "user_id": "synthetic-user-A",
+  "plan_type": "synthetic",
+  "rate_limit": {
+    "allowed": false,
+    "limit_reached": true,
+    "primary_window": {
+      "used_percent": 37.25,
+      "reset_at": 1893456000,
+      "limit_window_seconds": 18000
+    },
+    "secondary_window": {
+      "used_percent": 12.5,
+      "reset_at": 1894060800,
+      "limit_window_seconds": 604800
+    }
+  },
+  "credits": {
+    "unlimited": true,
+    "balance": 123456
+  },
+  "additional_rate_limits": [
+    {
+      "limit_name": "synthetic-extra",
+      "primary_window": { "used_percent": 99.0 }
+    }
+  ]
+}

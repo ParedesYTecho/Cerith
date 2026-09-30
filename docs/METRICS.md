@@ -25,11 +25,15 @@ ai.claude.session.remaining
 ai.claude.weekly.remaining
 ai.codex.quota.primary.remaining
 ai.codex.quota.secondary.remaining
+ai.codex.quota.primary.reset
+ai.codex.quota.secondary.reset
+ai.codex.quota.primary.duration
+ai.codex.quota.secondary.duration
 ```
 
 Do not use a closed enum because metrics need to be addable without recompiling Core.
 
-AI examples are prospective, not registered providers. CER-M3-001 replaces the speculative Codex session/Antigravity weekly labels with source-neutral Codex slot names; exact proposed semantics and tests are in [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md). No fixed Antigravity weekly window is assumed.
+The six Codex quota IDs are registered by TelemetryService; their semantics and conformance tests are in [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md). Other AI examples remain prospective. No fixed Antigravity weekly window is assumed.
 
 ## Descriptor
 

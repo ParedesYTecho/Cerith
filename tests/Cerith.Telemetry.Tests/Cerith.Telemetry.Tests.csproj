@@ -7,4 +7,7 @@
     <ProjectReference Include="..\..\src\Cerith.Core\Cerith.Core.csproj" />
     <ProjectReference Include="..\..\src\Cerith.TelemetryService\Cerith.TelemetryService.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="Fixtures\Codex\usage.synthetic.fixture.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

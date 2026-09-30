@@ -1,5 +1,19 @@
 # Worklog
 
+## 2026-09-30 10:12 — Codex — CER-M3-002
+
+Event: test
+Summary: Effective standard-route check passed; bounded live provider comparison against the official usage UI matched the reported durations, rounded remaining values and authoritative reset timestamps.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+Result: All six snapshots were Fresh/Measured and co-temporal with the UI. Both reset metrics retained `source_disagreement` for conflicting `reset_after_seconds`; the UI corroborated `reset_at` to displayed precision. Process, Start menu, PATH and AppX checks found no independent current monitor on this host, so independent-monitor corroboration remains pending; the code and PR verification are ready for Advisor audit while CER-M3-002 remains ACTIVE. No raw quota values/payloads or identity data written to the repository/PR; no credentials/auth/config changed, no paid workload/reset credit used. Cerith's protected identity key was initialized. The first service run may have made multiple normal-cadence read-only GETs while the local pipe reader was corrected; exact count was not observable.
+
+## 2026-09-30 — Codex — CER-M3-002
+
+Event: test
+Summary: Implemented the ordinary Codex quota reader/parser/provider and six-ID pipe coverage; closed both Advisor cache-failure findings with four deterministic cached-failure cases; documented the outstanding live acceptance gate.
+Files: TelemetryService quota source and tests, existing integration coverage, canonical quota docs, and agent state.
+Result: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 58/58, Integration 10/10 PASS; `git diff --check` PASS; hygiene PASS (83 tracked paths); independent security/lifecycle review PASS; both Advisor cache-failure findings closed; PR #43 Build and Test and Repository Quality PASS, CodeQL skipped under D-013; Graphify 838 nodes/2,034 edges/81 communities with integrity PASS. At the time of this entry, live official/independent cross-validation was pending because the effective route was nonstandard; no live request or configuration change had been made.
+
 Keep entries compact.
 
 Template:
@@ -306,3 +320,19 @@ Event: research/contract complete; independent source/semantic/security gate PAS
 Summary: started from clean main/origin/main at `730ae6c5d518c812213c631eab4129c4bcbea1f6` after routing PR #41. Two read-only GPT-5.6 Sol High Web specialists researched Claude/Antigravity; GPT-6.1 Sol Medium native independently reviewed the source/order and contract. Canonical evidence and all pinned references are in `docs/AI_QUOTA_REFERENCE_MATRIX.md`; normalization, private identity, six prospective Codex MetricIds, cache/errors and future deterministic/live acceptance tests are in `docs/PROVIDERS_AI_QUOTAS.md`. D-023 chooses Codex, then Claude, then Antigravity. Antigravity print-mode quota support was verified in the official pinned changelog section 1.1.11; JSON schema/account/auth behavior remains a later adoption gate.
 Verification: one bounded Codex usage GET returned HTTP 200 without task-performed token renewal or credential writes; no live payload/auth copy/temp probe file persisted. This establishes one-host source shape only, not future provider/live conformance. Release build PASS (0 warnings/errors); Core 39/39, Telemetry 26/26, Integration 9/9 PASS. Diff, scope, tracked-file hygiene and added-content privacy checks PASS. Graph-first contract navigation completed; no source structure changed, so no graph refresh. Protect Main requires build/hygiene and squash; integration is recorded by the research PR/Git history.
 Files: quota contract/matrix, reference provenance, MetricId examples, D-023, TASKS/STATE/HANDOFF/WORKLOG and M3 roadmap state. Documentation only; no provider, fixture implementation, package, UI or M4. CER-M3-001 DONE; M3 ACTIVE / INCOMPLETE; CER-M3-002 Codex NEXT / NOT STARTED. No ceremonial reconciliation PR needed when this final state is integrated.
+
+## 2026-09-30 — Codex — CER-M3-002 live corroboration and handoff
+
+Event: live acceptance evidence complete; STOP FOR FINAL ADVISOR AUDIT.
+Summary: first verified the effective Codex route was standard ChatGPT auth with no `openai_base_url` or custom routing override. The sanitized official UI comparison and a near-simultaneous official app-server `account/rateLimits/read` comparison matched Cerith's ordinary primary/secondary windows for used/remaining direction, duration and authoritative `reset_at` within the documented rounding tolerance. One successful Cerith acquisition provided six Fresh/Measured snapshots; one same-account app-server read was used. The UI and app-server corroborate `reset_at`, while both reset metrics continue to report `source_disagreement` because `reset_after_seconds` differs.
+Provenance: current Gengchou, TokenTracker and AI Limits Codex adapters are distinct implementations but all read the same undocumented `/wham/usage` endpoint; the official app-server also resolves to that endpoint. They do not constitute independent upstream oracles. Their auth and normalization differences are recorded in `.agent/HANDOFF.md`; no external monitor software was installed or run.
+Safety: no credentials, auth/config files, login/logout state or reset credits were modified/used; no paid model workload was generated. Evidence retained is sanitized. Earlier short service attempts may have issued normal read-only GETs; exact count was not observable.
+Files: `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Status: CER-M3-002 remains ACTIVE pending final Advisor audit; PR #43 remains draft and unmerged.
+
+## 2026-09-30 — Codex — CER-M3-002 documentation consistency
+
+Event: documentation aligned to completed validation; final Advisor approval remains pending.
+Summary: reconciled the operational state, M3 roadmap, Codex validation contract and reference matrix. The official UI and bounded official app-server corroboration are complete; the app-server and inspected public adapters share `/wham/usage`, so the evidence is implementation-level, not an independent upstream oracle. CER-M3-002 remains ACTIVE; Claude and Antigravity follow; M3 remains ACTIVE / INCOMPLETE.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`.
+Status: documentation only; no product/test code or live request. PR #43 remains draft and unmerged pending final Advisor approval.

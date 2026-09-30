@@ -4,7 +4,7 @@ Proyecto: Cerith
 Nombre: provisional
 Hito: M0 — Foundation DONE; M1 — Hardware MVP DONE; M2 — Gaming MVP DONE; M3 — AI Quotas MVP ACTIVE / INCOMPLETE
 Rama canónica: `main`
-Estado: CER-M3-001 DONE (research/contract only); review independiente GPT-6.1 Sol Medium PASS. Bootstrap desde `main == origin/main` en `730ae6c5d518c812213c631eab4129c4bcbea1f6`, PR #41 integrado y working tree limpio antes del claim. La matriz canónica es `docs/AI_QUOTA_REFERENCE_MATRIX.md`; el contrato y plan del primer slice están en `docs/PROVIDERS_AI_QUOTAS.md`. D-023 elige Codex para CER-M3-002 (NEXT / NOT STARTED); ningún provider AI está implementado. M0/M1/M2 siguen DONE. M3 ACTIVE / INCOMPLETE.
+Estado: CER-M3-001 DONE; CER-M3-002 ACTIVE en codex/CER-M3-002-codex-quota, basado en 9b3d78db99fac5b4967479a9ab9b74259801a4e3. Codex ordinary quota provider y seis métricas implementados localmente; Release build y suites locales PASS (Core 39, Telemetry 58, Integration 10). Los dos findings de Advisor sobre ErrorCode de cache y cobertura de fallos quedaron cerrados en `f87c38b`. Graphify refrescado: 838 nodos, 2034 aristas, 81 comunidades; integridad PASS. La ruta efectiva estándar pasó el gate antes de las lecturas live. Comparaciones sanitizadas de UI oficial y app-server oficial `account/rateLimits/read` PASS: los seis snapshots Cerith y las ventanas primaria/secundaria del app-server coincidieron en dirección usado/restante (tolerancia de redondeo documentada), duración y `reset_at` (±1 s). Las tres implementaciones públicas inspeccionadas y el app-server usan el mismo upstream `/wham/usage`: son implementaciones distintas, no fuentes upstream independientes. En ambos resets sigue `source_disagreement` entre `reset_after_seconds` y `reset_at`; UI y app-server corroboran `reset_at`. No se instaló ni ejecutó software de monitorización externo. No se modificaron credenciales, autenticación ni configuración de Codex; no hubo login/logout, carga de modelo pagada ni consumo de reset. Los dos findings de Advisor siguen cerrados. PR #43 permanece draft y sin merge; M3 ACTIVE / INCOMPLETE hasta la auditoría final del Advisor. M0/M1/M2 siguen DONE. Contrato y evidencia: docs/PROVIDERS_AI_QUOTAS.md y docs/AI_QUOTA_REFERENCE_MATRIX.md.
 
 ## Listo
 
@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-CER-M3-001 está cerrado como research/contract. CER-M3-002 — Codex es NEXT / NOT STARTED; su contrato y gates están en `docs/PROVIDERS_AI_QUOTAS.md`. No se ha implementado ningún provider ni se inicia la siguiente task en esta sesión. M0/M1/M2 siguen DONE; su evidencia histórica permanece en TASKS/HANDOFF y las decisiones canónicas.
+CER-M3-001 está cerrado como research/contract. CER-M3-002 sigue ACTIVE mientras espera la aprobación final del Advisor y el merge de PR #43. Su implementación Codex, conformance automatizada, comparación live con la UI oficial, corroboración terminal acotada del app-server oficial y CI están completas. PR #43 permanece draft y sin merge. Después de cerrar CER-M3-002, Claude y Antigravity siguen en ese orden; M3 permanece ACTIVE / INCOMPLETE. Contratos y evidencia en `docs/PROVIDERS_AI_QUOTAS.md` y `docs/AI_QUOTA_REFERENCE_MATRIX.md`. M0/M1/M2 siguen DONE; su evidencia histórica permanece en TASKS/HANDOFF y las decisiones canónicas.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 
