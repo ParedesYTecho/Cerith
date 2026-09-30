@@ -158,13 +158,7 @@ internal static class AntigravityQuotaParser
         if (!bucket.TryGetProperty("resetTime", out var reset) || reset.ValueKind == JsonValueKind.Null)
             return AntigravityQuotaPoint.Unavailable();
 
-        DateTimeOffset instant;
-        if (reset.ValueKind == JsonValueKind.Number && reset.TryGetInt64(out var seconds))
-        {
-            try { instant = DateTimeOffset.FromUnixTimeSeconds(seconds); }
-            catch (ArgumentOutOfRangeException) { return AntigravityQuotaPoint.Error("invalid_reset"); }
-        }
-        else if (reset.ValueKind != JsonValueKind.String || !TryParseResetString(reset.GetString(), out instant))
+        if (reset.ValueKind != JsonValueKind.String || !TryParseResetString(reset.GetString(), out var instant))
         {
             return AntigravityQuotaPoint.Error("invalid_reset");
         }
@@ -177,19 +171,6 @@ internal static class AntigravityQuotaParser
         instant = default;
         if (string.IsNullOrWhiteSpace(text))
             return false;
-
-        if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
-        {
-            try
-            {
-                instant = DateTimeOffset.FromUnixTimeSeconds(seconds);
-                return true;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
-        }
 
         var hasExplicitZone = text.EndsWith("Z", StringComparison.OrdinalIgnoreCase) ||
             System.Text.RegularExpressions.Regex.IsMatch(text, @"[+-]\d{2}:\d{2}$",

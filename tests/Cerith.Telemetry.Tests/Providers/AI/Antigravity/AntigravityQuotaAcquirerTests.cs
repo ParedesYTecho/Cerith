@@ -22,7 +22,7 @@ public sealed class AntigravityQuotaAcquirerTests
     private const string Summary = """
         {"response":{"groups":[{"buckets":[
           {"bucketId":"3p-weekly","remainingFraction":0.123456,"resetTime":"2030-01-01T00:00:00Z"},
-          {"bucketId":"gemini-5h","remainingFraction":0,"resetTime":1893456000}
+          {"bucketId":"gemini-5h","remainingFraction":0,"resetTime":"2030-01-01T00:00:00Z"}
         ]}]}}
         """;
     private static readonly AntigravityProcessOwner Owner = new(42, "synthetic-start", "synthetic-csrf", [43123]);
@@ -185,19 +185,25 @@ public sealed class AntigravityQuotaAcquirerTests
     public void ParserPreservesExactUnitsAndIndependentMissingInvalidFields()
     {
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
+        var expectedReset = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var reading = AntigravityQuotaParser.Parse(Encoding.UTF8.GetBytes(Summary), now);
         Assert.AreEqual(12.3456, reading.Points[0].Value!.Value.AsDouble(), 0.0000001);
-        Assert.AreEqual(DateTimeOffset.FromUnixTimeSeconds(1893456000), reading.Points[4].Value!.Value.AsDateTimeOffset());
+        Assert.AreEqual(expectedReset, reading.Points[4].Value!.Value.AsDateTimeOffset());
+        Assert.AreEqual(MetricState.Unavailable, reading.Points[5].State);
+        Assert.AreEqual(expectedReset, reading.Points[7].Value!.Value.AsDateTimeOffset());
         Assert.AreEqual(MetricState.Unavailable, reading.Points[1].State);
         var invalid = Parse("""
             {"response":{"groups":[{"buckets":[
               {"bucketId":"3p-weekly","remainingFraction":null,"resetTime":"2030-01-01"},
-              {"bucketId":"3p-5h","remainingFraction":1.1},
-              {"bucketId":"gemini-weekly","remainingFraction":1,"resetTime":"2020-01-01T00:00:00Z"}
+              {"bucketId":"3p-5h","remainingFraction":1.1,"resetTime":"1893456000"},
+              {"bucketId":"gemini-weekly","remainingFraction":1,"resetTime":"2020-01-01T00:00:00Z"},
+              {"bucketId":"gemini-5h","remainingFraction":1,"resetTime":1893456000}
             ]}]}}
             """, now);
         Assert.AreEqual(MetricState.Unavailable, invalid.Points[0].State);
         Assert.AreEqual("invalid_reset", invalid.Points[4].ErrorCode);
+        Assert.AreEqual("invalid_reset", invalid.Points[5].ErrorCode);
+        Assert.AreEqual("invalid_reset", invalid.Points[7].ErrorCode);
         Assert.AreEqual("invalid_quota", invalid.Points[1].ErrorCode);
         Assert.AreEqual("reset_elapsed", invalid.Points[2].ErrorCode);
         Assert.IsNull(invalid.Points[2].Value);

@@ -501,13 +501,22 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            try { process.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException)
+            {
+                if (!process.HasExited)
+                    throw;
+            }
             throw;
         }
         catch (Exception)
         {
             try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
-            catch (InvalidOperationException) { }
+            catch (InvalidOperationException)
+            {
+                if (!process.HasExited)
+                    throw;
+            }
             return [];
         }
     }
