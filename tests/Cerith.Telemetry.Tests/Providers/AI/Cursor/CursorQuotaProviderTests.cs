@@ -26,12 +26,12 @@ public sealed class CursorQuotaProviderTests
 {
     private static readonly string[] Ids =
     [
-        "ai.cursor.quota.plan.total.remaining",
-        "ai.cursor.quota.plan.auto.remaining",
-        "ai.cursor.quota.plan.api.remaining",
+        "ai.cursor.quota.plan.total.used_percent",
+        "ai.cursor.quota.plan.auto.used_percent",
+        "ai.cursor.quota.plan.api.used_percent",
         "ai.cursor.quota.plan.reset",
         "ai.cursor.quota.plan.duration",
-        "ai.cursor.quota.grok_bot.period.remaining",
+        "ai.cursor.quota.grok_bot.period.used_percent",
         "ai.cursor.quota.grok_bot.period.reset",
         "ai.cursor.quota.grok_bot.period.duration"
     ];
@@ -68,7 +68,7 @@ public sealed class CursorQuotaProviderTests
                 MetricValueKind.DateTimeOffset, MetricValueKind.TimeSpan },
             descriptors.Select(item => item.ValueKind).ToArray());
         Assert.IsTrue(descriptors.Where(item => item.ValueKind == MetricValueKind.Double)
-            .All(item => item.Unit == "%" && item.SemanticType == "quota_remaining"));
+            .All(item => item.Unit == "%" && item.SemanticType == "quota_used"));
         Assert.AreEqual("s", descriptors[4].Unit);
         Assert.AreEqual("s", descriptors[7].Unit);
     }
@@ -78,9 +78,9 @@ public sealed class CursorQuotaProviderTests
     {
         var points = CursorQuotaParser.ParseUsageSummary(Encoding.UTF8.GetBytes(UsageSummary), InitialUtc);
 
-        Assert.AreEqual(76d, points[0].Value!.Value.AsDouble());
+        Assert.AreEqual(24d, points[0].Value!.Value.AsDouble());
         Assert.AreEqual(50d, points[1].Value!.Value.AsDouble());
-        Assert.AreEqual(0d, points[2].Value!.Value.AsDouble());
+        Assert.AreEqual(100d, points[2].Value!.Value.AsDouble());
         Assert.AreEqual(DateTimeOffset.Parse("2026-10-01T00:00:00Z"),
             points[3].Value!.Value.AsDateTimeOffset());
         Assert.AreEqual(TimeSpan.FromDays(30), points[4].Value!.Value.AsTimeSpan());
@@ -117,15 +117,20 @@ public sealed class CursorQuotaProviderTests
         var access = CursorQuotaParser.ParseSandAccess(MakeSandAccess(1));
         Assert.IsTrue(access.Granted);
         var points = CursorQuotaParser.ParseSandUsage(payload, access.Granted, InitialUtc);
-        Assert.AreEqual(67.5, points[0].Value!.Value.AsDouble(), 0.000001);
+        Assert.AreEqual(32.5, points[0].Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual(reset, points[1].Value!.Value.AsDateTimeOffset());
         Assert.AreEqual(TimeSpan.FromDays(14), points[2].Value!.Value.AsTimeSpan());
 
         var absentPercent = CursorQuotaParser.ParseSandUsage(
-            MakeSandUsage(start, reset, usagePercent: null, includedLimitZero: false), true, InitialUtc);
+            MakeSandUsage(start, reset, usagePercent: null, includedLimitZero: null), true, InitialUtc);
         Assert.AreEqual(MetricState.Unavailable, absentPercent[0].State);
         Assert.IsNull(absentPercent[0].Value);
         Assert.IsNull(absentPercent[0].ErrorCode);
+
+        var missingLimitFlag = CursorQuotaParser.ParseSandUsage(
+            MakeSandUsage(start, reset, 32.5, includedLimitZero: null), true, InitialUtc);
+        Assert.AreEqual(MetricState.Fresh, missingLimitFlag[0].State);
+        Assert.AreEqual(32.5, missingLimitFlag[0].Value!.Value.AsDouble(), 0.000001);
 
         var noIncludedLimit = CursorQuotaParser.ParseSandUsage(
             MakeSandUsage(start, reset, 32.5, includedLimitZero: true), true, InitialUtc);
@@ -204,10 +209,10 @@ public sealed class CursorQuotaProviderTests
         Assert.IsTrue(requests.All(request => request.Uri.Scheme == Uri.UriSchemeHttps &&
             request.Uri.Host is "cursor.com" or "api2.cursor.sh"));
 
-        Assert.AreEqual(76d, snapshots[0].Value!.Value.AsDouble());
+        Assert.AreEqual(24d, snapshots[0].Value!.Value.AsDouble());
         Assert.AreEqual(50d, snapshots[1].Value!.Value.AsDouble());
-        Assert.AreEqual(0d, snapshots[2].Value!.Value.AsDouble());
-        Assert.AreEqual(67.5d, snapshots[5].Value!.Value.AsDouble(), 0.000001);
+        Assert.AreEqual(100d, snapshots[2].Value!.Value.AsDouble());
+        Assert.AreEqual(32.5d, snapshots[5].Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual(DateTimeOffset.Parse("2026-10-01T00:00:00Z"),
             snapshots[3].Value!.Value.AsDateTimeOffset());
         Assert.AreEqual(TimeSpan.FromDays(30), snapshots[4].Value!.Value.AsTimeSpan());
@@ -263,7 +268,7 @@ public sealed class CursorQuotaProviderTests
         var recovered = await PollAndReadOneAsync(harness);
         Assert.IsTrue(replacementObserved);
         Assert.AreEqual(MetricState.Fresh, recovered.State);
-        Assert.AreEqual(76d, recovered.Value!.Value.AsDouble());
+        Assert.AreEqual(24d, recovered.Value!.Value.AsDouble());
         Assert.AreEqual(4, harness.Handler.Requests.Length);
     }
 
@@ -304,7 +309,7 @@ public sealed class CursorQuotaProviderTests
         harness.Time.Advance(CursorQuotaProvider.PollInterval);
         var stale = await PollAndReadOneAsync(harness);
         Assert.AreEqual(MetricState.Stale, stale.State);
-        Assert.AreEqual(76d, stale.Value!.Value.AsDouble());
+        Assert.AreEqual(24d, stale.Value!.Value.AsDouble());
         Assert.AreEqual("rate_limited", stale.ErrorCode);
 
         harness.Time.Advance(TimeSpan.FromMinutes(16));
@@ -664,7 +669,7 @@ public sealed class CursorQuotaProviderTests
     }
 
     private static byte[] MakeSandUsage(DateTimeOffset start, DateTimeOffset reset, double? usagePercent,
-        bool includedLimitZero = false, bool usesPooledEnterpriseAllowance = false, bool hasAvailableUsage = false)
+        bool? includedLimitZero = false, bool usesPooledEnterpriseAllowance = false, bool hasAvailableUsage = false)
     {
         using var stream = new MemoryStream();
         WriteMessage(stream, 1, MakeTimestamp(start));
@@ -676,7 +681,7 @@ public sealed class CursorQuotaProviderTests
             BinaryPrimitives.WriteInt64LittleEndian(bytes, BitConverter.DoubleToInt64Bits(value));
             stream.Write(bytes);
         }
-        WriteBoolean(stream, 4, includedLimitZero);
+        if (includedLimitZero is bool zeroLimit) WriteBoolean(stream, 4, zeroLimit);
         WriteBoolean(stream, 6, usesPooledEnterpriseAllowance);
         WriteBoolean(stream, 7, hasAvailableUsage);
         return stream.ToArray();

@@ -25,12 +25,12 @@ internal sealed class CursorQuotaProvider : IDisposable
 
     private static readonly string[] MetricIds =
     [
-        "ai.cursor.quota.plan.total.remaining",
-        "ai.cursor.quota.plan.auto.remaining",
-        "ai.cursor.quota.plan.api.remaining",
+        "ai.cursor.quota.plan.total.used_percent",
+        "ai.cursor.quota.plan.auto.used_percent",
+        "ai.cursor.quota.plan.api.used_percent",
         "ai.cursor.quota.plan.reset",
         "ai.cursor.quota.plan.duration",
-        "ai.cursor.quota.grok_bot.period.remaining",
+        "ai.cursor.quota.grok_bot.period.used_percent",
         "ai.cursor.quota.grok_bot.period.reset",
         "ai.cursor.quota.grok_bot.period.duration"
     ];
@@ -94,12 +94,12 @@ internal sealed class CursorQuotaProvider : IDisposable
 
         _descriptors =
         [
-            Descriptor(0, "Cursor plan total remaining", MetricValueKind.Double, "quota_remaining", "%"),
-            Descriptor(1, "Cursor plan Auto remaining", MetricValueKind.Double, "quota_remaining", "%"),
-            Descriptor(2, "Cursor plan API remaining", MetricValueKind.Double, "quota_remaining", "%"),
+            Descriptor(0, "Cursor plan total used percent", MetricValueKind.Double, "quota_used", "%"),
+            Descriptor(1, "Cursor plan Auto used percent", MetricValueKind.Double, "quota_used", "%"),
+            Descriptor(2, "Cursor plan API used percent", MetricValueKind.Double, "quota_used", "%"),
             Descriptor(3, "Cursor plan reset", MetricValueKind.DateTimeOffset, "quota_reset", null),
             Descriptor(4, "Cursor plan duration", MetricValueKind.TimeSpan, "quota_duration", "s"),
-            Descriptor(5, "Cursor Grok Bot period remaining", MetricValueKind.Double, "quota_remaining", "%"),
+            Descriptor(5, "Cursor Grok Bot period used percent", MetricValueKind.Double, "quota_used", "%"),
             Descriptor(6, "Cursor Grok Bot period reset", MetricValueKind.DateTimeOffset, "quota_reset", null),
             Descriptor(7, "Cursor Grok Bot period duration", MetricValueKind.TimeSpan, "quota_duration", "s")
         ];

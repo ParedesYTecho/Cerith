@@ -52,9 +52,9 @@ internal static class CursorQuotaParser
         }
         else
         {
-            points[0] = ReadRemainingPercent(plan, "totalPercentUsed");
-            points[1] = ReadRemainingPercent(plan, "autoPercentUsed");
-            points[2] = ReadRemainingPercent(plan, "apiPercentUsed");
+            points[0] = ReadPercentUsed(plan, "totalPercentUsed");
+            points[1] = ReadPercentUsed(plan, "autoPercentUsed");
+            points[2] = ReadPercentUsed(plan, "apiPercentUsed");
         }
 
         var cycle = ReadBillingCycle(root);
@@ -134,7 +134,7 @@ internal static class CursorQuotaParser
         {
             var used = BitConverter.Int64BitsToDouble(unchecked((long)usageField.Value.Fixed64));
             result[0] = double.IsFinite(used) && used is >= 0 and <= 100
-                ? CursorQuotaPoint.Fresh(MetricValue.From(100d - used))
+                ? CursorQuotaPoint.Fresh(MetricValue.From(used))
                 : CursorQuotaPoint.Error("invalid_quota");
         }
 
@@ -155,14 +155,14 @@ internal static class CursorQuotaParser
         }
     }
 
-    private static CursorQuotaPoint ReadRemainingPercent(JsonElement parent, string property)
+    private static CursorQuotaPoint ReadPercentUsed(JsonElement parent, string property)
     {
         if (!parent.TryGetProperty(property, out var used) || used.ValueKind == JsonValueKind.Null)
             return CursorQuotaPoint.Unavailable();
         if (used.ValueKind != JsonValueKind.Number || !used.TryGetDouble(out var percentage) ||
             !double.IsFinite(percentage) || percentage is < 0 or > 100)
             return CursorQuotaPoint.Error("invalid_quota");
-        return CursorQuotaPoint.Fresh(MetricValue.From(100d - percentage));
+        return CursorQuotaPoint.Fresh(MetricValue.From(percentage));
     }
 
     private static (CursorQuotaPoint Reset, CursorQuotaPoint Duration, DateTimeOffset? ResetAt)
