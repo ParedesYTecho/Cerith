@@ -1,5 +1,12 @@
 # Worklog
 
+## 2026-09-30 21:01 — Codex — CER-M3-004 routing correction
+
+Event: decision
+Summary: The resumed integration worker's actual runtime was verified as GPT-6.1 Sol Medium and it was closed with all work preserved. Six fresh GPT-6 Luna Max receipts (integration plus five active providers) are verified.
+Files: `.agent/MODEL_ROUTING.md`, `.agent/WORKLOG.md`.
+Result: Existing provider work and lifecycle checkpoint `6e99d60` remain preserved; canonical `main` is untouched. MID/FINAL reviews remain external and read-only; no provider commits imported pending coordinator FINALPASS.
+
 ## 2026-09-30 10:12 — Codex — CER-M3-002
 
 Event: test

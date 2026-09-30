@@ -157,6 +157,10 @@ Independent specialists/reviewers are read-only by default and must not silently
 
 Antigravity may take independent non-overlapping work or a second-pass review when useful.
 
+## Runtime continuity and review ownership
+
+Before editing on each turn, verify the latest authoritative runtime `turn_context` model and effort; prompt or spawn text is not proof, and implementation must stop if the assigned route cannot be verified. CER-M3-004 implementation owners require GPT-6 Luna Max. Resume only when the runtime explicitly preserves Luna Max and the resumed turn verifies it; otherwise continue on the same worktree and branch with a fresh Luna Max worker. MID and FINAL reviews are external, read-only GPT-6.1 Sol Medium gates and never change the implementation owner's runtime. Follow the two-gate cadence and common checklist in `.agent/TASKS.md`.
+
 ## Quota and quality rule
 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
