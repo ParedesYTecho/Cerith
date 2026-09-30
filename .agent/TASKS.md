@@ -64,18 +64,18 @@ Provider worker claims (one Luna Max worker and staging branch per provider; wor
 | Claude | `codex/CER-M3-004-claude` | ACTIVE — first batch |
 | Antigravity | `codex/CER-M3-004-antigravity` | ACTIVE — first batch |
 | Cursor | `codex/CER-M3-004-cursor` | ACTIVE — first batch |
-| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini-cli` | ACTIVE — first batch |
+| Gemini CLI / Code Assist | `codex/CER-M3-004-gemini` | ACTIVE — first batch |
 | Kimi | `codex/CER-M3-004-kimi` | ACTIVE — first batch |
 | Kiro | `codex/CER-M3-004-kiro` | QUEUED — replace a completed worker immediately |
 | Grok Build | `codex/CER-M3-004-grok-build` | QUEUED — replace a completed worker immediately |
-| GitHub Copilot | `codex/CER-M3-004-github-copilot` | QUEUED — replace a completed worker immediately |
+| GitHub Copilot | `codex/CER-M3-004-copilot` | QUEUED — replace a completed worker immediately |
 | ZCode | `codex/CER-M3-004-zcode` | QUEUED — replace a completed worker immediately |
 | OpenCode Go | `codex/CER-M3-004-opencode-go` | QUEUED — replace a completed worker immediately |
 | Command Code | `codex/CER-M3-004-command-code` | QUEUED — replace a completed worker immediately |
 | Qoder | `codex/CER-M3-004-qoder` | QUEUED — replace a completed worker immediately |
 | Qoder CN | `codex/CER-M3-004-qoder-cn` | QUEUED — replace a completed worker immediately |
-| Ark Coding Plan | `codex/CER-M3-004-ark-coding-plan` | QUEUED — replace a completed worker immediately |
-| Ark Agent Plan | `codex/CER-M3-004-ark-agent-plan` | QUEUED — replace a completed worker immediately |
+| Ark Coding Plan | `codex/CER-M3-004-ark-coding` | QUEUED — replace a completed worker immediately |
+| Ark Agent Plan | `codex/CER-M3-004-ark-agent` | QUEUED — replace a completed worker immediately |
 | Devin | `codex/CER-M3-004-devin` | QUEUED — replace a completed worker immediately |
 
 Codex is already DONE via CER-M3-002 and is not reimplemented. No speculative runtime foundation is required before provider evidence exists. The coordinator confirmed the integration claim; provider staging branches may rely on it.
@@ -100,7 +100,7 @@ Each worker must:
 
 Integration owner owns shared registration/lifecycle, `Program.cs`, dependencies, canonical MetricIds/docs/state, coexistence tests, shared secret/setup infrastructure only if accepted providers prove it necessary, and staged integration. No shared secret infrastructure is approved yet; initial routes should preserve official credential ownership.
 
-Coordinator review constraints: provider IDs follow source semantics; do not force primary/secondary slots. Copilot's current first-party terminology is AI credits; keep legacy premium-request names explicitly legacy unless a current first-party schema proves their mapping.
+Coordinator review constraints: provider IDs follow source semantics; do not force primary/secondary slots. For Copilot, preserve `token_based_billing`, `quota_remaining`, and `credits_used` as distinct source fields, and retain legacy premium-request fields under their legacy semantics when reported.
 
 Lifecycle gate: `Program.RunAsync` includes the pipe server and provider/publisher tasks in `Task.WhenAny` and awaits them together, so an unexpected provider-runner fault can terminate TelemetryService. Add only the smallest integration-boundary failure isolation justified by accepted providers. Coexistence tests must cover absent, slow and auth-failed sources, an unexpected provider failure and shutdown cancellation, proving other accepted providers plus hardware/gaming/Codex continue.
 
