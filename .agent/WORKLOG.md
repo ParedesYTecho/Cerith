@@ -1,12 +1,5 @@
 # Worklog
 
-## 2026-09-30 21:01 — Codex — CER-M3-004 routing correction
-
-Event: decision
-Summary: The resumed integration worker's actual runtime was verified as GPT-6.1 Sol Medium and it was closed with all work preserved. Six fresh GPT-6 Luna Max receipts (integration plus five active providers) are verified.
-Files: `.agent/MODEL_ROUTING.md`, `.agent/WORKLOG.md`.
-Result: Existing provider work and lifecycle checkpoint `6e99d60` remain preserved; canonical `main` is untouched. MID/FINAL reviews remain external and read-only; no provider commits imported pending coordinator FINALPASS.
-
 ## 2026-09-30 10:12 — Codex — CER-M3-002
 
 Event: test
@@ -387,3 +380,10 @@ Event: preserved clean `66fcbce` checkpoint; recorded user-directed MID/FINAL ca
 Status: one integration owner plus five original active providers; Kiro queued at preservation checkpoint, branch not created, agent closed. Awaiting MID handoffs or explicit coordinator FINALPASS SHA; no provider import, main merge, graph refresh or auth action.
 Files: `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`; documentation only.
 Verification: final diff inspected; git diff --check and tracked-file hygiene PASS (84 paths).
+
+## 2026-09-30 21:01 — Codex — CER-M3-004 routing correction
+
+Event: decision
+Summary: The routing audit verified all six resumed implementation workers (integration plus five providers) were running GPT-6.1 Sol Medium. They were closed with all work preserved; six fresh GPT-6 Luna Max receipts were then verified.
+Files: `.agent/MODEL_ROUTING.md`, `.agent/WORKLOG.md`.
+Result: Existing provider work and lifecycle checkpoint `6e99d60` remain preserved; canonical `main` is untouched. MID/FINAL reviews remain external and read-only; no provider commits imported pending coordinator FINALPASS.
