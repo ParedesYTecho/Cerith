@@ -1,3 +1,36 @@
+# Handoff — CER-M3-003 AI telemetry expansion plan and foundation contract
+
+Status: ACTIVE / DOCS ONLY. Branch `docs/CER-M3-003-ai-telemetry-direction` is based on canonical main `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`. No product code, tests, packages, credentials or provider runtime behavior changed.
+
+The durable direction is now:
+
+- keep CER-M3-002 Codex as the completed first vertical slice;
+- supersede only D-023's future sequential Claude→Antigravity ordering via D-024;
+- use the current 17-provider usage-limit catalog and 42-tool local-activity catalog as evidence-driven breadth targets;
+- treat TokenTracker, Gengchou and AI Limits as complementary references rather than one architecture source;
+- prefer zero-config local detection/session reuse, with one-time explicit setup only when necessary and no normal startup reconfiguration;
+- keep provider acquisition isolated from MetricId-driven rendering;
+- allow parallel provider work only under disjoint write ownership, with one integration owner for shared files;
+- place compact floating/taskbar/tray/detail surfaces in M4 and history/dashboard analytics in M7, while M3 owns acquisition.
+
+Reference snapshots recorded by this task:
+
+- TokenTracker `a8520617ece3f15a07c342e2c7909eb311234522`;
+- Gengchou `4d02b9d1f85e806c92c4defc8e8c4c822467b6f3`;
+- AI Limits `a42bbd043070538ff5c4161b7eda952720173345`.
+
+Important reference roles:
+
+- TokenTracker: 42-tool local acquisition, 17 usage-limit integrations, zero-config patterns, dashboard/widgets and cost/activity lessons.
+- Gengchou: taskbar/floating/tray/detail surfaces, compact headline/attention semantics, Windows shell resilience and a documented warning about provider identity being spread across too many files.
+- AI Limits: adaptive Compact/Medium/Expanded density, taskbar/tray fallback, single renderer/layout/theme discipline and measured lightweight runtime.
+
+License boundary remains explicit: TokenTracker and Gengchou are MIT at the pinned references and still require provenance/notice review before focused code adaptation; AI Limits is GPL-3.0-or-later and remains research-only absent a separate license decision.
+
+Next boundary: finish review/CI for this documentation PR. Do not start provider implementation from this branch. After integration, define the minimum implementation foundation and provider-specific tasks from the audited matrix; do not create speculative framework layers or let multiple writers share paths.
+
+---
+
 # Handoff — CER-M3-002 Codex quota vertical slice
 
 Status: CER-M3-002 DONE. Advisor PASS; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`. Approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated product tree match. M3 remains ACTIVE / INCOMPLETE; Claude is NEXT / NOT STARTED and Antigravity follows. The effective Codex configuration was verified on 2026-09-30 as the supported standard route, with no `openai_base_url` or custom provider override.

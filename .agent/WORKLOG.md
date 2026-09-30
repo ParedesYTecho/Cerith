@@ -343,3 +343,10 @@ Event: Advisor PASS; PR #43 squash-merged; minimal state reconciliation complete
 Summary: approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated product tree `2c2be61a7ac9cf4dcb82f5acae0b83680f18649b` match. CER-M3-002 is DONE; M3 remains ACTIVE / INCOMPLETE. Claude is NEXT / NOT STARTED, followed by Antigravity. The shared `/wham/usage` upstream limitation, `source_disagreement` reset evidence and MetricBus v1 queued-snapshot account-boundary limitation remain documented. No Claude implementation or product/test changes were made.
 Verification: squash commit `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; Build and Test and Repository Quality passed; CodeQL was skipped under D-013. `git diff --check` and tracked-file hygiene passed for this docs-only reconciliation. The final main state and CI are verified after the reconciliation push.
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`.
+
+## 2026-09-30 — Advisor — CER-M3-003 AI telemetry direction
+
+Event: product/reference/roadmap planning
+Summary: audited TokenTracker, Gengchou and AI Limits as complementary references and opened the M3 direction beyond the completed Codex slice. Added the canonical AI telemetry breadth target (42 local AI tools + 17 usage-limit integrations), D-024, zero-config/one-time-setup policy, provider-isolation/parallel ownership rules, compact-surface M4 direction and local analytics/dashboard M7 direction. No product code or provider runtime implementation changed.
+Files: `docs/AI_TELEMETRY.md`, `docs/PRODUCT_SPEC.md`, `docs/ROADMAP.md`, `docs/REFERENCE_PROJECTS.md`, `docs/UI_UX.md`, `docs/ARCHITECTURE.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/DECISIONS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `AGENTS.md`.
+Result: pending PR/CI/Advisor review. Branch `docs/CER-M3-003-ai-telemetry-direction`; base `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`.

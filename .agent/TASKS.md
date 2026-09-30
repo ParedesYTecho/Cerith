@@ -30,13 +30,20 @@ Acceptance: all six typed metrics through the existing pipeline; bounded read-on
 
 Result: implementation and Advisor approval complete; cacheable stale snapshots preserve value/ObservedAt and expose the current acquisition ErrorCode, with deterministic cached `source_disagreement` cases for offline, timeout, HTTP 5xx and HTTP 429. Release build PASS (0 warnings/errors), Core 39/39, Telemetry 58/58, Integration 10/10; `git diff --check` PASS; hygiene PASS (83 tracked paths); independent security/lifecycle review PASS. Graphify refreshed to 838 nodes/2,034 edges/81 communities; integrity check PASS. Effective Codex configuration passed the standard-route check before live validation. A sanitized official-UI comparison at code head `13116b9e224b6d740bed02aa3a1fa123452af094` matched durations, rounded remaining percentages and authoritative `reset_at`; a repeat followed ordinary Codex task activity. A bounded app-server `account/rateLimits/read` at pre-documentation HEAD `bbd69ff34c5af6d1b08aa01bb28a9ea9a76ce8b8` matched Cerith's primary and secondary used/remaining direction within one percentage point, reported duration exactly, and `reset_at` within one second. Six Fresh/Measured snapshots came from one Cerith acquisition; one official read used the same selected account. Both resets keep `source_disagreement` because `reset_after_seconds` conflicts with `reset_at`; UI and app-server corroborate `reset_at`. The current Gengchou, TokenTracker and AI Limits implementations are separate codebases but share the same `/wham/usage` upstream, as does the official app-server; this is implementation-level corroboration, not an independent upstream source. No external monitor software was installed or run. No Codex credential/auth/config change; Cerith initialized its protected local identity key. The initial provider process may have issued multiple read-only GETs at its normal 60-second cadence while the local reader was corrected; the exact count was not observable. No login/logout, paid test workload, reset-credit consumption, or raw quota values/payloads/identifiers/tokens/screenshots/account details were used or persisted. PR #43 passed final review and was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head and integrated tree match. Build and Test and Repository Quality passed on the squash commit; CodeQL was skipped under D-013. CER-M3-002 DONE; M3 ACTIVE / INCOMPLETE.
 
-## CER-M3-003 — Claude quota vertical slice
+## CER-M3-003 — AI telemetry expansion plan and foundation contract
 
-Status: NEXT / NOT STARTED
-Owner: Unassigned
+Status: ACTIVE
+Owner: Advisor (docs-only sole repository write owner)
 Priority: P0
 Depends on: CER-M3-002
-Scope: Claude quota implementation only, using the existing researched evidence and canonical provider contract. Claim and refine the task before implementation. Antigravity follows after Claude. This task was not started during CER-M3-002 reconciliation.
+Branch: `docs/CER-M3-003-ai-telemetry-direction`
+Base: `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`
+
+Scope: turn the post-Codex product decision into canonical, implementation-ready direction before parallel provider work. Audit TokenTracker, Gengchou and AI Limits as complementary references; record the 42-tool local-activity target and 17-provider usage-limit target; define zero-config/one-time-setup policy; define compact-surface/dashboard roadmap placement; define provider-isolation and single-owner parallelization boundaries. Documentation/decision only: no product code, packages, provider implementation, WidgetHost surface implementation or UI framework changes.
+
+Acceptance: D-024 and canonical AI telemetry document; PRODUCT_SPEC/ROADMAP/ARCHITECTURE/UI_UX/REFERENCE_PROJECTS/quota contract agree; current reference revisions and license boundaries recorded; no external project becomes Cerith's architecture; CER-M3-002 remains untouched; next implementation work can be split into bounded provider/foundation tasks without repeating product research; CI/hygiene and Advisor review pass.
+
+Result: pending review/merge. Product implementation has not started.
 
 ## CER-M2-003 — selected game/session summary and M2 exit
 

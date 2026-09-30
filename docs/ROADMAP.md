@@ -145,11 +145,11 @@ The goal is local-first structured telemetry such as:
 
 Do not ingest prompt/completion bodies or source code merely because a log contains them. Cost estimates are derived telemetry and never substitute provider-reported billing/quota.
 
-### CER-M3-003 — expansion foundation
+### CER-M3-003 — expansion plan and foundation contract
 
-NEXT / NOT STARTED after the planning/research reconciliation is integrated.
+ACTIVE as a documentation/decision task. It records the reference audit, target catalogs, auth/setup policy, milestone mapping and parallel ownership boundaries. It does not implement providers or shared runtime infrastructure.
 
-It must establish only the minimum shared foundation proven necessary by multiple real providers: provider path/write isolation, setup/auth state semantics, secure-secret ownership where required, and integration boundaries. Do not introduce a generic ProviderManager/Factory/framework merely because the catalog is large.
+After this contract is integrated, the next implementation task must establish only the minimum shared foundation proven necessary by multiple real providers: provider path/write isolation, setup/auth state semantics, secure-secret ownership where required, and integration boundaries. Do not introduce a generic ProviderManager/Factory/framework merely because the catalog is large.
 
 Provider implementation may then run in parallel under one write owner per provider boundary, with one integration owner for shared files. Integrate in small verified waves even when research/implementation runs concurrently.
 
