@@ -52,7 +52,10 @@ internal sealed class KimiQuotaProvider : IDisposable
     private readonly KimiQuotaPoint[] _points = new KimiQuotaPoint[6];
     private readonly DateTimeOffset[] _observedAt = new DateTimeOffset[6];
     private readonly CachedPoint?[] _cache = new CachedPoint?[6];
+    // Usage is scoped to the authenticated Kimi Code account; no stable account or workspace ID is exposed here.
+    // The token only separates in-memory request/cache generations; cache data is process-local and never persisted.
     private string? _activeAccessToken;
+    private bool _activeHasRefreshToken;
     private string? _rejectedAccessToken;
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublishStop;
@@ -199,7 +202,7 @@ internal sealed class KimiQuotaProvider : IDisposable
                     response.StatusCode is >= HttpStatusCode.MultipleChoices and < HttpStatusCode.BadRequest)
                     failureCode = "redirect_rejected";
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
-                    failureCode = "auth_required";
+                    failureCode = "auth_rejected";
                 else if (response.StatusCode == HttpStatusCode.Forbidden)
                     failureCode = "auth_forbidden";
                 else if ((int)response.StatusCode == 429)
@@ -238,10 +241,13 @@ internal sealed class KimiQuotaProvider : IDisposable
                     StringComparer.Ordinal.Equals(finalRead.Identity.AccessToken, accessToken);
                 if (accepted)
                 {
-                    if (failureCode is "auth_required" or "auth_forbidden")
+                    if (failureCode is "auth_rejected" or "auth_forbidden")
                     {
                         _rejectedAccessToken = accessToken;
-                        ClearToStateLocked(MetricState.Error, failureCode, receivedAt);
+                        var authError = failureCode == "auth_rejected" && finalRead.Identity!.HasRefreshToken
+                            ? "auth_refresh_pending"
+                            : failureCode == "auth_rejected" ? "auth_required" : "auth_forbidden";
+                        ClearToStateLocked(MetricState.Error, authError, receivedAt);
                     }
                     else if (failureCode is not null)
                     {
@@ -371,7 +377,9 @@ internal sealed class KimiQuotaProvider : IDisposable
     {
         var nextToken = read.Status == KimiAuthStatus.Ready ? read.Identity?.AccessToken : null;
         var tokenChanged = !StringComparer.Ordinal.Equals(_activeAccessToken, nextToken);
-        var stateChanged = !_activeAuthStatus.HasValue || _activeAuthStatus.Value != read.Status || tokenChanged;
+        var nextHasRefreshToken = read.Status == KimiAuthStatus.Ready && read.Identity?.HasRefreshToken == true;
+        var stateChanged = !_activeAuthStatus.HasValue || _activeAuthStatus.Value != read.Status || tokenChanged ||
+            _activeHasRefreshToken != nextHasRefreshToken;
         if (stateChanged)
         {
             _authGeneration++;
@@ -384,6 +392,7 @@ internal sealed class KimiQuotaProvider : IDisposable
 
         _activeAuthStatus = read.Status;
         _activeAccessToken = nextToken;
+        _activeHasRefreshToken = nextHasRefreshToken;
         if (read.Status != KimiAuthStatus.Ready || read.Identity is null)
         {
             var state = read.Status == KimiAuthStatus.Unavailable ? MetricState.Unavailable : MetricState.Error;
@@ -525,6 +534,7 @@ internal sealed class KimiQuotaProvider : IDisposable
             lock (_stateGate)
             {
                 _activeAccessToken = null;
+                _activeHasRefreshToken = false;
                 _rejectedAccessToken = null;
                 _activeAuthStatus = KimiAuthStatus.Unavailable;
                 _activeRequestStop?.Cancel();
