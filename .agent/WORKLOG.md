@@ -427,3 +427,17 @@ Authorization-gate policy: exhaust safe existing official session, browser and l
 Verification: documentation-only checkpoint; no provider tests or unchanged accepted-provider reviews were rerun. The last implementation verification remains the 2640d43 evidence above. No provider code, dependency, main merge or M3 completion.
 
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-01 — Dewey One — ZCode FINAL PASS integration checkpoint
+
+Event: imported only ZCode FINAL PASS source tip `0a8dca3555e6c523ab7c40f4ba1e4303c9b13df9` into the preserved integration branch. The no-fast-forward merge is `198d25b23fc996cb992b5e7331b179b09f9a7be1`; the four provider-owned commits and files remain intact. Integration-owned changes wire ZCode through the existing provider runner isolation seam and document its ten typed MetricIds and source semantics. No shared abstraction, dependency, provider credential, or auth-renewal writer was added.
+
+Runtime and ownership: actual provider/integration runtime GPT-6 Luna Max, max, verified from authoritative `turn_context` at 2026-10-01T12:51:12.154Z. Main reviewer remains external GPT-6.1 Sol Medium/read-only at the previously verified 11:45:23.649Z. ZCode's independent focused Release suite was 23/23 PASS. Grok Build is BLOCKED at `d51fba3184b606c36b141e2f9c232c85ef03d0ff` for `auth_provenance_unavailable` and was not imported; its reported focused 12/12 and full Release 70/70 remain preserved. Kiro, Copilot and OpenCode Go remain pending explicit FINALPASS.
+
+Sanitized live-observation dispositions: Cursor browser-only access with no local desktop database/config is UI_ONLY and does not establish same-account quota equality or renewal; silent-startup auth remains DEFERRED/UNRESOLVED and the live quota comparison NOT RUN. A signed-in Claude Free product does not validate paid Claude Code quota; no MFA was encountered. No private paths, quota values, credentials or raw payloads were recorded.
+
+Verification: restore passed. The default parallel Release build exited on MSBuild worker-node failures; the serial Release build passed with 0 warnings/errors. Core 39/39, Telemetry 152/152, Integration 10/10 (201/201 total) passed. Focused shared-bus coexistence, provider-failure isolation, cancellation and bounded shutdown passed 11/11. Graphify refreshed (1,816 nodes, 4,451 edges, 73 communities); configured hygiene passed (97 tracked paths); `git diff --check` and targeted added-diff privacy checks passed. Privacy review is scoped, not a comprehensive secret scan. No live provider quota/RPC request was made.
+
+Status: PR #47 stays draft; no canonical-main merge. The 16-provider CER-M3-004 mission remains active and M3 incomplete.
+
+Files: `src/Cerith.TelemetryService/Program.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.

@@ -62,16 +62,21 @@ internal static class Program
             using var antigravityQuotaProvider = new AntigravityQuotaProvider(registry, bus);
             await antigravityQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "antigravity", stop.Token);
+        var zcodeQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var zcodeQuotaProvider = new ZCodeQuotaProvider(registry, bus);
+            await zcodeQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "zcode", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
-            "; Codex file-auth, Cursor desktop-auth, and Antigravity local-service quota providers active");
+            "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, and ZCode coding-plan quota providers active");
 
         try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner); }
+            antigravityQuotaRunner, zcodeQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner); }
+            antigravityQuotaRunner, zcodeQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
     }
