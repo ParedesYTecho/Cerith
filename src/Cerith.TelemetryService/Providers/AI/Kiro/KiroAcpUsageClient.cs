@@ -41,9 +41,16 @@ internal static class KiroAcpUsageClient
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
 
+        return await ReadAsync(timeProvider, cancellationToken, CreateStartInfo(), RequestTimeout)
+            .ConfigureAwait(false);
+    }
+
+    internal static ProcessStartInfo CreateStartInfo()
+    {
         var startInfo = new ProcessStartInfo
         {
             FileName = "kiro-cli",
+            WorkingDirectory = Path.GetTempPath(),
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardInput = true,
@@ -54,6 +61,21 @@ internal static class KiroAcpUsageClient
         startInfo.ArgumentList.Add("--agent-engine=v3");
         startInfo.ArgumentList.Add("--auth-method=cli");
         startInfo.Environment["KIRO_LOG_LEVEL"] = "error";
+        startInfo.Environment["KIRO_API_KEY"] = null;
+        return startInfo;
+    }
+
+    internal static async Task<KiroAcquisition> ReadAsync(TimeProvider timeProvider,
+        CancellationToken cancellationToken, ProcessStartInfo startInfo, TimeSpan requestTimeout)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(startInfo);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(requestTimeout, TimeSpan.Zero);
+        startInfo.UseShellExecute = false;
+        startInfo.CreateNoWindow = true;
+        startInfo.RedirectStandardInput = true;
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
 
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         try
@@ -64,7 +86,7 @@ internal static class KiroAcpUsageClient
         catch (FileNotFoundException) { return KiroAcquisition.Unavailable("cli_unavailable"); }
         catch (InvalidOperationException) { return KiroAcquisition.Unavailable("cli_unavailable"); }
 
-        using var deadline = new CancellationTokenSource(RequestTimeout, timeProvider);
+        using var deadline = new CancellationTokenSource(requestTimeout, timeProvider);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         using var stderrStop = new CancellationTokenSource();
         var stderrDrain = process.StandardError.BaseStream.CopyToAsync(Stream.Null, stderrStop.Token);
@@ -238,7 +260,7 @@ internal static class KiroAcpUsageClient
 
     private readonly record struct AcpResponse(bool Error, JsonElement? Result);
 
-    private sealed class BoundedLineReader(Stream stream, int maximumBytes)
+    internal sealed class BoundedLineReader(Stream stream, int maximumBytes)
     {
         private readonly byte[] _buffer = new byte[4096];
         private readonly MemoryStream _line = new();
