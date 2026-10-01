@@ -44,13 +44,14 @@ public sealed class CopilotQuotaAcquirerTests
     }
 
     [TestMethod]
-    public async Task RejectsQuotaForDifferentAccountBeforeAfterIdentityCheck()
+    public async Task RejectsQuotaForDifferentAccountAfterCheckingAuthenticatedIdentity()
     {
         var requests = new List<CopilotGhRequest>();
         var responses = new Queue<string>([
             "{\"state\":\"success\"}",
             "{\"id\":24680}",
-            QuotaPayload(13579)
+            QuotaPayload(13579),
+            "{\"id\":24680}"
         ]);
 
         var exception = await Assert.ThrowsAsync<CopilotQuotaAcquisitionException>(
@@ -61,7 +62,8 @@ public sealed class CopilotQuotaAcquirerTests
         {
             CopilotGhRequest.AuthStatus,
             CopilotGhRequest.AuthenticatedUser,
-            CopilotGhRequest.Quota
+            CopilotGhRequest.Quota,
+            CopilotGhRequest.AuthenticatedUser
         }, requests);
     }
 
@@ -97,6 +99,46 @@ public sealed class CopilotQuotaAcquirerTests
     }
 
     [TestMethod]
+    public async Task RateLimitPreservesRetryAfterOnlyAfterTheSameAccountIsRechecked()
+    {
+        var requests = new List<CopilotGhRequest>();
+        var responses = new Queue<string>([
+            "{\"state\":\"success\",\"tokenSource\":\"keyring\"}",
+            "{\"id\":24680}",
+            "HTTP/2 429 Too Many Requests\r\nRetry-After: 1200\r\nContent-Type: application/json\r\n\r\n{\"message\":\"synthetic\"}",
+            "{\"id\":24680}"
+        ]);
+
+        var exception = await Assert.ThrowsAsync<CopilotQuotaAcquisitionException>(
+            async () => await CreateAcquirer(requests, responses).AcquireAsync());
+
+        Assert.AreEqual("rate_limited", exception.ErrorCode);
+        Assert.AreEqual(TimeSpan.FromSeconds(1200), exception.RetryAfterDelay);
+        Assert.IsNull(exception.RetryAfterAt);
+        Assert.AreEqual(64, exception.StableAccountKey!.Length);
+        Assert.IsFalse(exception.StableAccountKey.Contains("24680", StringComparison.Ordinal));
+        CollectionAssert.AreEqual(new[]
+        {
+            CopilotGhRequest.AuthStatus,
+            CopilotGhRequest.AuthenticatedUser,
+            CopilotGhRequest.Quota,
+            CopilotGhRequest.AuthenticatedUser
+        }, requests);
+    }
+
+    [TestMethod]
+    public void ParsesHttpDateRetryAfterWithoutUsingTheMachineClock()
+    {
+        var response = CopilotQuotaAcquirer.ParseApiResponse(Encoding.ASCII.GetBytes(
+            "HTTP/1.1 503 Service Unavailable\r\nRetry-After: Thu, 01 Oct 2026 12:00:00 GMT\r\n\r\n{}"));
+
+        Assert.AreEqual(503, response.StatusCode);
+        Assert.AreEqual(DateTimeOffset.Parse("2026-10-01T12:00:00Z"), response.RetryAfterAt);
+        Assert.IsNull(response.RetryAfterDelay);
+        Assert.AreEqual("{}", Encoding.UTF8.GetString(response.Body.Span));
+    }
+
+    [TestMethod]
     public void EnterpriseConfigurationFailsClosed()
     {
         Assert.IsTrue(CopilotQuotaAcquirer.IsDotComConfigurationSupported(null, false));
@@ -127,6 +169,37 @@ public sealed class CopilotQuotaAcquirerTests
             await CopilotQuotaAcquirer.RunProcessAsync(startInfo, 1024, TimeSpan.FromSeconds(5), cancellation.Token));
 
         Assert.IsTrue(DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(4));
+    }
+
+    [TestMethod]
+    public async Task ProcessDeadlineTerminatesChildAndReturnsOnlySanitizedTimeoutCode()
+    {
+        var startInfo = CreatePowerShellStartInfo("Start-Sleep -Seconds 30");
+        var started = DateTimeOffset.UtcNow;
+
+        var exception = await Assert.ThrowsAsync<CopilotQuotaAcquisitionException>(async () =>
+            await CopilotQuotaAcquirer.RunProcessAsync(startInfo, 1024,
+                TimeSpan.FromMilliseconds(150), CancellationToken.None));
+
+        Assert.AreEqual("request_timeout", exception.ErrorCode);
+        Assert.IsFalse(exception.Message.Contains("Start-Sleep", StringComparison.Ordinal));
+        Assert.IsTrue(DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(4));
+    }
+
+    [TestMethod]
+    public async Task ProcessCanReturnBoundedHttpErrorHeadersForRetryParsing()
+    {
+        const string responseText = "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 45\r\n\r\n{}";
+        var script = "[Console]::Out.Write('" + responseText.Replace("'", "''", StringComparison.Ordinal) + "'); exit 1";
+        var startInfo = CreatePowerShellStartInfo(script);
+
+        var output = await CopilotQuotaAcquirer.RunProcessAsync(startInfo,
+            CopilotQuotaAcquirer.MaxQuotaProcessOutputBytes, TimeSpan.FromSeconds(5),
+            CancellationToken.None, acceptNonZeroExitCode: true);
+        var response = CopilotQuotaAcquirer.ParseApiResponse(output);
+
+        Assert.AreEqual(429, response.StatusCode);
+        Assert.AreEqual(TimeSpan.FromSeconds(45), response.RetryAfterDelay);
     }
 
     private static CopilotQuotaAcquirer CreateAcquirer(List<CopilotGhRequest> requests, Queue<string> responses) =>

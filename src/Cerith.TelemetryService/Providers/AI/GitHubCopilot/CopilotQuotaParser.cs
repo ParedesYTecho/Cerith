@@ -136,7 +136,7 @@ internal static class CopilotQuotaParser
         return value;
     }
 
-    private static string HashAccountId(long accountId)
+    internal static string HashAccountId(long accountId)
     {
         var material = Encoding.UTF8.GetBytes("github.com:copilot-user:" + accountId.ToString(CultureInfo.InvariantCulture));
         return Convert.ToHexString(SHA256.HashData(material)).ToLowerInvariant();
