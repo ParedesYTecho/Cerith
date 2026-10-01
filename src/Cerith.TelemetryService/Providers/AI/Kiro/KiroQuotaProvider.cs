@@ -161,20 +161,9 @@ internal sealed class KiroQuotaProvider : IDisposable
                 byte[]? payload = null;
                 try
                 {
-                    try
-                    {
-                        acquisition = await _readUsage(admission.Token).ConfigureAwait(false);
-                        payload = acquisition.Payload;
-                        admission.Token.ThrowIfCancellationRequested();
-                    }
-                    catch (OperationCanceledException) when (admission.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception)
-                    {
-                        acquisition = KiroAcquisition.Error("usage_query_failed");
-                    }
+                    acquisition = await _readUsage(admission.Token).ConfigureAwait(false);
+                    payload = acquisition.Payload;
+                    admission.Token.ThrowIfCancellationRequested();
 
                     var ownerAfter = await ReadIdentityObservationAsync(admission.Token).ConfigureAwait(false);
                     var sameOwner = ownerAfter.Status == KiroIdentityStatus.Ready &&
@@ -319,20 +308,9 @@ internal sealed class KiroQuotaProvider : IDisposable
 
     private async Task<KiroIdentityObservation> ReadIdentityObservationAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var observation = await _readIdentity(cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            return observation;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            return KiroIdentityObservation.Unavailable();
-        }
+        var observation = await _readIdentity(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return observation;
     }
 
     private async Task PublishLoopAsync(CancellationToken cancellationToken)

@@ -950,6 +950,38 @@ public sealed class KiroQuotaProviderTests
     }
 
     [TestMethod]
+    [DataRow("usage")]
+    [DataRow("identity")]
+    public async Task RunPreservesUnexpectedAcquisitionCleanupFailuresAfterStopped(string failingDependency)
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var expectedFailure = new InvalidOperationException($"Synthetic {failingDependency} cleanup failure.");
+        Func<CancellationToken, Task<KiroAcquisition>> readUsage = failingDependency == "usage"
+            ? _ => Task.FromException<KiroAcquisition>(expectedFailure)
+            : _ => Task.FromResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        Func<CancellationToken, Task<KiroIdentityObservation>> readIdentity = failingDependency == "identity"
+            ? _ => Task.FromException<KiroIdentityObservation>(expectedFailure)
+            : _ => Task.FromResult(IdentityObservation(1));
+        using var provider = CreateProvider(registry, bus, readUsage, readIdentity: readIdentity);
+        await using var readers = SubscribeAll(bus);
+        var stoppedReaders = readers.ReadUntilStoppedAsync(
+            Enumerable.Range(0, 4).Select(static _ => new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously)).ToArray());
+        var run = provider.RunAsync(CancellationToken.None);
+
+        var stopped = await stoppedReaders.WaitAsync(TimeSpan.FromSeconds(3));
+        Exception? runFailure = null;
+        try { await run; }
+        catch (Exception exception) { runFailure = exception; }
+
+        Assert.IsNotNull(runFailure);
+        Assert.IsTrue(Flatten(runFailure).Any(exception => ReferenceEquals(exception, expectedFailure)));
+        Assert.AreEqual(4, stopped.Length);
+        Assert.IsTrue(stopped.All(static snapshot => snapshot.State == MetricState.Stopped));
+    }
+
+    [TestMethod]
     public async Task RunPreservesStoppedPublicationFailureAfterBoundedAttempt()
     {
         var bus = new MetricBus(8);
