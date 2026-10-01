@@ -292,9 +292,46 @@ The accepted ZCode implementation is staged with its original provider commits p
 
 Buckets are selected by source type, unit, and documented number where the family requires it; the parser does not infer reset units or rewrite the source bucket number. A numeric reset value is Unavailable because its unit is unverified. Invalid or ambiguous source values fail closed to valueless Error; absent fields are Unavailable.
 
+## CER-M3-004 — GitHub Copilot quota
+
+The accepted provider reuses the official GitHub CLI owner for bounded read-only authentication-status, user-identity, and Copilot quota requests, and accepts the github.com account route only. It checks that the authenticated identity is unchanged around acquisition. A sanitized prior HTTP 200 preserved that identity; this does not establish credential lifetime or renewal. Renewal class remains UNKNOWN, and no current same-account quota comparison is claimed.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.github_copilot.billing.token_based` | boolean / none / billing_mode | Direct `token_based_billing` indicator. |
+| `ai.github_copilot.quota.chat.percent_remaining` | double / % / quota_percent_remaining | Direct chat `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.chat.reset_at` | DateTimeOffset / timestamp | Direct chat `quota_reset_at`. |
+| `ai.github_copilot.quota.chat.unlimited` | boolean / none / quota_unlimited | Direct chat `unlimited` flag. |
+| `ai.github_copilot.quota.chat.has_quota` | boolean / none / quota_source_flag | Raw chat `has_quota`; not an admission decision. |
+| `ai.github_copilot.quota.completions.percent_remaining` | double / % / quota_percent_remaining | Direct completions `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.completions.reset_at` | DateTimeOffset / timestamp | Direct completions `quota_reset_at`. |
+| `ai.github_copilot.quota.completions.unlimited` | boolean / none / quota_unlimited | Direct completions `unlimited` flag. |
+| `ai.github_copilot.quota.completions.has_quota` | boolean / none / quota_source_flag | Raw completions `has_quota`; not an admission decision. |
+| `ai.github_copilot.quota.premium_interactions.percent_remaining` | double / % / quota_percent_remaining | Direct premium-interactions `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.premium_interactions.reset_at` | DateTimeOffset / timestamp | Direct premium-interactions `quota_reset_at`. |
+| `ai.github_copilot.quota.premium_interactions.unlimited` | boolean / none / quota_unlimited | Direct premium-interactions `unlimited` flag. |
+| `ai.github_copilot.quota.premium_interactions.has_quota` | boolean / none / quota_source_flag | Raw premium-interactions `has_quota`; not an admission decision. |
+
+`token_based_billing`, `quota_remaining`, and `credits_used` retain separate source meanings. Entitlement and legacy premium-request fields also remain distinct; amount fields are parser-only until their units and semantics are verified. `has_quota` is not authoritative under token-based billing. No credential-renewal class or silent future renewal is claimed.
+
+## CER-M3-004 — OpenCode Go quota
+
+The accepted provider reads the official OpenCode Go static API-key owner and makes bounded read-only requests to `https://opencode.ai/zen/go/v1/usage`. A non-empty `OPENCODE_AUTH_CONTENT` is the selected source; otherwise the reader uses `XDG_DATA_HOME/opencode/auth.json` or its built-in user-profile store. An invalid selected source fails closed without falling back to an older store. Only the API-key auth type is supported. A source or key change clears incompatible cache and cancels in-flight acquisition and pending publication. Setup and live-account validation remain pending; no MFA was encountered.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.opencode-go.quota.rolling.used` | double / % / quota_used | Direct rolling-window `usage.rolling.percent`; used percentage. |
+| `ai.opencode-go.quota.weekly.used` | double / % / quota_used | Direct weekly `usage.weekly.percent`; used percentage. |
+| `ai.opencode-go.quota.monthly.used` | double / % / quota_used | Direct monthly `usage.monthly.percent`; used percentage. |
+| `ai.opencode-go.quota.rolling.reset` | DateTimeOffset / timestamp | Explicit-offset rolling `resetsAt`. |
+| `ai.opencode-go.quota.weekly.reset` | DateTimeOffset / timestamp | Explicit-offset weekly `resetsAt`. |
+| `ai.opencode-go.quota.monthly.reset` | DateTimeOffset / timestamp | Explicit-offset monthly `resetsAt`. |
+
+Used percentages are not inverted into remaining capacity. Missing values remain Unavailable; malformed values fail independently as valueless Error. Balance, billing, and service-status fields do not become quota metrics.
+
 ## CER-M3-004 — Antigravity first integration wave
 
-The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. No live RPC was run in this wave because the current-user official language server was absent.
+The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. A sanitized bounded local-RPC observation recognized four quota buckets and a stable before/after status identity. This establishes source RPC shape and identity only; production parser-to-MetricSnapshot agreement, installed-version validation, backend-cache behavior, and UI comparison remain unverified, so full live validation remains NOT RUN.
 
 | MetricId | Kind / unit / semantic type | Exact source field |
 | --- | --- | --- |

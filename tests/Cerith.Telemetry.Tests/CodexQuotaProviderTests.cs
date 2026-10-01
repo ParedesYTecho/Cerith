@@ -16,6 +16,7 @@ using Cerith.Core;
 using Cerith.Telemetry.Tests.Providers.AI.Antigravity;
 using Cerith.TelemetryService;
 using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cerith.Telemetry.Tests;
@@ -774,16 +775,58 @@ public sealed class CodexQuotaProviderTests
         using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
         using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
+        var copilotResponses = new Queue<string>();
+        const string accountId = "24680";
+        const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
+        const string copilotIdentity = "{\"id\":" + accountId + "}";
+        const string copilotQuota = "{\"id\":" + accountId +
+            ",\"token_based_billing\":true,\"quota_snapshots\":{" +
+            "\"chat\":{\"token_based_billing\":true,\"entitlement\":50,\"credits_used\":10," +
+            "\"quota_remaining\":40,\"percent_remaining\":80,\"quota_reset_at\":4102444800," +
+            "\"unlimited\":false,\"has_quota\":false}}}";
+        for (var round = 0; round < 2; round++)
+        {
+            copilotResponses.Enqueue(authStatus);
+            copilotResponses.Enqueue(copilotIdentity);
+            copilotResponses.Enqueue(copilotQuota);
+            copilotResponses.Enqueue(copilotIdentity);
+        }
+        var copilotTime = new TestTimeProvider(DateTimeOffset.UtcNow);
+        var copilotAcquirer = new CopilotQuotaAcquirer((_, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Encoding.UTF8.GetBytes(copilotResponses.Dequeue()));
+        });
+        using var copilotProvider = new CopilotQuotaProvider(registry, bus, copilotAcquirer, copilotTime);
+
+        const string authContent = "{\"opencode-go\":{\"type\":\"api\",\"key\":\"synthetic-opencode-go-key\"}}";
+        var authReader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
+            StringComparer.Ordinal.Equals(name, "OPENCODE_AUTH_CONTENT") ? authContent : null);
+        using var openCodeHandler = new RecordingHandler();
+        openCodeHandler.EnqueueJson("""
+            {"usage":{
+              "rolling":{"percent":37.5,"resetsAt":"2099-10-01T00:00:00Z"},
+              "weekly":{"percent":12.5,"resetsAt":"2099-10-08T00:00:00Z"},
+              "monthly":{"percent":4,"resetsAt":"2099-11-01T00:00:00Z"}
+            }}
+            """);
+        using var openCodeProvider = new OpenCodeGoQuotaProvider(registry, bus, authReader,
+            openCodeHandler, TimeProvider.System, _ => 0);
         await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
         await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
         await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
         await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
         await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
             .GetAsyncEnumerator();
+        await using var copilotReader = bus.Subscribe(new MetricId(
+            "ai.github_copilot.quota.chat.percent_remaining")).GetAsyncEnumerator();
+        await using var openCodeReader = bus.Subscribe(new MetricId(
+            "ai.opencode-go.quota.rolling.used")).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
         await antigravityProvider.PollOnceAsync();
+        await openCodeProvider.PollOnceAsync();
 
         async Task PublishAndReadRoundAsync()
         {
@@ -792,13 +835,18 @@ public sealed class CodexQuotaProviderTests
             var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
             var codexRead = codexReader.MoveNextAsync().AsTask();
             var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
+            var copilotRead = copilotReader.MoveNextAsync().AsTask();
+            var openCodeRead = openCodeReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
             await codexHarness.Provider.PublishCurrentAsync();
             await antigravityProvider.PublishCurrentAsync();
+            await copilotProvider.PollOnceAsync();
+            await openCodeProvider.PublishCurrentAsync();
 
-            var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead)
+            var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
+                    copilotRead, openCodeRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -823,12 +871,16 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
             Assert.AreEqual(MetricState.Stale, antigravityReader.Current.State);
             Assert.AreEqual(MetricConfidence.Measured, antigravityReader.Current.Confidence);
-
+            Assert.AreEqual(MetricState.Fresh, copilotReader.Current.State);
+            Assert.AreEqual(80d, copilotReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual(MetricState.Fresh, openCodeReader.Current.State);
+            Assert.AreEqual(37.5d, openCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>
         {
             await PublishAndReadRoundAsync();
+            copilotTime.Advance(CopilotQuotaProvider.PollInterval);
             await PublishAndReadRoundAsync();
         });
     }

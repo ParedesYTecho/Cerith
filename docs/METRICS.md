@@ -33,7 +33,7 @@ ai.codex.quota.secondary.duration
 
 Do not use a closed enum because metrics need to be addable without recompiling Core.
 
-TelemetryService registers six Codex, eight Cursor, eight Antigravity, and ten ZCode quota IDs; per-provider semantics and conformance tests are in [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md). Other AI examples remain prospective. No fixed Antigravity weekly window is assumed beyond the source bucket IDs.
+TelemetryService registers six Codex, eight Cursor, eight Antigravity, ten ZCode, thirteen GitHub Copilot, and six OpenCode Go quota/billing IDs; per-provider semantics and conformance tests are in [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md). Other AI examples remain prospective. No fixed Antigravity weekly window is assumed beyond the source bucket IDs.
 
 ## Descriptor
 
