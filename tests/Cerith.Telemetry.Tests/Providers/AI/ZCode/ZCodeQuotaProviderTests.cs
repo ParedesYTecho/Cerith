@@ -40,6 +40,10 @@ public sealed class ZCodeQuotaProviderTests
     public async Task SelectedFamilyAcquiresCodingPlanAndPreservesWindowModelMetadata()
     {
         using var harness = new Harness();
+        var settingsPath = Path.Combine(harness.VersionDirectory, "setting.json");
+        var configPath = Path.Combine(harness.VersionDirectory, "config.json");
+        var settingsBefore = File.ReadAllText(settingsPath);
+        var configBefore = File.ReadAllText(configPath);
         harness.Handler.EnqueueJson(harness.Fixture);
         await harness.Provider.PollOnceAsync();
         var snapshots = await ReadAllAsync(harness);
@@ -62,6 +66,9 @@ public sealed class ZCodeQuotaProviderTests
         Assert.AreEqual(7, weeklyMetadata.RootElement.GetProperty("SourceNumber").GetInt32());
         Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Fresh));
         Assert.IsTrue(snapshots.All(snapshot => snapshot.ObservedAt == InitialUtc));
+        Assert.AreEqual(settingsBefore, File.ReadAllText(settingsPath));
+        Assert.AreEqual(configBefore, File.ReadAllText(configPath));
+        Assert.IsFalse(File.Exists(Path.Combine(harness.VersionDirectory, "credentials.json")));
     }
 
     [TestMethod]
@@ -105,6 +112,41 @@ public sealed class ZCodeQuotaProviderTests
         Assert.AreEqual(0, harness.Handler.Requests.Length);
         Assert.AreEqual(ZCodeAuthStatus.Unsupported, read.Status);
         Assert.AreEqual("account_selection_unproven", read.ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task MissingCredentialPublishesUnavailableWithoutRequest()
+    {
+        using var harness = new Harness(writeConfig: false);
+        await harness.Provider.PollOnceAsync();
+        var snapshots = await ReadAllAsync(harness);
+
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Unavailable && snapshot.Value is null));
+    }
+
+    [TestMethod]
+    public async Task RejectedCredentialIsSuppressedUntilConfiguredKeyChanges()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueStatus(HttpStatusCode.Unauthorized);
+        await harness.Provider.PollOnceAsync();
+        var rejected = await ReadAllAsync(harness);
+        Assert.IsTrue(rejected.All(snapshot => snapshot.State == MetricState.Error && snapshot.ErrorCode == "auth_required"));
+
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        await harness.Provider.PollOnceAsync();
+        Assert.AreEqual(1, harness.Handler.Requests.Length);
+
+        harness.WriteConfig("synthetic-zai-key-replaced", "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        var recovered = await ReadAllAsync(harness);
+
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+        Assert.IsTrue(recovered.All(snapshot => snapshot.State == MetricState.Fresh));
     }
 
     [TestMethod]
@@ -209,6 +251,51 @@ public sealed class ZCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task RequestDeadlineCancelsSlowAcquisitionAndPublishesTimeout()
+    {
+        using var harness = new Harness();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Handler.Enqueue(async (_, token) =>
+        {
+            entered.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return JsonResponse(harness.Fixture);
+        });
+        var poll = harness.Provider.PollOnceAsync();
+        await entered.Task;
+        harness.Time.Advance(ZCodeQuotaProvider.RequestTimeout + TimeSpan.FromSeconds(1));
+        await poll;
+        var snapshots = await ReadAllAsync(harness);
+
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error && snapshot.ErrorCode == "timeout"));
+    }
+
+    [TestMethod]
+    public async Task OfflineAcquisitionPublishesUnavailableWithoutInventingValues()
+    {
+        using var harness = new Harness();
+        harness.Handler.Enqueue((_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic offline")));
+        await harness.Provider.PollOnceAsync();
+        var snapshots = await ReadAllAsync(harness);
+
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Unavailable && snapshot.Value is null));
+    }
+
+    [TestMethod]
+    public async Task OversizedResponseIsRejectedBeforeParsing()
+    {
+        using var harness = new Harness();
+        harness.Handler.Enqueue((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[ZCodeQuotaProvider.MaxResponseBytes + 1])
+        }));
+        await harness.Provider.PollOnceAsync();
+        var snapshots = await ReadAllAsync(harness);
+
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error && snapshot.ErrorCode == "response_too_large"));
+    }
+
+    [TestMethod]
     public async Task OwnerChangeCancelsInFlightAcquisitionAndDiscardsLateResponse()
     {
         using var harness = new Harness();
@@ -278,6 +365,36 @@ public sealed class ZCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task ResetCrossingCancelsPendingValuePublication()
+    {
+        using var harness = new Harness();
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[1])).GetAsyncEnumerator();
+        var initial = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PublishCurrentAsync();
+        Assert.IsTrue(await initial);
+
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        await harness.Provider.PublishCurrentAsync();
+        var pendingPublication = harness.Provider.PublishCurrentAsync().AsTask();
+        await Task.Delay(25);
+        Assert.IsFalse(pendingPublication.IsCompleted);
+
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        await harness.Provider.ObserveLocalStateAsync();
+        await pendingPublication.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.IsTrue(await reader.MoveNextAsync());
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        var next = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PublishCurrentAsync();
+        Assert.IsTrue(await next);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
     public async Task LongRetryAfterDoesNotExtendCacheLifetimeOrTriggerEarlyRequest()
     {
         using var harness = new Harness();
@@ -321,6 +438,32 @@ public sealed class ZCodeQuotaProviderTests
             stop.Cancel();
             try { await run; }
             catch (OperationCanceledException) { }
+            Assert.IsTrue((await Task.WhenAll(stopped)).All(result => result));
+            Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped && reader.Current.Value is null));
+        }
+        finally
+        {
+            foreach (var reader in readers) await reader.DisposeAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task RunPublishesStoppedMetricsAfterWorkerDrainFaults()
+    {
+        using var harness = new Harness();
+        harness.Time.ThrowOnTimerCreation = true;
+        var readers = Ids.Select(id => harness.Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray();
+        try
+        {
+            var initial = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
+            var run = harness.Provider.RunAsync(CancellationToken.None);
+            await Task.WhenAll(initial);
+            var stopped = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
+
+            try { await run; }
+            catch (InvalidOperationException) { }
+
+            Assert.IsTrue(run.IsFaulted);
             Assert.IsTrue((await Task.WhenAll(stopped)).All(result => result));
             Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped && reader.Current.Value is null));
         }
@@ -507,9 +650,11 @@ public sealed class ZCodeQuotaProviderTests
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
         public override long GetTimestamp() { lock (_gate) return _timestamp; }
+        public bool ThrowOnTimerCreation { get; set; }
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
+            if (ThrowOnTimerCreation) throw new InvalidOperationException("synthetic timer failure");
             var timer = new ManualTimer(this, callback, state);
             timer.Change(dueTime, period);
             _timers.Add(timer);
