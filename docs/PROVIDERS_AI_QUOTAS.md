@@ -14,6 +14,10 @@ Default setup policy: first reuse a safe existing official local authorization w
 
 This broader policy does **not** retroactively change CER-M3-002 Codex: its accepted production path remains read-only and non-renewing. A provider-specific reconnect after genuine expiration/revocation is different from asking the user to repeat configuration on every Cerith startup.
 
+### Validation outcomes
+
+Keep live access, implementation evidence and human action as separate outcomes. `LIVE_VERIFIED` requires a real Cerith acquisition compared with the official product for the same compatible account/workspace. `LIVE_NOT_AVAILABLE_ON_THIS_HOST` applies only after relevant safe local, CLI and browser routes are exhausted and the missing compatible host session is the remaining comparison barrier; it says nothing about accounts elsewhere and does not establish credential renewal. Synthetic tests, manually rewritten credentials and RPC-schema observations do not prove live equality or silent future startup. `EVIDENCE_BLOCKED` is for unresolved implementation-critical route, product, scope, auth/renewal, units, reset or source-authority questions; do not use it to disguise absent host access. `HUMAN_GATE_PENDING` requires a plausible compatible session and a specific irreducible user action such as MFA or consent. Do not create accounts, spend paid quota/credits, trigger artificial inference, or mutate credentials/security settings solely to obtain validation evidence.
+
 ## Reference hierarchy
 
 For each provider compare:
@@ -328,6 +332,34 @@ The accepted provider reads the official OpenCode Go static API-key owner and ma
 | `ai.opencode-go.quota.monthly.reset` | DateTimeOffset / timestamp | Explicit-offset monthly `resetsAt`. |
 
 Used percentages are not inverted into remaining capacity. Missing values remain Unavailable; malformed values fail independently as valueless Error. Balance, billing, and service-status fields do not become quota metrics.
+
+## CER-M3-004 — Kiro credits
+
+The accepted provider uses the official Kiro CLI's ACP usage operation and separately brackets acquisition with owner observations. It performs no auth writes and does not claim that synthetic recovery tests establish automatic token renewal. Renewal remains empirically unverified/deferred.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.kiro.credits.included.remaining` | decimal / credits / quota_remaining | `usageBreakdownList[]` entry with `resourceType=CREDIT`: `usageLimitWithPrecision - currentUsageWithPrecision` (legacy numeric aliases are accepted by the parser). |
+| `ai.kiro.credits.included.reset` | DateTimeOffset / timestamp | `subscriptionInfo.nextDateReset`, Unix seconds. |
+| `ai.kiro.credits.addon.remaining` | decimal / credits / quota_remaining | `addOnMetadata.addOnTotalLimit - addOnTotalUsage`. |
+| `ai.kiro.credits.bonus.remaining` | decimal / credits / quota_remaining | Sum of `freeTrialInfo.bonuses[]` `usageLimit - currentUsage` for allocations not expired at observation time. |
+
+Included, add-on and bonus balances remain separate. Missing source pools remain Unavailable; invalid or ambiguous pools are valueless errors. The bounded official-client/account checks on the validation host found no compatible signed-in Kiro session, so same-account comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`; this does not imply the user has no Kiro account elsewhere. No MFA, registration, agreement acceptance or paid usage was attempted.
+
+## CER-M3-004 — Command Code quota and subscription
+
+The accepted provider makes bounded read-only requests to the fixed Command Code API using the existing environment-key or official local auth-file owner. It does not write credentials or claim automatic renewal.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.commandcode.quota.5h.used_percent` | double / % / quota_used | `windowLimits.fiveHour.used / cap × 100`. |
+| `ai.commandcode.quota.5h.reset` | DateTimeOffset / timestamp | `windowLimits.fiveHour.resetAt`, Unix milliseconds. |
+| `ai.commandcode.quota.weekly.used_percent` | double / % / quota_used | `windowLimits.weekly.used / cap × 100`. |
+| `ai.commandcode.quota.weekly.reset` | DateTimeOffset / timestamp | `windowLimits.weekly.resetAt`, Unix milliseconds. |
+| `ai.commandcode.subscription.status` | string / none / subscription_status | Validated source `status` value. |
+| `ai.commandcode.subscription.plan` | string / none / subscription_plan | Known display label mapped from source `planId`; unknown plans remain Unavailable. |
+
+Used is not inverted into remaining quota; subscription status/plan are not quota. The auth-file, environment, CLI and browser checks on the validation host found no compatible signed-in account/session, so same-account comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. This does not imply the user has no account elsewhere. No login, registration, agreement acceptance, credential mutation or paid usage was attempted, and no renewal behavior is claimed.
 
 ## CER-M3-004 — Antigravity first integration wave
 

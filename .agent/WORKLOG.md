@@ -471,3 +471,17 @@ Provider checkpoint: Command Code MID PASS at 939bd24; FINAL fixes are active Lu
 PR #47 remains draft. Local main remains 3f5ca74a26edf88a02e6bda05f759ee3c74032cd and origin/main remains 72b43b268b4992d0b0ea45b6e29067d10450274f. No canonical-main merge or M3/mission completion claim.
 
 Files: tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs, tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs, docs/TESTING_QA.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md.
+
+## 2026-10-01 — Dewey One — Kiro and Command Code integration
+
+Runtime: GPT-6 Luna, max effort, authoritative `turn_context` verified at 2026-10-01 19:26:31 Europe/Madrid. The current user-requested reviewer route is GPT-5.6 Sol via Web; it is not runtime evidence.
+
+Imports: merged only Kiro FINALPASS `ca2b2c388be9b608fa96d8fdc3228d8da6ab7aac` and Command Code FINALPASS `3919521a3615e2a7ee72cefd811e3572e3bf4124`, preserving provider histories in no-fast-forward commits `4d7f0ada9b09b339d22afaa750010dd318d8e4d3` and `82da0b3b4f3013811480d2a5562b152e62d3ca6f`. Existing supervisor wiring owns both runners. Canonical docs register four Kiro and six Command Code MetricIds with raw units, reset semantics and subscription distinctions. The validation outcome rubric is recorded once in `docs/PROVIDERS_AI_QUOTAS.md`.
+
+Coexistence: the gated same-bus test now receives synthetic Kiro 87.25 included credits and Command Code 25% used with their source labels, twice while Cursor acquisition is held pending, alongside real Hardware, synthetic PresentMon, Codex and all prior accepted providers. The existing supervisor isolation test has all eight registered IDs. ZCode's delegating wrapper/factory was removed; the shared test reuses its existing Harness. No new shared abstraction, dependency, provider auth writer or provider-owned edits were added.
+
+Validation: Release solution build passed with 0 warnings/errors. Guarded direct MTP aggregate exited 0: Core 39/39, Telemetry 295/295, Integration 10/10; focused coexistence 1/1 and supervisor isolation 8/8. `dotnet test` on this host returned exit 5 with zero tests for each project, so the compiled test applications were invoked directly with a minimum-expected-tests guard. Graphify refreshed to 2,734 nodes / 8,002 edges. Repository path hygiene passed for 117 tracked files; scoped added-diff privacy checks and `git diff --check` passed. These are not a comprehensive secret scan. Hosted CI for the new head is pending after push.
+
+Live evidence: Kiro and Command Code same-account comparisons are `LIVE_NOT_AVAILABLE_ON_THIS_HOST` after the relevant safe existing-owner, CLI and browser routes found no compatible signed-in session. This does not establish account absence elsewhere. Kiro silent renewal remains empirically deferred; no Command renewal behavior is claimed. No MFA, login, consent, credential/security mutation, registration or paid quota use was triggered. Cursor auth remains DEFERRED/UNRESOLVED and live comparison NOT RUN. The 16-provider mission remains active.
+
+Files: `src/Cerith.TelemetryService/Program.cs`, `tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, plus the imported Kiro and Command Code source and tests.
