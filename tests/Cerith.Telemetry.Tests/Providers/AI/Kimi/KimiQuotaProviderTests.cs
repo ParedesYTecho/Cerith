@@ -213,6 +213,33 @@ public sealed class KimiQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task RepeatedUnavailableAuthObservationDoesNotCancelBackpressuredPublication()
+    {
+        await using var harness = new Harness(subscriberCapacity: 1, subscribeAll: false,
+            createDefaultConfig: false);
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        await Task.Yield();
+        await harness.Provider.PublishCurrentAsync();
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        await harness.Provider.PublishCurrentAsync();
+        var blockedPublication = harness.Provider.PublishCurrentAsync().AsTask();
+        Assert.IsFalse(blockedPublication.IsCompleted, "The full bounded channel should hold publication.");
+
+        await harness.Provider.ObserveLocalStateAsync();
+        await harness.Provider.ObserveLocalStateAsync();
+        Assert.IsFalse(blockedPublication.IsCompleted,
+            "An unchanged unavailable auth state must not repeatedly cancel the current publication.");
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        await blockedPublication.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+    }
+
+    [TestMethod]
     public async Task RedirectsAreRejectedAndAuthenticationFailureNeverRefreshesCredentials()
     {
         await using var redirect = new Harness();
@@ -491,13 +518,16 @@ public sealed class KimiQuotaProviderTests
     }
 
     [TestMethod]
-    public async Task OfficialOwnerTokenReplacementRecoversExpiredAccessWithoutProviderCredentialWrites()
+    public async Task CredentialRereadRecoversAfterExternalRenewableTokenReplacement()
     {
         await using var harness = new Harness();
         harness.WriteCredentials("expired-access", expiresAt: InitialUtc.AddSeconds(-1));
+        var expiredCredentialBytes = File.ReadAllBytes(harness.CredentialPath);
         var expired = await harness.PollAndReadAsync();
         Assert.IsTrue(expired.All(snapshot => snapshot.Value is null && snapshot.ErrorCode == "auth_refresh_pending"));
         Assert.AreEqual(0, harness.Requests.Count);
+        CollectionAssert.AreEqual(expiredCredentialBytes, File.ReadAllBytes(harness.CredentialPath),
+            "A refresh token must not cause the provider to mutate shared credentials.");
 
         harness.WriteCredentials("owner-renewed-access", expiresAt: InitialUtc.AddHours(1));
         var ownerWrittenBytes = File.ReadAllBytes(harness.CredentialPath);
@@ -505,6 +535,20 @@ public sealed class KimiQuotaProviderTests
         Assert.AreEqual(MetricState.Fresh, recovered[0].State);
         Assert.AreEqual("owner-renewed-access", harness.Requests.Single().AuthParameter);
         CollectionAssert.AreEqual(ownerWrittenBytes, File.ReadAllBytes(harness.CredentialPath));
+    }
+
+    [TestMethod]
+    public async Task OversizedConfigurationFailsClosedWithoutQuotaRequest()
+    {
+        await using var harness = new Harness();
+        harness.WriteCredentials("synthetic-token");
+        var oversizedConfig = DefaultOAuthConfig + new string(' ', KimiQuotaAuthReader.MaxFileBytes);
+        File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), oversizedConfig);
+
+        var snapshots = await harness.PollAndReadAsync();
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.Value is null &&
+            snapshot.ErrorCode == "auth_selection_unverified"));
+        Assert.AreEqual(0, harness.Requests.Count);
     }
 
     [TestMethod]

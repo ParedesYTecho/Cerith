@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -18,7 +19,7 @@ internal readonly record struct KimiAuthRead(KimiAuthStatus Status, KimiAuthIden
 
 internal sealed class KimiQuotaAuthReader
 {
-    private const int MaxFileBytes = 256 * 1024;
+    internal const int MaxFileBytes = 256 * 1024;
     private const string ManagedProvider = "managed:kimi-code";
     private const string ExpectedOAuthKey = "oauth/kimi-code";
     private readonly string? _codeHome;
@@ -146,10 +147,35 @@ internal sealed class KimiQuotaAuthReader
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
             if (stream.Length > MaxFileBytes) return "auth_selection_unverified";
-            using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
-            return VerifyConfigurationText(reader.ReadToEnd());
+            var text = ReadBoundedConfigurationText(stream);
+            return text is null ? "auth_selection_unverified" : VerifyConfigurationText(text);
         }
         catch (Exception) { return "auth_selection_unverified"; }
+    }
+
+    private static string? ReadBoundedConfigurationText(Stream stream)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(MaxFileBytes + 1);
+        try
+        {
+            var count = 0;
+            while (count < MaxFileBytes + 1)
+            {
+                var read = stream.Read(buffer, count, MaxFileBytes + 1 - count);
+                if (read == 0) break;
+                count += read;
+            }
+            if (count > MaxFileBytes) return null;
+
+            using var content = new MemoryStream(buffer, 0, count, writable: false, publiclyVisible: true);
+            using var reader = new StreamReader(content, detectEncodingFromByteOrderMarks: true);
+            return reader.ReadToEnd();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private static string? VerifyConfigurationText(string text)

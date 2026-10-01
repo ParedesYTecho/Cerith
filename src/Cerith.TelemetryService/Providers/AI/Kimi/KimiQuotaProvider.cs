@@ -393,7 +393,7 @@ internal sealed class KimiQuotaProvider : IDisposable
         _activeAuthStatus = read.Status;
         _activeAccessToken = nextToken;
         _activeHasRefreshToken = nextHasRefreshToken;
-        if (read.Status != KimiAuthStatus.Ready || read.Identity is null)
+        if ((read.Status != KimiAuthStatus.Ready || read.Identity is null) && stateChanged)
         {
             var state = read.Status == KimiAuthStatus.Unavailable ? MetricState.Unavailable : MetricState.Error;
             ClearToStateLocked(state, state == MetricState.Error ? read.ErrorCode ?? "auth_unavailable" : null, now);
