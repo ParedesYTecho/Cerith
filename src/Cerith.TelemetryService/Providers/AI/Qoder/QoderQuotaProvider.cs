@@ -13,6 +13,10 @@ internal sealed class QoderQuotaProvider : IDisposable
 {
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
     internal static readonly TimeSpan OwnerCheckInterval = TimeSpan.FromSeconds(5);
+    internal static readonly TimeSpan FreshnessGrace = PollInterval + QoderQuotaAcquirer.AcquisitionTimeout;
+    internal static readonly TimeSpan HardCacheAge = TimeSpan.FromTicks(FreshnessGrace.Ticks * 2);
+    internal static readonly TimeSpan ValidityCheckInterval = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan ValidityPublishTimeout = TimeSpan.FromMilliseconds(250);
     internal static readonly TimeSpan WorkerDrainTimeout = TimeSpan.FromSeconds(2);
     internal static readonly TimeSpan StoppedPublishTimeout = TimeSpan.FromMilliseconds(500);
     internal const string Source = "Qoder.International.LocalClientRPC.credit/usage.v1";
@@ -65,6 +69,10 @@ internal sealed class QoderQuotaProvider : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private QoderQuotaReading? _reading;
     private QoderOwnerKey? _activeOwner;
+    private long? _readingTimestamp;
+    private TimeSpan? _planExpiryAfter;
+    private bool _readingIsStale;
+    private bool _personalQuotaExpired;
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublishStop;
     private MetricState _failureState = MetricState.Unavailable;
@@ -130,7 +138,12 @@ internal sealed class QoderQuotaProvider : IDisposable
             throw new InvalidOperationException("Qoder quota provider is already running.");
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
-        var workers = new Task[] { PollLoopAsync(stop.Token), MonitorOwnerLoopAsync(stop.Token) };
+        var workers = new Task[]
+        {
+            PollLoopAsync(stop.Token),
+            MonitorOwnerLoopAsync(stop.Token),
+            MonitorValidityLoopAsync(stop.Token)
+        };
         ExceptionDispatchInfo? workerFailure = null;
         try
         {
@@ -249,6 +262,7 @@ internal sealed class QoderQuotaProvider : IDisposable
 
             InvalidateOwnerWorkLocked();
             _reading = null;
+            ClearReadingValidityLocked();
             _failureState = MetricState.Unavailable;
             _failureCode = verification.ErrorCode ??
                 (verification.State == QoderOwnerVerificationState.Changed ? null : "identity_unavailable");
@@ -333,6 +347,7 @@ internal sealed class QoderQuotaProvider : IDisposable
             {
                 InvalidateOwnerWorkLocked();
                 _reading = null;
+                ClearReadingValidityLocked();
                 _activeOwner = null;
                 _failureCode = null;
             }
@@ -349,6 +364,7 @@ internal sealed class QoderQuotaProvider : IDisposable
                 InvalidateOwnerWorkLocked();
             _activeOwner = null;
             _reading = null;
+            ClearReadingValidityLocked();
             _failureState = acquisition.FailureState;
             _failureCode = acquisition.ErrorCode;
             _failureObservedAt = _timeProvider.GetUtcNow();
@@ -361,9 +377,104 @@ internal sealed class QoderQuotaProvider : IDisposable
             _activeOwner = acquisition.Owner;
         }
         _reading = acquisition.Reading;
+        _readingTimestamp = _timeProvider.GetTimestamp();
+        _readingIsStale = false;
+        _personalQuotaExpired = false;
+        _planExpiryAfter = null;
+        if (acquisition.Reading.Points[15].Value is MetricValue expiryValue)
+        {
+            var remaining = expiryValue.AsDateTimeOffset() - _timeProvider.GetUtcNow();
+            _planExpiryAfter = remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
         _failureState = MetricState.Unavailable;
         _failureCode = null;
         _failureObservedAt = acquisition.Reading.ObservedAt;
+        _ = InvalidateExpiredPersonalQuotaLocked(_timeProvider.GetTimestamp());
+    }
+
+    internal async Task ExpireValidityOnceAsync(CancellationToken cancellationToken = default)
+    {
+        var changed = false;
+        await _stateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_reading is null || _readingTimestamp is not long readingTimestamp)
+                return;
+
+            var timestamp = _timeProvider.GetTimestamp();
+            var age = _timeProvider.GetElapsedTime(readingTimestamp, timestamp);
+            if (age >= HardCacheAge)
+            {
+                _failureObservedAt = _reading.ObservedAt;
+                _reading = null;
+                ClearReadingValidityLocked();
+                _activeOwner = null;
+                _failureState = MetricState.Unavailable;
+                _failureCode = "cache_expired";
+                InvalidateOwnerWorkLocked();
+                changed = true;
+            }
+            else
+            {
+                if (!_readingIsStale && age >= FreshnessGrace)
+                {
+                    for (var index = 0; index < _reading.Points.Length; index++)
+                    {
+                        var point = _reading.Points[index];
+                        if (point.State == MetricState.Fresh && point.Value is MetricValue value)
+                            _reading.Points[index] = QoderQuotaPoint.Stale(value);
+                    }
+                    _readingIsStale = true;
+                    InvalidatePublicationLocked();
+                    changed = true;
+                }
+
+                if (InvalidateExpiredPersonalQuotaLocked(timestamp))
+                {
+                    InvalidatePublicationLocked();
+                    changed = true;
+                }
+            }
+        }
+        finally { _stateLock.Release(); }
+
+        if (!changed)
+            return;
+
+        using var publishDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        publishDeadline.CancelAfter(ValidityPublishTimeout);
+        try
+        {
+            await PublishCurrentAsync(publishDeadline.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (publishDeadline.IsCancellationRequested &&
+            !cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private bool InvalidateExpiredPersonalQuotaLocked(long timestamp)
+    {
+        if (_reading is null || _readingTimestamp is not long readingTimestamp || _personalQuotaExpired ||
+            _planExpiryAfter is not TimeSpan expiryAfter ||
+            _timeProvider.GetElapsedTime(readingTimestamp, timestamp) < expiryAfter)
+            return false;
+
+        for (var index = 0; index <= 3; index++)
+        {
+            if (_reading.Points[index].Value.HasValue)
+                _reading.Points[index] = QoderQuotaPoint.Unavailable("quota_expired");
+        }
+        _personalQuotaExpired = true;
+        return true;
+    }
+
+    private void ClearReadingValidityLocked()
+    {
+        _readingTimestamp = null;
+        _planExpiryAfter = null;
+        _readingIsStale = false;
+        _personalQuotaExpired = false;
     }
 
     private MetricSnapshot[] CreateSnapshotsLocked()
@@ -425,6 +536,15 @@ internal sealed class QoderQuotaProvider : IDisposable
         }
     }
 
+    private async Task MonitorValidityLoopAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            await Task.Delay(ValidityCheckInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
+            await ExpireValidityOnceAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private async Task<ExceptionDispatchInfo?> DrainWorkersAsync(Task[] workers, CancellationToken stopToken)
     {
         var allWorkers = Task.WhenAll(workers);
@@ -466,6 +586,7 @@ internal sealed class QoderQuotaProvider : IDisposable
             stateLockAcquired = true;
             var now = _timeProvider.GetUtcNow();
             _reading = null;
+            ClearReadingValidityLocked();
             _activeOwner = null;
             _failureCode = null;
             var snapshots = _descriptors.Select(descriptor => new MetricSnapshot(descriptor.Id, null, now,

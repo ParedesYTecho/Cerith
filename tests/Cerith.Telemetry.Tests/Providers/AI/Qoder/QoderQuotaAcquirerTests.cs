@@ -2,6 +2,10 @@
 
 using System;
 using System.IO;
+using System.IO.Pipes;
+using System.Security;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -36,6 +40,68 @@ public sealed class QoderQuotaAcquirerTests
         Assert.IsFalse(QoderQuotaAcquirer.IsLocalDrivePath(@"\\server\profile\AppData\Roaming"));
         Assert.IsFalse(QoderQuotaAcquirer.IsLocalDrivePath(@"C:relative\AppData"));
         Assert.IsFalse(QoderQuotaAcquirer.IsLocalDrivePath(@"\rooted-without-drive\AppData"));
+    }
+
+    [TestMethod]
+    public void QoderProductMetadataDoesNotTrustAnUnapprovedPublisher()
+    {
+        var unapprovedCertificateHash = SHA256.HashData(Encoding.UTF8.GetBytes("synthetic-unapproved-publisher"));
+
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedQoderImageDetails("Qoder IDE", "Qoder IDE.exe", "Qoder IDE",
+            unapprovedCertificateHash));
+    }
+
+    [TestMethod]
+    public void PeerValidationRejectsForgedPidSidSessionStartAndPublisher()
+    {
+        const string currentSid = "S-1-5-21-1000";
+        const string peerSid = "S-1-5-21-2000";
+
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedPeerIdentity(5172, 5173, 1, 1, currentSid, currentSid,
+            638950000000000000, 638950000000000000, true));
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedPeerIdentity(5172, 5172, 1, 1, currentSid, peerSid,
+            638950000000000000, 638950000000000000, true));
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedPeerIdentity(5172, 5172, 2, 1, currentSid, currentSid,
+            638950000000000000, 638950000000000000, true));
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedPeerIdentity(5172, 5172, 1, 1, currentSid, currentSid,
+            638950000000000000, 638950000000000001, true));
+        Assert.IsFalse(QoderQuotaAcquirer.IsTrustedPeerIdentity(5172, 5172, 1, 1, currentSid, currentSid,
+            638950000000000000, 638950000000000000, false));
+    }
+
+    [TestMethod]
+    public async Task PipeClientConnectsAnonymouslyWithoutExposingCurrentUserSid()
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Inconclusive("Windows named-pipe SQOS is available only on Windows.");
+
+        var pipeName = $"qoder-anonymous-{Guid.NewGuid():N}";
+        using var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        using var client = QoderQuotaAcquirer.CreatePipeClient(pipeName);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var serverConnected = server.WaitForConnectionAsync(deadline.Token);
+
+        await client.ConnectAsync(deadline.Token);
+        await serverConnected;
+
+        var callerSid = WindowsIdentity.GetCurrent().User?.Value;
+        string? serverObservedSid = null;
+        var impersonationDenied = false;
+        try
+        {
+            server.RunAsClient(() => serverObservedSid = WindowsIdentity.GetCurrent().User?.Value);
+        }
+        catch (SecurityException)
+        {
+            impersonationDenied = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            impersonationDenied = true;
+        }
+
+        Assert.IsTrue(impersonationDenied || !StringComparer.Ordinal.Equals(callerSid, serverObservedSid));
     }
 
     [TestMethod]

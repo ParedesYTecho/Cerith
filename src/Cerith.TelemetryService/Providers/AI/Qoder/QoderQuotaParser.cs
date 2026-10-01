@@ -10,6 +10,7 @@ namespace Cerith.TelemetryService.Providers.AI.Qoder;
 internal readonly record struct QoderQuotaPoint(MetricState State, MetricValue? Value, string? ErrorCode)
 {
     public static QoderQuotaPoint Fresh(MetricValue value) => new(MetricState.Fresh, value, null);
+    public static QoderQuotaPoint Stale(MetricValue value) => new(MetricState.Stale, value, "source_stale");
     public static QoderQuotaPoint Unavailable(string? errorCode = null) => new(MetricState.Unavailable, null, errorCode);
     public static QoderQuotaPoint Error(string code) => new(MetricState.Error, null, code);
 }
@@ -175,16 +176,10 @@ internal static class QoderQuotaParser
                 ReadCreditBucket(addOn, "total", 5, 6, 7, points);
             }
 
-            if (identity.OrganizationId is not null && TryGetObject(root, "orgResourcePackage", out var organization))
-            {
-                points[8] = ReadPercent(organization, "percentage");
-                ReadCreditBucket(organization, "cap", 9, 10, 11, points);
-                points[12] = ReadBoolean(organization, "available");
-            }
-            else if (TryGetObject(root, "orgResourcePackage", out _))
+            if (TryGetObject(root, "orgResourcePackage", out _))
             {
                 for (var index = 8; index <= 12; index++)
-                    points[index] = QoderQuotaPoint.Unavailable("organization_identity_unavailable");
+                    points[index] = QoderQuotaPoint.Unavailable("scope_unverified");
             }
 
             points[13] = ReadPercent(root, "totalUsagePercentage");

@@ -14,7 +14,7 @@ public sealed class QoderQuotaParserTests
     private static readonly DateTimeOffset ObservedAt = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
 
     [TestMethod]
-    public void ParseKeepsPersonalAddonAndOrganizationCreditsSeparate()
+    public void ParseKeepsPersonalAndAddonCreditsAndWithholdsUnverifiedOrganizationScope()
     {
         const string json = """
             {
@@ -41,11 +41,12 @@ public sealed class QoderQuotaParserTests
         AssertMeasured(reading.Points[5], 3d);
         AssertMeasured(reading.Points[6], 17d);
         AssertMeasured(reading.Points[7], 20d);
-        AssertMeasured(reading.Points[8], 20d);
-        AssertMeasured(reading.Points[9], 8d);
-        AssertMeasured(reading.Points[10], 32d);
-        AssertMeasured(reading.Points[11], 40d);
-        Assert.IsTrue(reading.Points[12].Value!.Value.AsBoolean());
+        for (var index = 8; index <= 12; index++)
+        {
+            Assert.AreEqual(MetricState.Unavailable, reading.Points[index].State);
+            Assert.AreEqual("scope_unverified", reading.Points[index].ErrorCode);
+            Assert.IsNull(reading.Points[index].Value);
+        }
         AssertMeasured(reading.Points[13], 31.25d);
         Assert.IsFalse(reading.Points[14].Value!.Value.AsBoolean());
         Assert.AreEqual(DateTimeOffset.FromUnixTimeMilliseconds(1798761600000),
@@ -76,7 +77,7 @@ public sealed class QoderQuotaParserTests
     }
 
     [TestMethod]
-    public void OrganizationValuesAreUnavailableWithoutAnOrganizationIdentity()
+    public void OrganizationValuesStayUnverifiedEvenWithSelectedOrganizationIdentity()
     {
         const string json = """
             {
@@ -85,12 +86,12 @@ public sealed class QoderQuotaParserTests
             }
             """;
 
-        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", null));
+        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", "synthetic-org-1"));
 
         for (var index = 8; index <= 12; index++)
         {
             Assert.AreEqual(MetricState.Unavailable, reading.Points[index].State);
-            Assert.AreEqual("organization_identity_unavailable", reading.Points[index].ErrorCode);
+            Assert.AreEqual("scope_unverified", reading.Points[index].ErrorCode);
             Assert.IsNull(reading.Points[index].Value);
         }
         Assert.AreEqual(MetricState.Unavailable, reading.Points[1].State);

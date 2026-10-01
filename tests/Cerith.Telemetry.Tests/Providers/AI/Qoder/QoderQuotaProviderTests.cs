@@ -15,6 +15,7 @@ public sealed class QoderQuotaProviderTests
 {
     private static readonly DateTimeOffset ObservedAt = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
     private const string PersonalUsedId = "ai.qoder.credits.personal.used";
+    private const string AddonUsedId = "ai.qoder.credits.addon.used";
     private const string OrganizationUsedId = "ai.qoder.credits.organization.used";
 
     [TestMethod]
@@ -43,7 +44,9 @@ public sealed class QoderQuotaProviderTests
         Assert.IsTrue(await personalNext.WaitAsync(TimeSpan.FromSeconds(1)));
         Assert.IsTrue(await organizationNext.WaitAsync(TimeSpan.FromSeconds(1)));
         AssertSnapshot(personalReader.Current, 12.5d, ObservedAt);
-        AssertSnapshot(organizationReader.Current, 8d, ObservedAt);
+        Assert.AreEqual(MetricState.Unavailable, organizationReader.Current.State);
+        Assert.AreEqual("scope_unverified", organizationReader.Current.ErrorCode);
+        Assert.IsNull(organizationReader.Current.Value);
         Assert.AreEqual(16, registry.Count);
         Assert.IsTrue(registry.TryGet(new MetricId(PersonalUsedId), out var personalDescriptor));
         Assert.AreEqual(MetricValueKind.Double, personalDescriptor!.ValueKind);
@@ -117,6 +120,127 @@ public sealed class QoderQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task PlanExpiryInvalidatesOnlyPersonalBucketAndPreservesObservedAt()
+    {
+        var time = new ManualTimeProvider(ObservedAt);
+        var owner = Owner("synthetic-user-1", null);
+        var expiry = ObservedAt.AddSeconds(10).ToUnixTimeMilliseconds();
+        var json = $$"""
+            {
+              "userId": "synthetic-user-1",
+              "expiresAt": {{expiry}},
+              "userQuota": { "used": 5, "total": 10, "remaining": 5, "unit": "credits" },
+              "addOnQuota": { "used": 2, "total": 20, "remaining": 18, "unit": "credits" }
+            }
+            """;
+        var registry = new MetricRegistry();
+        using var bus = new MetricBus(1);
+        await using var personalReader = bus.Subscribe(new MetricId(PersonalUsedId)).GetAsyncEnumerator();
+        await using var addonReader = bus.Subscribe(new MetricId(AddonUsedId)).GetAsyncEnumerator();
+        using var provider = new QoderQuotaProvider(registry, bus,
+            _ => Task.FromResult(Acquisition(json, owner)),
+            (_, _) => Task.FromResult(new QoderOwnerVerification(QoderOwnerVerificationState.Verified, owner)), time);
+        var personalInitial = personalReader.MoveNextAsync().AsTask();
+        var addonInitial = addonReader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await personalInitial.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.IsTrue(await addonInitial.WaitAsync(TimeSpan.FromSeconds(1)));
+        time.Advance(TimeSpan.FromSeconds(11));
+
+        var personalExpired = personalReader.MoveNextAsync().AsTask();
+        var addonAfterExpiry = addonReader.MoveNextAsync().AsTask();
+        await provider.ExpireValidityOnceAsync();
+
+        Assert.IsTrue(await personalExpired.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, personalReader.Current.State);
+        Assert.AreEqual("quota_expired", personalReader.Current.ErrorCode);
+        Assert.IsNull(personalReader.Current.Value);
+        Assert.AreEqual(ObservedAt, personalReader.Current.ObservedAt);
+        Assert.IsTrue(await addonAfterExpiry.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Fresh, addonReader.Current.State);
+        Assert.AreEqual(2d, addonReader.Current.Value!.Value.AsDouble(), 0.000001);
+        Assert.AreEqual(ObservedAt, addonReader.Current.ObservedAt);
+    }
+
+    [TestMethod]
+    public async Task HardExpiryInvalidatesOldOwnerWhileAcquisitionIsStillPending()
+    {
+        var time = new ManualTimeProvider(ObservedAt);
+        var owner = Owner("synthetic-user-1", null);
+        const string json = """
+            { "userId": "synthetic-user-1", "userQuota": { "used": 5, "unit": "credits" } }
+            """;
+        var pending = new TaskCompletionSource<QoderQuotaAcquisition>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var acquisitionNumber = 0;
+        var registry = new MetricRegistry();
+        using var bus = new MetricBus(1);
+        await using var reader = bus.Subscribe(new MetricId(PersonalUsedId)).GetAsyncEnumerator();
+        using var provider = new QoderQuotaProvider(registry, bus,
+            _ => Interlocked.Increment(ref acquisitionNumber) == 1
+                ? Task.FromResult(Acquisition(json, owner))
+                : pending.Task,
+            (_, _) => Task.FromResult(new QoderOwnerVerification(QoderOwnerVerificationState.Verified, owner)), time);
+        var initial = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await initial.WaitAsync(TimeSpan.FromSeconds(1)));
+        var slowPoll = provider.PollOnceAsync();
+        Assert.IsFalse(slowPoll.IsCompleted);
+
+        time.Advance(QoderQuotaProvider.HardCacheAge);
+        var expired = reader.MoveNextAsync().AsTask();
+        await provider.ExpireValidityOnceAsync();
+
+        Assert.IsTrue(await expired.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("cache_expired", reader.Current.ErrorCode);
+        Assert.AreEqual(ObservedAt, reader.Current.ObservedAt);
+        pending.SetResult(Acquisition(json, owner));
+        await slowPoll.WaitAsync(TimeSpan.FromSeconds(1));
+        var currentAfterSlowPoll = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await currentAfterSlowPoll.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("cache_expired", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task FreshnessObserverCancelsPublicationBlockedByMetricBusBackpressure()
+    {
+        var time = new ManualTimeProvider(ObservedAt);
+        var owner = Owner("synthetic-user-1", null);
+        const string json = """
+            { "userId": "synthetic-user-1", "userQuota": { "used": 5, "unit": "credits" } }
+            """;
+        var registry = new MetricRegistry();
+        using var bus = new MetricBus(1);
+        await using var reader = bus.Subscribe(new MetricId(PersonalUsedId)).GetAsyncEnumerator();
+        using var provider = CreateProvider(registry, bus, Acquisition(json, owner), owner, time);
+        var initial = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await initial.WaitAsync(TimeSpan.FromSeconds(1)));
+        await provider.PublishCurrentAsync();
+        var blockedPublication = provider.PublishCurrentAsync();
+        Assert.IsFalse(blockedPublication.IsCompleted);
+        time.Advance(QoderQuotaProvider.FreshnessGrace);
+
+        await provider.ExpireValidityOnceAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        await blockedPublication.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State,
+            "A value already buffered before the freshness deadline cannot be retracted.");
+        var stale = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await stale.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stale, reader.Current.State);
+        Assert.AreEqual(5d, reader.Current.Value!.Value.AsDouble(), 0.000001);
+        Assert.AreEqual(ObservedAt, reader.Current.ObservedAt);
+    }
+
+    [TestMethod]
     public async Task UnexpectedWorkerFaultStillPublishesStoppedAndPropagates()
     {
         var registry = new MetricRegistry();
@@ -138,10 +262,10 @@ public sealed class QoderQuotaProviderTests
     }
 
     private static QoderQuotaProvider CreateProvider(MetricRegistry registry, MetricBus bus,
-        QoderQuotaAcquisition acquisition, QoderOwnerKey owner) =>
+        QoderQuotaAcquisition acquisition, QoderOwnerKey owner, TimeProvider? timeProvider = null) =>
         new(registry, bus, _ => Task.FromResult(acquisition),
             (_, _) => Task.FromResult(new QoderOwnerVerification(QoderOwnerVerificationState.Verified, owner)),
-            TimeProvider.System);
+            timeProvider ?? TimeProvider.System);
 
     private static QoderQuotaAcquisition Acquisition(string json, QoderOwnerKey owner) =>
         new(owner, QoderQuotaParser.Parse(Encoding.UTF8.GetBytes(json),
@@ -158,5 +282,21 @@ public sealed class QoderQuotaProviderTests
         Assert.AreEqual(expected, snapshot.Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual(observedAt, snapshot.ObservedAt);
         Assert.AreEqual(QoderQuotaProvider.Source, snapshot.Source);
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset initialUtc) : TimeProvider
+    {
+        private DateTimeOffset _utcNow = initialUtc;
+        private long _timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+        public override long GetTimestamp() => _timestamp;
+
+        public void Advance(TimeSpan duration)
+        {
+            _utcNow += duration;
+            _timestamp += duration.Ticks;
+        }
     }
 }

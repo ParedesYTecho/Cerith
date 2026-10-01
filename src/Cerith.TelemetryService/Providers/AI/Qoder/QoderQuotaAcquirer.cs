@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
@@ -49,10 +50,17 @@ internal sealed class QoderQuotaAcquirer : IDisposable
     private const uint TokenUser = 1;
     private const uint DriveTypeFixed = 3;
     private const uint WtdUiNone = 2;
+    private const uint WtdRevokeNone = 0;
     private const uint WtdRevocationCheckNone = 0x10;
     private const uint WtdCacheOnlyUrlRetrieval = 0x1000;
     private const uint WtdChoiceFile = 1;
     private static readonly Guid WinTrustActionGenericVerifyV2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
+    // Official qoder.com Windows download, Qoder-win-x64-user.exe v0.4.3; artifact SHA-256:
+    // 6A6CB47E2C8E3C38E7670D2905DD1AA0AD6B2446278A28AE34493FA1FD8F28B9.
+    // Its BRIGHT ZENITH PRIVATE LIMITED / GlobalSign GCC R45 EV CodeSigning CA 2020 signer
+    // certificate DER SHA-256 is pinned here.
+    internal const string ApprovedQoderPublisherCertificateSha256 =
+        "ABA9F3CB98CB951B7F5FBD142C153DCBA4B3B339944F55482B836AB819191256";
 
     private readonly SemaphoreSlim _rpcLock = new(1, 1);
     private int _disposed;
@@ -210,11 +218,39 @@ internal sealed class QoderQuotaAcquirer : IDisposable
         path is { Length: >= 3 } && char.IsAsciiLetter(path[0]) && path[1] == ':' &&
         path[2] is '\\' or '/';
 
+    internal static NamedPipeClientStream CreatePipeClient(string pipeName) =>
+        new(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Anonymous);
+
+    internal static bool IsTrustedQoderImageDetails(string processName, string fileName, string? productName,
+        ReadOnlySpan<byte> signerCertificateHash) =>
+        (StringComparer.OrdinalIgnoreCase.Equals(fileName, "Qoder IDE.exe") ||
+         StringComparer.OrdinalIgnoreCase.Equals(fileName, "Qoder.exe")) &&
+        (StringComparer.OrdinalIgnoreCase.Equals(processName, "Qoder IDE") ||
+         StringComparer.OrdinalIgnoreCase.Equals(processName, "Qoder")) &&
+        (StringComparer.OrdinalIgnoreCase.Equals(productName, "Qoder IDE") ||
+         StringComparer.OrdinalIgnoreCase.Equals(productName, "Qoder")) &&
+        IsApprovedPublisherCertificateHash(signerCertificateHash);
+
+    internal static bool IsTrustedPeerIdentity(int connectedServerProcessId, int processId,
+        int processSessionId, int currentSessionId, string? currentSid, string? peerSid,
+        long initialProcessStartTicks, long currentProcessStartTicks, bool approvedQoderImage) =>
+        connectedServerProcessId > 0 && connectedServerProcessId == processId &&
+        processSessionId == currentSessionId && !string.IsNullOrWhiteSpace(currentSid) &&
+        StringComparer.Ordinal.Equals(currentSid, peerSid) && initialProcessStartTicks > 0 &&
+        initialProcessStartTicks == currentProcessStartTicks && approvedQoderImage;
+
+    private static bool IsApprovedPublisherCertificateHash(ReadOnlySpan<byte> certificateHash)
+    {
+        if (certificateHash.Length != 32)
+            return false;
+        return CryptographicOperations.FixedTimeEquals(certificateHash,
+            Convert.FromHexString(ApprovedQoderPublisherCertificateSha256));
+    }
+
     private async Task<QoderRpcResult> CallAsync(QoderEndpoint endpoint, string method,
         CancellationToken cancellationToken)
     {
-        using var stream = new NamedPipeClientStream(".", endpoint.PipeName, PipeDirection.InOut,
-            PipeOptions.Asynchronous);
+        using var stream = CreatePipeClient(endpoint.PipeName);
         await stream.ConnectAsync(cancellationToken).ConfigureAwait(false);
         var peer = ReadTrustedPeer(stream.SafePipeHandle, endpoint);
         using var requestDeadline = new CancellationTokenSource(RpcTimeout);
@@ -241,20 +277,24 @@ internal sealed class QoderQuotaAcquirer : IDisposable
         {
             using var process = Process.GetProcessById(checked((int)serverProcessId));
             var currentSessionId = Process.GetCurrentProcess().SessionId;
-            if (process.SessionId != currentSessionId)
-                throw new QoderRpcException("peer_untrusted");
+            var processSessionId = process.SessionId;
+            var initialStartTicks = process.StartTime.ToUniversalTime().Ticks;
 
             var imagePath = process.MainModule?.FileName;
-            if (string.IsNullOrWhiteSpace(imagePath) || !IsTrustedQoderImage(process.ProcessName, imagePath))
+            if (string.IsNullOrWhiteSpace(imagePath))
                 throw new QoderRpcException("peer_untrusted");
+            var approvedImage = IsTrustedQoderImage(process.ProcessName, imagePath);
 
             var currentSid = WindowsIdentity.GetCurrent().User?.Value;
             var serverSid = ReadProcessUserSid(process);
-            if (currentSid is null || serverSid is null || !StringComparer.Ordinal.Equals(currentSid, serverSid))
+            process.Refresh();
+            var currentStartTicks = process.StartTime.ToUniversalTime().Ticks;
+            if (process.HasExited || !IsTrustedPeerIdentity(checked((int)serverProcessId), process.Id,
+                    processSessionId, currentSessionId, currentSid, serverSid, initialStartTicks,
+                    currentStartTicks, approvedImage))
                 throw new QoderRpcException("peer_untrusted");
 
-            var startTicks = process.StartTime.ToUniversalTime().Ticks;
-            return new QoderPeerIdentity(checked((int)serverProcessId), startTicks, currentSessionId,
+            return new QoderPeerIdentity(checked((int)serverProcessId), initialStartTicks, currentSessionId,
                 endpoint.WriteTicks, endpoint.PipeFingerprint);
         }
         catch (ArgumentException)
@@ -273,18 +313,14 @@ internal sealed class QoderQuotaAcquirer : IDisposable
 
     private static bool IsTrustedQoderImage(string processName, string imagePath)
     {
-        var fileName = Path.GetFileName(imagePath);
-        var expectedName = StringComparer.OrdinalIgnoreCase.Equals(fileName, "Qoder IDE.exe") ||
-            StringComparer.OrdinalIgnoreCase.Equals(fileName, "Qoder.exe");
-        if (!expectedName || !(StringComparer.OrdinalIgnoreCase.Equals(processName, "Qoder IDE") ||
-                StringComparer.OrdinalIgnoreCase.Equals(processName, "Qoder")))
-            return false;
-
         try
         {
             var productName = FileVersionInfo.GetVersionInfo(imagePath).ProductName;
-            if (!(StringComparer.OrdinalIgnoreCase.Equals(productName, "Qoder IDE") ||
-                    StringComparer.OrdinalIgnoreCase.Equals(productName, "Qoder")))
+#pragma warning disable SYSLIB0057 // This signed-PE signer extractor has no X509CertificateLoader equivalent.
+            using var signer = X509Certificate.CreateFromSignedFile(imagePath);
+#pragma warning restore SYSLIB0057
+            if (!IsTrustedQoderImageDetails(processName, Path.GetFileName(imagePath), productName,
+                    signer.GetCertHash(HashAlgorithmName.SHA256)))
                 return false;
             return VerifyAuthenticode(imagePath);
         }
@@ -297,6 +333,10 @@ internal sealed class QoderQuotaAcquirer : IDisposable
             return false;
         }
         catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (CryptographicException)
         {
             return false;
         }
@@ -318,7 +358,7 @@ internal sealed class QoderQuotaAcquirer : IDisposable
             {
                 StructSize = checked((uint)Marshal.SizeOf<WinTrustData>()),
                 UiChoice = WtdUiNone,
-                RevocationChecks = WtdRevocationCheckNone,
+                RevocationChecks = WtdRevokeNone,
                 UnionChoice = WtdChoiceFile,
                 FileInfo = fileInfoPointer,
                 ProviderFlags = WtdRevocationCheckNone | WtdCacheOnlyUrlRetrieval
