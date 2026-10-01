@@ -119,6 +119,80 @@ public sealed class OpenCodeGoQuotaProviderTests
     }
 
     [TestMethod]
+    public void ReadsTheXdgSelectedStoreAndTracksStoreChanges()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "cerith-opencode-go-xdg-" + Guid.NewGuid().ToString("N"));
+        var oldDataHome = Path.Combine(root, "old-data");
+        var selectedDataHome = Path.Combine(root, "selected-data");
+        var environment = new Dictionary<string, string?>
+        {
+            ["XDG_DATA_HOME"] = oldDataHome,
+            ["OPENCODE_AUTH_CONTENT"] = null
+        };
+
+        try
+        {
+            WriteXdgAuthFile(oldDataHome, "synthetic-old-owner-key");
+            WriteXdgAuthFile(selectedDataHome, "synthetic-selected-owner-key");
+            var reader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
+                environment.TryGetValue(name, out var value) ? value : null);
+
+            var oldOwner = reader.Read();
+            Assert.AreEqual(OpenCodeGoAuthStatus.Ready, oldOwner.Status);
+            Assert.AreEqual("synthetic-old-owner-key", oldOwner.Credential!.ApiKey);
+
+            environment["XDG_DATA_HOME"] = selectedDataHome;
+            var selectedOwner = reader.Read();
+            Assert.AreEqual(OpenCodeGoAuthStatus.Ready, selectedOwner.Status);
+            Assert.AreEqual("synthetic-selected-owner-key", selectedOwner.Credential!.ApiKey);
+            Assert.AreNotEqual(oldOwner.SourceFingerprint, selectedOwner.SourceFingerprint);
+
+            environment["XDG_DATA_HOME"] = "relative-selected-data";
+            var unsupported = reader.Read();
+            Assert.AreEqual(OpenCodeGoAuthStatus.Error, unsupported.Status);
+            Assert.AreEqual("auth_path_unsupported", unsupported.ErrorCode);
+            Assert.IsNull(unsupported.Credential);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void MalformedAuthContentOverrideFailsClosedWithoutReadingSelectedFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "cerith-opencode-go-auth-content-" + Guid.NewGuid().ToString("N"));
+        var dataHome = Path.Combine(root, "data");
+        var environment = new Dictionary<string, string?>
+        {
+            ["XDG_DATA_HOME"] = dataHome,
+            ["OPENCODE_AUTH_CONTENT"] = "{malformed"
+        };
+
+        try
+        {
+            WriteXdgAuthFile(dataHome, "synthetic-disk-owner-key");
+            var reader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
+                environment.TryGetValue(name, out var value) ? value : null);
+
+            var malformed = reader.Read();
+            Assert.AreEqual(OpenCodeGoAuthStatus.Error, malformed.Status);
+            Assert.AreEqual("auth_file_invalid", malformed.ErrorCode);
+            Assert.IsNull(malformed.Credential);
+
+            environment["OPENCODE_AUTH_CONTENT"] = AuthJson("synthetic-selected-content-key");
+            var selected = reader.Read();
+            Assert.AreEqual(OpenCodeGoAuthStatus.Ready, selected.Status);
+            Assert.AreEqual("synthetic-selected-content-key", selected.Credential!.ApiKey);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public async Task UsesFixedBearerGetAndPublishesTheSixDirectSourceValues()
     {
         using var harness = new Harness();
@@ -278,6 +352,50 @@ public sealed class OpenCodeGoQuotaProviderTests
         var current = await PublishAndReadAllAsync(harness);
         Assert.IsTrue(current.All(snapshot => snapshot.State == MetricState.Unavailable && snapshot.Value is null));
         Assert.AreEqual(1, harness.Handler.Requests.Length);
+    }
+
+    [TestMethod]
+    public async Task RunAuthObserverCancelsBackpressuredPublicationWhenSelectedStoreChanges()
+    {
+        var environment = new ConcurrentDictionary<string, string>();
+        var authReader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
+            environment.TryGetValue(name, out var value) ? value : null);
+        using var harness = new Harness(writeAuth: false, authReader: authReader);
+        var oldDataHome = Path.Combine(harness.DirectoryPath, "old-data");
+        var selectedDataHome = Path.Combine(harness.DirectoryPath, "selected-data");
+        WriteXdgAuthFile(oldDataHome, "synthetic-same-key");
+        WriteXdgAuthFile(selectedDataHome, "synthetic-same-key");
+        environment["XDG_DATA_HOME"] = oldDataHome;
+        harness.Handler.EnqueueJson(UsageJson);
+
+        var reader = harness.Bus.Subscribe(new MetricId(MetricIds[0])).GetAsyncEnumerator();
+        var first = reader.MoveNextAsync().AsTask();
+        using var cancellation = new CancellationTokenSource();
+        var run = harness.Provider.RunAsync(cancellation.Token);
+        Assert.IsTrue(await first.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        await harness.Bus.PublishAsync(DummySnapshot(MetricIds[0]));
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        await Task.Delay(50);
+
+        environment["XDG_DATA_HOME"] = selectedDataHome;
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        await Task.Delay(50);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(1d, reader.Current.Value!.Value.AsDouble());
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual(1, harness.Handler.Requests.Length);
+
+        var stopped = reader.MoveNextAsync().AsTask();
+        cancellation.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+        await reader.DisposeAsync();
     }
 
     [TestMethod]
@@ -616,6 +734,25 @@ public sealed class OpenCodeGoQuotaProviderTests
     private static MetricSnapshot DummySnapshot(string metricId) => new(new MetricId(metricId),
         MetricValue.From(1d), InitialUtc, MetricState.Fresh, MetricConfidence.Measured);
 
+    private static void WriteXdgAuthFile(string dataHome, string key) =>
+        WriteAuthFile(Path.Combine(dataHome, "opencode"), key);
+
+    private static void WriteAuthFile(string directory, string key, string type = "api")
+    {
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "auth.json"), AuthJson(key, type));
+    }
+
+    private static string AuthJson(string key, string type = "api")
+    {
+        var document = new Dictionary<string, object>
+        {
+            ["opencode-go"] = new Dictionary<string, object> { ["type"] = type, ["key"] = key },
+            ["synthetic-unrelated-provider"] = new { type = "api", key = "synthetic-other-provider-key" }
+        };
+        return JsonSerializer.Serialize(document);
+    }
+
     private static string UsageJsonWithRollingReset(DateTimeOffset resetAt) => """
         {"usage":{
           "rolling":{"percent":100,"resetsAt":"$RESET$"},
@@ -684,23 +821,18 @@ public sealed class OpenCodeGoQuotaProviderTests
         public OpenCodeGoAuthReader AuthReader { get; }
         public OpenCodeGoQuotaProvider Provider { get; }
 
-        public Harness(bool writeAuth = true, Func<int, int>? jitter = null)
+        public Harness(bool writeAuth = true, Func<int, int>? jitter = null,
+            OpenCodeGoAuthReader? authReader = null)
         {
             System.IO.Directory.CreateDirectory(DirectoryPath);
-            AuthReader = new OpenCodeGoAuthReader(DirectoryPath);
+            AuthReader = authReader ?? new OpenCodeGoAuthReader(DirectoryPath);
             if (writeAuth) WriteAuth("synthetic-opencode-go-key");
             Provider = new OpenCodeGoQuotaProvider(Registry, Bus, AuthReader, Handler, Time, jitter);
         }
 
         public void WriteAuth(string key, string type = "api")
         {
-            var entry = new Dictionary<string, object> { ["type"] = type, ["key"] = key };
-            var document = new Dictionary<string, object>
-            {
-                ["opencode-go"] = entry,
-                ["synthetic-unrelated-provider"] = new { type = "api", key = "synthetic-other-provider-key" }
-            };
-            File.WriteAllText(Path.Combine(DirectoryPath, "auth.json"), JsonSerializer.Serialize(document));
+            WriteAuthFile(DirectoryPath, key, type);
         }
 
         public void Dispose()

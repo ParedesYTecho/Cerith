@@ -54,6 +54,7 @@ internal sealed class OpenCodeGoQuotaProvider : IDisposable
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublishStop;
     private string? _activeKeyFingerprint;
+    private string? _activeAuthSourceFingerprint;
     private string? _rejectedKeyFingerprint;
     private long _authGeneration;
     private long _snapshotGeneration;
@@ -354,9 +355,11 @@ internal sealed class OpenCodeGoQuotaProvider : IDisposable
                 ObserveClockLocked(now, timestamp);
 
                 var fingerprint = auth.Credential?.Fingerprint;
-                if (!StringComparer.Ordinal.Equals(_activeKeyFingerprint, fingerprint))
+                if (!StringComparer.Ordinal.Equals(_activeKeyFingerprint, fingerprint) ||
+                    !StringComparer.Ordinal.Equals(_activeAuthSourceFingerprint, auth.SourceFingerprint))
                 {
                     _activeKeyFingerprint = fingerprint;
+                    _activeAuthSourceFingerprint = auth.SourceFingerprint;
                     _authGeneration++;
                     _activeRequestStop?.Cancel();
                     CancelActivePublicationLocked();
@@ -641,6 +644,7 @@ internal sealed class OpenCodeGoQuotaProvider : IDisposable
                 _runStopped = true;
                 _authGeneration++;
                 _activeKeyFingerprint = null;
+                _activeAuthSourceFingerprint = null;
                 _rejectedKeyFingerprint = null;
                 _nextPollTimestamp = long.MinValue;
                 _retryNotBeforeTimestamp = long.MinValue;
@@ -797,6 +801,7 @@ internal sealed class OpenCodeGoQuotaProvider : IDisposable
             _disposed = true;
             ClearCachesLocked();
             _activeKeyFingerprint = null;
+            _activeAuthSourceFingerprint = null;
             _rejectedKeyFingerprint = null;
             _activeRequestStop?.Cancel();
             CancelActivePublicationLocked();
