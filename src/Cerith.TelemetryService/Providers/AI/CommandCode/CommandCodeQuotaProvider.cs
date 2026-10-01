@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -133,7 +134,21 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
         Task[] workers = [];
-        ExceptionDispatchInfo? unexpectedFault = null;
+        var unexpectedFaults = new List<ExceptionDispatchInfo>();
+
+        void RecordUnexpected(Exception exception)
+        {
+            foreach (var fault in unexpectedFaults)
+                if (ReferenceEquals(fault.SourceException, exception)) return;
+            unexpectedFaults.Add(ExceptionDispatchInfo.Capture(exception));
+        }
+
+        void AttemptCleanup(Action action)
+        {
+            try { action(); }
+            catch (Exception exception) { RecordUnexpected(exception); }
+        }
+
         try
         {
             workers =
@@ -148,41 +163,52 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
-            return;
+            // Expected cancellation still drains workers and publishes Stopped.
         }
         catch (Exception exception)
         {
-            unexpectedFault = ExceptionDispatchInfo.Capture(exception);
-            try { SetProviderFailure(); }
-            catch (Exception stateException) { unexpectedFault ??= ExceptionDispatchInfo.Capture(stateException); }
+            RecordUnexpected(exception);
+            AttemptCleanup(SetProviderFailure);
         }
         finally
         {
-            stop.Cancel();
-            InvalidateActiveWork();
+            AttemptCleanup(stop.Cancel);
+            AttemptCleanup(InvalidateActiveWork);
             if (workers.Length > 0)
             {
                 var drain = Task.WhenAll(workers);
                 try { await drain.WaitAsync(ShutdownDrainTimeout).ConfigureAwait(false); }
-                catch (OperationCanceledException) when (stop.IsCancellationRequested) { InvalidateActiveWork(); }
+                catch (OperationCanceledException) when (stop.IsCancellationRequested)
+                {
+                    AttemptCleanup(InvalidateActiveWork);
+                }
                 catch (TimeoutException)
                 {
-                    InvalidateActiveWork();
+                    AttemptCleanup(InvalidateActiveWork);
                     ObserveLateFault(drain);
                 }
                 catch (Exception exception)
                 {
-                    unexpectedFault ??= ExceptionDispatchInfo.Capture(exception);
-                    try { SetProviderFailure(); }
-                    catch (Exception stateException) { unexpectedFault ??= ExceptionDispatchInfo.Capture(stateException); }
+                    if (drain.Exception is { } workerFailures)
+                    {
+                        foreach (var workerFailure in workerFailures.Flatten().InnerExceptions)
+                            RecordUnexpected(workerFailure);
+                    }
+                    else
+                    {
+                        RecordUnexpected(exception);
+                    }
+                    AttemptCleanup(SetProviderFailure);
                 }
             }
 
             try { await PublishStoppedAsync().ConfigureAwait(false); }
-            catch (Exception exception) { unexpectedFault ??= ExceptionDispatchInfo.Capture(exception); }
+            catch (Exception exception) { RecordUnexpected(exception); }
         }
 
-        unexpectedFault?.Throw();
+        if (unexpectedFaults.Count == 1) unexpectedFaults[0].Throw();
+        if (unexpectedFaults.Count > 1)
+            throw new AggregateException(unexpectedFaults.ConvertAll(static fault => fault.SourceException));
     }
 
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)
@@ -299,6 +325,9 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         {
             lock (_stateLock)
             {
+                if (RefreshValidityLocked(_timeProvider.GetUtcNow(), _timeProvider.GetTimestamp()))
+                    InvalidatePublicationLocked();
+
                 publicationStop = CancellationTokenSource.CreateLinkedTokenSource(admission.Token);
                 _activePublicationStop = publicationStop;
                 generation = _publicationGeneration;
@@ -350,39 +379,12 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
     internal async Task ExpireValidityOnceAsync()
     {
-        var changed = false;
+        bool changed;
         var now = _timeProvider.GetUtcNow();
         var timestamp = _timeProvider.GetTimestamp();
         lock (_stateLock)
         {
-            for (var index = 0; index < _points.Length; index++)
-            {
-                var point = _points[index];
-                if (!point.Value.HasValue || !point.CachedAtTimestamp.HasValue) continue;
-
-                var resetElapsed = index < 4 && point.ResetAt.HasValue && point.ResetAt.Value <= now;
-                var age = _timeProvider.GetElapsedTime(point.CachedAtTimestamp.Value, timestamp);
-                if (resetElapsed)
-                {
-                    var usedIndex = index < 2 ? 0 : 2;
-                    SetUnavailableLocked(usedIndex, now, "reset_elapsed");
-                    SetUnavailableLocked(usedIndex + 1, now, "reset_elapsed");
-                    changed = true;
-                    continue;
-                }
-
-                if (age < TimeSpan.Zero || age >= MaximumCacheAge)
-                {
-                    SetUnavailableLocked(index, now, "cache_expired");
-                    changed = true;
-                }
-                else if (point.State == MetricState.Fresh && age >= StaleAfter)
-                {
-                    point.State = MetricState.Stale;
-                    changed = true;
-                }
-            }
-
+            changed = RefreshValidityLocked(now, timestamp);
             if (changed) InvalidatePublicationLocked();
         }
 
@@ -686,6 +688,11 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         ApplyPointLocked(usedIndex + 1, window.Reset, observedAt, timestamp);
         _points[usedIndex].ResetAt = window.ResetAt;
         _points[usedIndex + 1].ResetAt = window.ResetAt;
+        var resetLifetime = window.ResetAt is { } observedReset
+            ? observedReset - observedAt
+            : (TimeSpan?)null;
+        _points[usedIndex].ResetLifetime = resetLifetime;
+        _points[usedIndex + 1].ResetLifetime = resetLifetime;
     }
 
     private void ApplyPointLocked(
@@ -702,6 +709,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         point.ObservedAt = observedAt;
         point.CachedAtTimestamp = parsed.Value.HasValue ? timestamp : null;
         point.ResetAt = null;
+        point.ResetLifetime = null;
     }
 
     private void ApplyRequestFailure(CommandCodeRequestException failure, long requestGeneration)
@@ -783,6 +791,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             point.ObservedAt = now;
             point.CachedAtTimestamp = null;
             point.ResetAt = null;
+            point.ResetLifetime = null;
         }
     }
 
@@ -797,6 +806,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         point.ObservedAt = now;
         point.CachedAtTimestamp = null;
         point.ResetAt = null;
+        point.ResetLifetime = null;
     }
 
     private bool CanServeStaleLocked(PointState point, DateTimeOffset now, long timestamp)
@@ -804,7 +814,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         if (!point.Value.HasValue || !point.CachedAtTimestamp.HasValue) return false;
         var age = _timeProvider.GetElapsedTime(point.CachedAtTimestamp.Value, timestamp);
         return age >= TimeSpan.Zero && age < MaximumCacheAge &&
-               (!point.ResetAt.HasValue || point.ResetAt.Value > now);
+               (!point.ResetAt.HasValue || point.ResetAt.Value > now) &&
+               (!point.ResetLifetime.HasValue || age < point.ResetLifetime.Value);
     }
 
     private void InvalidatePublicationLocked()
@@ -817,12 +828,59 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
     private void InvalidateActiveWork()
     {
+        ExceptionDispatchInfo? cancellationFault = null;
         lock (_stateLock)
         {
             _ownerGeneration++;
-            InvalidateActiveRequestLocked();
-            InvalidatePublicationLocked();
+            try { InvalidateActiveRequestLocked(); }
+            catch (Exception exception) { cancellationFault = ExceptionDispatchInfo.Capture(exception); }
+            try { InvalidatePublicationLocked(); }
+            catch (Exception exception)
+            {
+                cancellationFault = cancellationFault is null
+                    ? ExceptionDispatchInfo.Capture(exception)
+                    : ExceptionDispatchInfo.Capture(new AggregateException(
+                        cancellationFault.SourceException, exception));
+            }
         }
+
+        cancellationFault?.Throw();
+    }
+
+    private bool RefreshValidityLocked(DateTimeOffset now, long timestamp)
+    {
+        var changed = false;
+        for (var index = 0; index < _points.Length; index++)
+        {
+            var point = _points[index];
+            if (!point.Value.HasValue || !point.CachedAtTimestamp.HasValue) continue;
+
+            var age = _timeProvider.GetElapsedTime(point.CachedAtTimestamp.Value, timestamp);
+            var resetElapsed = index < 4 && point.ResetAt is { } resetAt &&
+                               (resetAt <= now ||
+                                point.ResetLifetime is { } lifetime && age >= lifetime);
+            if (resetElapsed)
+            {
+                var usedIndex = index < 2 ? 0 : 2;
+                SetUnavailableLocked(usedIndex, now, "reset_elapsed");
+                SetUnavailableLocked(usedIndex + 1, now, "reset_elapsed");
+                changed = true;
+                continue;
+            }
+
+            if (age < TimeSpan.Zero || age >= MaximumCacheAge)
+            {
+                SetUnavailableLocked(index, now, "cache_expired");
+                changed = true;
+            }
+            else if (point.State == MetricState.Fresh && age >= StaleAfter)
+            {
+                point.State = MetricState.Stale;
+                changed = true;
+            }
+        }
+
+        return changed;
     }
 
     private void RequestPublication()
@@ -850,7 +908,6 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         lock (_stateLock)
         {
             ClearAllLocked(now, MetricState.Stopped, "provider_stopped");
-            InvalidatePublicationLocked();
         }
 
         using var deadline = new CancellationTokenSource();
@@ -952,6 +1009,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         internal DateTimeOffset ObservedAt { get; set; }
         internal long? CachedAtTimestamp { get; set; }
         internal DateTimeOffset? ResetAt { get; set; }
+        internal TimeSpan? ResetLifetime { get; set; }
 
         internal static PointState Unavailable(DateTimeOffset now) => new(MetricState.Unavailable, now);
     }

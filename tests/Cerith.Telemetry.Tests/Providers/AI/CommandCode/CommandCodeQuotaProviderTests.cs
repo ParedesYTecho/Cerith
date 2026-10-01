@@ -344,7 +344,148 @@ public sealed class CommandCodeQuotaProviderTests
     }
 
     [TestMethod]
-    public async Task MonotonicAgeMarksCacheStaleWithoutChangingSourceObservedAtThenExpiresIt()
+    public async Task ResetDeadlineExpiresByMonotonicLifetimeAfterWallClockMovesBackward()
+    {
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(start);
+        var resetAt = start.AddSeconds(5).ToUnixTimeMilliseconds();
+        using var handler = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/alpha/whoami" => WhoAmIResponse(request, null),
+            "/alpha/billing/credits" => QuotaResponse(request, 25, resetAt),
+            "/alpha/billing/subscriptions" => SubscriptionResponse(request),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        await provider.PollOnceAsync();
+        var freshRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await freshRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        time.SetUtcNow(start.AddMinutes(-1));
+        time.AdvanceMonotonic(TimeSpan.FromSeconds(5));
+        var expiredRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+
+        Assert.IsTrue(await expiredRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task PublishCurrentExpiresResetBeforeObserverRuns()
+    {
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(start);
+        var resetAt = start.AddSeconds(5).ToUnixTimeMilliseconds();
+        using var handler = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/alpha/whoami" => WhoAmIResponse(request, null),
+            "/alpha/billing/credits" => QuotaResponse(request, 25, resetAt),
+            "/alpha/billing/subscriptions" => SubscriptionResponse(request),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        await provider.PollOnceAsync();
+        var freshRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await freshRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        time.Advance(TimeSpan.FromSeconds(5));
+        var expiredRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+
+        Assert.IsTrue(await expiredRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task RunValidityObserverExpiresResetDuringBackpressuredPublicationAndPendingAcquisition()
+    {
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(start);
+        var resetAt = start.AddSeconds(10).ToUnixTimeMilliseconds();
+        var secondWhoAmIEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingResponseReleased = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        HttpRequestMessage? pendingRequest = null;
+        var whoAmICount = 0;
+        using var handler = new RecordingHandler(async (request, _) =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/alpha/whoami" && Interlocked.Increment(ref whoAmICount) == 2)
+            {
+                pendingRequest = request;
+                secondWhoAmIEntered.TrySetResult(true);
+                var response = await pendingResponse.Task.ConfigureAwait(false);
+                pendingResponseReleased.TrySetResult(true);
+                return response;
+            }
+
+            if (path == "/alpha/whoami") return WhoAmIResponse(request, null);
+            if (path == "/alpha/billing/credits") return QuotaResponse(request, 25, resetAt);
+            if (path == "/alpha/billing/subscriptions") return SubscriptionResponse(request);
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request };
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(1);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        var initialRead = reader.MoveNextAsync().AsTask();
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        await bus.PublishAsync(reader.Current);
+
+        using var stop = new CancellationTokenSource();
+        var run = provider.RunAsync(stop.Token);
+        await secondWhoAmIEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsFalse(pendingResponseReleased.Task.IsCompleted,
+            "The RunAsync acquisition remains pending while validity is checked.");
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        await Task.Delay(TimeSpan.FromMilliseconds(1100));
+        Assert.IsFalse(pendingResponseReleased.Task.IsCompleted,
+            "The independent validity timer must run while acquisition is still pending.");
+
+        var bufferedRead = await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(bufferedRead);
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State,
+            "A previously buffered snapshot remains immutable.");
+        var expiredRead = await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(4));
+        Assert.IsTrue(expiredRead);
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+        Assert.IsFalse(pendingResponseReleased.Task.IsCompleted,
+            "The validity observer must expire the reset without waiting for acquisition.");
+
+        var stoppedRead = ReadUntilStoppedAsync(reader);
+        stop.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsTrue(await stoppedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+
+        pendingResponse.SetResult(WhoAmIResponse(pendingRequest!, null));
+        await pendingResponseReleased.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [TestMethod]
+    public async Task PublishCurrentUsesMonotonicAgeForStaleAndHardExpiryWithoutChangingObservedAt()
     {
         var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
         var time = new ManualTimeProvider(start);
@@ -370,7 +511,6 @@ public sealed class CommandCodeQuotaProviderTests
 
         time.SetUtcNow(start.AddDays(-10));
         time.AdvanceMonotonic(CommandCodeQuotaProvider.StaleAfter);
-        await provider.ExpireValidityOnceAsync();
         var staleRead = reader.MoveNextAsync().AsTask();
         await provider.PublishCurrentAsync();
         Assert.IsTrue(await staleRead.WaitAsync(TimeSpan.FromSeconds(2)));
@@ -380,7 +520,6 @@ public sealed class CommandCodeQuotaProviderTests
             "Age uses monotonic elapsed time and Stale retains the source observation time.");
 
         time.AdvanceMonotonic(CommandCodeQuotaProvider.MaximumCacheAge - CommandCodeQuotaProvider.StaleAfter);
-        await provider.ExpireValidityOnceAsync();
         var expiredRead = reader.MoveNextAsync().AsTask();
         await provider.PublishCurrentAsync();
         Assert.IsTrue(await expiredRead.WaitAsync(TimeSpan.FromSeconds(2)));
@@ -833,6 +972,92 @@ public sealed class CommandCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task RunCancellationRethrowsWorkerFaultCapturedDuringDrain()
+    {
+        var requestEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWorkerFault = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = new RecordingHandler(async (_, _) =>
+        {
+            requestEntered.TrySetResult(true);
+            await releaseWorkerFault.Task.ConfigureAwait(false);
+            throw new InvalidOperationException("synthetic worker fault during drain");
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(8);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+        using var stop = new CancellationTokenSource();
+        var run = provider.RunAsync(stop.Token);
+
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        await requestEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        stop.Cancel();
+        await Task.Delay(TimeSpan.FromMilliseconds(150));
+        releaseWorkerFault.TrySetResult(true);
+
+        InvalidOperationException? observedFault = null;
+        try { await run.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (InvalidOperationException exception) { observedFault = exception; }
+
+        Assert.IsNotNull(observedFault);
+        Assert.AreEqual("synthetic worker fault during drain", observedFault.Message);
+        Assert.IsTrue(await ReadUntilStoppedAsync(reader).WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    [TestMethod]
+    public async Task CancellationCallbackFailureDoesNotSkipStoppedPublication()
+    {
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
+        var requestEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callbackInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var responseReleased = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationTokenRegistration callbackRegistration = default;
+        HttpRequestMessage? pendingRequest = null;
+        using var handler = new RecordingHandler(async (request, cancellationToken) =>
+        {
+            pendingRequest = request;
+            callbackRegistration = cancellationToken.Register(() =>
+            {
+                callbackInvoked.TrySetResult(true);
+                throw new InvalidOperationException("synthetic cancellation callback fault");
+            });
+            requestEntered.TrySetResult(true);
+            var response = await pendingResponse.Task.ConfigureAwait(false);
+            responseReleased.TrySetResult(true);
+            return response;
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(8);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+        var run = provider.RunAsync(CancellationToken.None);
+
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        await requestEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var stoppedRead = ReadUntilStoppedAsync(reader);
+        time.ThrowOnNextUtcRead();
+
+        Exception? observedFault = null;
+        try { await run.WaitAsync(TimeSpan.FromSeconds(6)); }
+        catch (Exception exception) { observedFault = exception; }
+
+        Assert.IsNotNull(observedFault);
+        Assert.IsTrue(callbackInvoked.Task.IsCompleted,
+            "RunAsync shutdown must exercise the throwing callback on its active request token.");
+        Assert.IsTrue(ContainsExceptionMessage(observedFault, "synthetic validity worker fault"));
+        Assert.IsTrue(ContainsExceptionMessage(observedFault, "synthetic cancellation callback fault"));
+        Assert.IsTrue(await stoppedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+
+        pendingResponse.SetResult(WhoAmIResponse(pendingRequest!, null));
+        await responseReleased.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        callbackRegistration.Dispose();
+    }
+
+    [TestMethod]
     public async Task RunCancellationPublishesStoppedWithoutBlockingShutdown()
     {
         using var handler = new RecordingHandler(request =>
@@ -862,6 +1087,24 @@ public sealed class CommandCodeQuotaProviderTests
         CommandCodeQuotaAuthReader authReader,
         TimeProvider time,
         TimeSpan? requestTimeout = null) => new(registry, bus, authReader, client, time, requestTimeout);
+
+    private static async Task<bool> ReadUntilStoppedAsync(IAsyncEnumerator<MetricSnapshot> reader)
+    {
+        while (await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)))
+            if (reader.Current.State == MetricState.Stopped) return true;
+        return false;
+    }
+
+    private static bool ContainsExceptionMessage(Exception exception, string message)
+    {
+        if (string.Equals(exception.Message, message, StringComparison.Ordinal)) return true;
+        if (exception is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.Flatten().InnerExceptions)
+                if (ContainsExceptionMessage(inner, message)) return true;
+        }
+        return exception.InnerException is { } nested && ContainsExceptionMessage(nested, message);
+    }
 
     private static CommandCodeQuotaAuthReader FixedCredentialReader(string? apiKey) =>
         new(() => apiKey, () => null, () => null, _ => null);
@@ -933,22 +1176,44 @@ public sealed class CommandCodeQuotaProviderTests
 
     private sealed class ManualTimeProvider(DateTimeOffset initialTime) : TimeProvider
     {
+        private readonly object _gate = new();
         private DateTimeOffset _utcNow = initialTime;
         private long _timestamp;
+        private int _throwNextUtcRead;
 
-        public override DateTimeOffset GetUtcNow() => _utcNow;
-        public override long GetTimestamp() => _timestamp;
+        public override DateTimeOffset GetUtcNow()
+        {
+            if (Interlocked.Exchange(ref _throwNextUtcRead, 0) != 0)
+                throw new InvalidOperationException("synthetic validity worker fault");
+            lock (_gate) return _utcNow;
+        }
+
+        public override long GetTimestamp()
+        {
+            lock (_gate) return _timestamp;
+        }
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
 
         internal void Advance(TimeSpan elapsed)
         {
-            _utcNow += elapsed;
-            _timestamp += elapsed.Ticks;
+            lock (_gate)
+            {
+                _utcNow += elapsed;
+                _timestamp += elapsed.Ticks;
+            }
         }
 
-        internal void AdvanceMonotonic(TimeSpan elapsed) => _timestamp += elapsed.Ticks;
+        internal void AdvanceMonotonic(TimeSpan elapsed)
+        {
+            lock (_gate) _timestamp += elapsed.Ticks;
+        }
 
-        internal void SetUtcNow(DateTimeOffset utcNow) => _utcNow = utcNow;
+        internal void SetUtcNow(DateTimeOffset utcNow)
+        {
+            lock (_gate) _utcNow = utcNow;
+        }
+
+        internal void ThrowOnNextUtcRead() => Interlocked.Exchange(ref _throwNextUtcRead, 1);
     }
 
     private sealed class OversizedStream(long length) : Stream
