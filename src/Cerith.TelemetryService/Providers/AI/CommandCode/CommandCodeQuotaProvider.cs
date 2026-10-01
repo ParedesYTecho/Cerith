@@ -38,6 +38,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
     private const string Source = "CommandCode.ObservedBillingApi.v1";
     private const string UserAgentProductToken = "Cerith";
+    private const int MaximumResponseHeadersKilobytes = 64;
 
     private readonly MetricBus _bus;
     private readonly MetricDescriptor[] _descriptors;
@@ -883,6 +884,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         UseProxy = false,
         Proxy = null,
         Credentials = null,
+        MaxResponseHeadersLength = MaximumResponseHeadersKilobytes,
         ConnectTimeout = RequestTimeout
     };
 

@@ -96,6 +96,8 @@ public sealed class CommandCodeQuotaProviderTests
         Assert.IsFalse(handler.UseCookies);
         Assert.IsFalse(handler.AllowAutoRedirect);
         Assert.IsNull(handler.Credentials);
+        Assert.AreEqual(64, handler.MaxResponseHeadersLength,
+            "The provider bounds response headers to 64 KiB.");
         Assert.AreEqual(CommandCodeQuotaProvider.RequestTimeout, handler.ConnectTimeout);
     }
 
