@@ -235,19 +235,43 @@ public sealed class KiroQuotaProviderTests
     public async Task AcpClientSuppressesRetriesOnV3RateLimitNotificationWithoutParsingTiming()
     {
         const string script = """
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "started`n")
             $reader = [System.IO.StreamReader]::new([Console]::OpenStandardInput(), [System.Text.Encoding]::UTF8)
             $initialize = $reader.ReadLine() | ConvertFrom-Json
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "initialize-received`n")
             if ($initialize.method -ne 'initialize') { exit 21 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":1,"result":{"agentCapabilities":{"_meta":{"kiro":{"extensionMethods":["_kiro/account/getUsage"]}}}}}')
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "initialize-sent`n")
             $usage = $reader.ReadLine() | ConvertFrom-Json
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "usage-received`n")
             if ($usage.method -ne '_kiro/account/getUsage') { exit 22 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","method":"_kiro/error/rate_limit","params":{"opaque":true}}')
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "rate-limit-sent`n")
             """;
 
-        var acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
-            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
+        var markerPath = Path.Combine(Path.GetTempPath(), $"cerith-kiro-acp-{Guid.NewGuid():N}.txt");
+        var startInfo = CreatePowerShellStartInfo(script);
+        startInfo.Environment["CERITH_KIRO_ACP_MARKER"] = markerPath;
+        var markers = "no child markers";
+        KiroAcquisition acquisition;
+        try
+        {
+            acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
+                startInfo, TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            if (File.Exists(markerPath))
+            {
+                markers = File.ReadAllText(markerPath);
+                File.Delete(markerPath);
+            }
+        }
 
-        Assert.AreEqual(KiroAcquisitionStatus.RetrySuppressed, acquisition.Status);
+        Assert.AreEqual(KiroAcquisitionStatus.RetrySuppressed, acquisition.Status,
+            $"ACP child progress: {markers}; error code: {acquisition.ErrorCode}");
+        Assert.AreEqual("started\ninitialize-received\ninitialize-sent\nusage-received\nrate-limit-sent\n",
+            markers);
         Assert.AreEqual("rate_limit_timing_unknown", acquisition.ErrorCode);
         Assert.IsNull(acquisition.Payload);
     }
@@ -256,18 +280,43 @@ public sealed class KiroQuotaProviderTests
     public async Task AcpClientSendsInitializeAndUsageOnlyWithoutPrompting()
     {
         const string script = """
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "started`n")
             $reader = [System.IO.StreamReader]::new([Console]::OpenStandardInput(), [System.Text.Encoding]::UTF8)
             $initialize = $reader.ReadLine() | ConvertFrom-Json
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "initialize-received`n")
             if ($initialize.method -ne 'initialize') { exit 21 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":1,"result":{"agentCapabilities":{"_meta":{"kiro":{"extensionMethods":["_kiro/account/getUsage"]}}}}}')
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "initialize-sent`n")
             $usage = $reader.ReadLine() | ConvertFrom-Json
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "usage-received`n")
             if ($usage.method -ne '_kiro/account/getUsage') { exit 22 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":2,"result":{"synthetic":true}}')
+            [System.IO.File]::AppendAllText($env:CERITH_KIRO_ACP_MARKER, "usage-sent`n")
             """;
-        var acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
-            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
 
-        Assert.AreEqual(KiroAcquisitionStatus.Ready, acquisition.Status);
+        var markerPath = Path.Combine(Path.GetTempPath(), $"cerith-kiro-acp-{Guid.NewGuid():N}.txt");
+        var startInfo = CreatePowerShellStartInfo(script);
+        startInfo.Environment["CERITH_KIRO_ACP_MARKER"] = markerPath;
+        var markers = "no child markers";
+        KiroAcquisition acquisition;
+        try
+        {
+            acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
+                startInfo, TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            if (File.Exists(markerPath))
+            {
+                markers = File.ReadAllText(markerPath);
+                File.Delete(markerPath);
+            }
+        }
+
+        Assert.AreEqual(KiroAcquisitionStatus.Ready, acquisition.Status,
+            $"ACP child progress: {markers}; error code: {acquisition.ErrorCode}");
+        Assert.AreEqual("started\ninitialize-received\ninitialize-sent\nusage-received\nusage-sent\n",
+            markers);
         Assert.AreEqual("{\"synthetic\":true}", Encoding.UTF8.GetString(acquisition.Payload!));
     }
 
