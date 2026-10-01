@@ -399,3 +399,15 @@ Verification: Release solution build 0 warnings/errors; Core 39/39, Telemetry 12
 Files: coexistence test seams/tests, Cursor silent-startup acceptance note, and current `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`.
 
 Status: ready for Sol read-only review of this follow-up. Cursor and Antigravity remain the only accepted imports; the full 16-provider mission stays active, M3 remains incomplete, and canonical `main` is untouched.
+
+## 2026-10-01 — Dewey One — CER-M3-004 bounded follow-up review and Cursor auth trace
+
+Event: Sol bounded review PASS on integration checkpoint 2640d434cbd515fb04edec8ba0d8e06f85370ea6; lifecycle/coexistence correction accepted for this checkpoint.
+
+Summary: Sol independently verified the deterministic entered-gate coexistence correction (focused Release 8/8), reviewed the complete nine-file diff, and reported diffcheck clean; shared production is unchanged by that correction. Existing full Release evidence remains build 0 warnings/errors, Core 39/39, Telemetry 129/129, Integration 10/10 (178 total), with configured hygiene and targeted diff privacy checks passed. The privacy check was scoped and is not a comprehensive secret scan.
+
+Cursor auth evidence: followed the official Windows x64 user-installer route from https://cursor.com/download to the versioned Cursor 3.22.12 artifact at downloads.cursor.com/production/3a92974361033b2051526321308c2740fe5912c5/win32/x64/user-setup/CursorUserSetup-x64-3.22.12.exe. Authenticode status Valid, signer Anysphere, Inc., SHA-256 0B76176E54FCD9B51302968AEEBCE3EE708E93DA61071ECC2FCD50F79C1C3E79. A SHA-256-manifest-verified official upstream innoextract 1.10-dev Windows build (package digest 8c472a72b944e9848f75c4fb1f47b4907f0a7924ad226cac1beb51d31621abd2) reports support through Inno Setup 6.3.3, detects Cursor's installer as Inno Setup 6.4.0.1, and fails parsing the newer setup headers. The public artifact therefore remained opaque before auth/session code; accessToken lifetime, renewability and an official owner operation remain unproven. No installer/client execution, installation, user-session access, credential inspection/copy, authentication or auth mutation occurred.
+
+Disposition: Cursor full product acceptance DEFERRED/UNRESOLVED; live UI/quota comparison remains separately NOT RUN. Do not import another provider group until current-group acceptance is resolved. No provider production edit, dependency, framework, PR or canonical-main merge. ZCode returned MID FIXES at 962ee24; Averroes remains Luna Max on the same branch. The full 16-provider CER-M3-004 mission remains active and M3 is incomplete.
+
+Files: .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md, docs/PROVIDERS_AI_QUOTAS.md.
