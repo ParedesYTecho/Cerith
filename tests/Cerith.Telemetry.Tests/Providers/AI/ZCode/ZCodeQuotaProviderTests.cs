@@ -483,7 +483,7 @@ public sealed class ZCodeQuotaProviderTests
     public async Task RunPublishesStoppedMetricsAfterWorkerDrainFaults()
     {
         using var harness = new Harness();
-        harness.Time.ThrowOnTimerCreation = true;
+        harness.Time.ThrowOnTimestampAfterTimerCount = 2;
         var readers = Ids.Select(id => harness.Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray();
         try
         {
@@ -499,8 +499,8 @@ public sealed class ZCodeQuotaProviderTests
             Assert.IsNotNull(failure);
             var propagated = failure! is AggregateException aggregate
                 ? aggregate.Flatten().InnerExceptions.Any(exception =>
-                    exception is InvalidOperationException && exception.Message == "synthetic timer failure")
-                : failure is InvalidOperationException && failure.Message == "synthetic timer failure";
+                    exception is InvalidOperationException && exception.Message == "synthetic timestamp failure")
+                : failure is InvalidOperationException && failure.Message == "synthetic timestamp failure";
             Assert.IsTrue(propagated);
             Assert.IsTrue((await Task.WhenAll(stopped)).All(result => result));
             Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped && reader.Current.Value is null));
@@ -683,18 +683,31 @@ public sealed class ZCodeQuotaProviderTests
         private readonly ConcurrentBag<ManualTimer> _timers = new();
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
+        private bool _throwOnTimestamp;
+        private int _createdTimerCount;
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
-        public override long GetTimestamp() { lock (_gate) return _timestamp; }
-        public bool ThrowOnTimerCreation { get; set; }
+        public override long GetTimestamp()
+        {
+            lock (_gate)
+            {
+                if (_throwOnTimestamp) throw new InvalidOperationException("synthetic timestamp failure");
+                return _timestamp;
+            }
+        }
+        public int ThrowOnTimestampAfterTimerCount { get; set; }
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            if (ThrowOnTimerCreation) throw new InvalidOperationException("synthetic timer failure");
             var timer = new ManualTimer(this, callback, state);
             timer.Change(dueTime, period);
             _timers.Add(timer);
+            if (ThrowOnTimestampAfterTimerCount > 0 &&
+                Interlocked.Increment(ref _createdTimerCount) >= ThrowOnTimestampAfterTimerCount)
+            {
+                lock (_gate) _throwOnTimestamp = true;
+            }
             return timer;
         }
 
