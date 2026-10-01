@@ -45,6 +45,29 @@ public sealed class CommandCodeQuotaAuthReaderTests
     }
 
     [TestMethod]
+    public void RelativeHomeVariablesAreRejectedBeforeReadingAuthFile()
+    {
+        var fileReads = 0;
+        var readers = new[]
+        {
+            new CommandCodeQuotaAuthReader(() => null, () => "relative-home", () => null,
+                _ => { fileReads++; return "{\"apiKey\":\"file-key\"}"; }),
+            new CommandCodeQuotaAuthReader(() => null, () => null, () => "relative-profile",
+                _ => { fileReads++; return "{\"apiKey\":\"file-key\"}"; })
+        };
+
+        foreach (var reader in readers)
+        {
+            var result = reader.Read();
+
+            Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
+            Assert.AreEqual("auth_invalid", result.ErrorCode);
+        }
+
+        Assert.AreEqual(0, fileReads);
+    }
+
+    [TestMethod]
     public void CliAuthReadsOnlyApiKeyField()
     {
         var reader = new CommandCodeQuotaAuthReader(

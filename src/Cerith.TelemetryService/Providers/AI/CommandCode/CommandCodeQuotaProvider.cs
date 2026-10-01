@@ -53,8 +53,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublicationStop;
-    private string? _credentialSource;
     private string? _credentialFingerprint;
+    private CommandCodeCredential.OwnerIdentity? _credentialIdentity;
     private string? _knownOrgId;
     private bool _hasCredentialScope;
     private bool _hasObservedOrgScope;
@@ -387,8 +387,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             InvalidateActiveRequestLocked();
             InvalidatePublicationLocked();
             _hasCredentialScope = false;
-            _credentialSource = null;
             _credentialFingerprint = null;
+            _credentialIdentity = null;
             _knownOrgId = null;
             _hasObservedOrgScope = false;
             _rejectedFingerprint = null;
@@ -550,8 +550,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         {
             if (cancellationToken.IsCancellationRequested ||
                 requestGeneration != _ownerGeneration ||
-                !string.Equals(_credentialSource, credential.Source, StringComparison.Ordinal) ||
-                !string.Equals(_credentialFingerprint, credential.Fingerprint, StringComparison.Ordinal) ||
+                _credentialIdentity is null ||
+                !_credentialIdentity.Matches(credential.Identity) ||
                 !string.Equals(_knownOrgId, orgId, StringComparison.Ordinal))
                 return;
 
@@ -577,16 +577,16 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             if (authRead.Status == CommandCodeAuthStatus.Available && authRead.Credential is { } credential)
             {
                 if (_hasCredentialScope &&
-                    string.Equals(_credentialSource, credential.Source, StringComparison.Ordinal) &&
-                    string.Equals(_credentialFingerprint, credential.Fingerprint, StringComparison.Ordinal))
+                    _credentialIdentity is { } currentIdentity &&
+                    currentIdentity.Matches(credential.Identity))
                 {
                     _authErrorCode = null;
                     return false;
                 }
 
                 _hasCredentialScope = true;
-                _credentialSource = credential.Source;
                 _credentialFingerprint = credential.Fingerprint;
+                _credentialIdentity = credential.Identity;
                 _knownOrgId = null;
                 _hasObservedOrgScope = false;
                 _authErrorCode = null;
@@ -607,8 +607,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
                 if (_hasCredentialScope || !string.Equals(_authErrorCode, errorCode, StringComparison.Ordinal))
                 {
                     _hasCredentialScope = false;
-                    _credentialSource = null;
                     _credentialFingerprint = null;
+                    _credentialIdentity = null;
                     _knownOrgId = null;
                     _hasObservedOrgScope = false;
                     _rejectedFingerprint = null;
@@ -632,8 +632,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         lock (_stateLock)
         {
             if (!_hasCredentialScope ||
-                !string.Equals(_credentialSource, credential.Source, StringComparison.Ordinal) ||
-                !string.Equals(_credentialFingerprint, credential.Fingerprint, StringComparison.Ordinal))
+                _credentialIdentity is null ||
+                !_credentialIdentity.Matches(credential.Identity))
                 return false;
 
             if (!_hasObservedOrgScope || !string.Equals(_knownOrgId, orgId, StringComparison.Ordinal))
@@ -901,8 +901,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     }
 
     private static bool SameCredential(CommandCodeCredential left, CommandCodeCredential right) =>
-        string.Equals(left.Source, right.Source, StringComparison.Ordinal) &&
-        string.Equals(left.Fingerprint, right.Fingerprint, StringComparison.Ordinal);
+        left.Identity.Matches(right.Identity);
 
     private sealed class PointState
     {

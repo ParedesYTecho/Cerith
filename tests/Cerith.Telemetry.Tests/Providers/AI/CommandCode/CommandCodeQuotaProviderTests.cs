@@ -233,6 +233,56 @@ public sealed class CommandCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task SelectedAuthFileChangeWithSameKeyCancelsBlockedPublicationAndClearsCache()
+    {
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
+        var resetAt = time.GetUtcNow().AddDays(30).ToUnixTimeMilliseconds();
+        var selectedHome = @"C:\synthetic\command-code-home-a";
+        using var handler = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/alpha/whoami" => Json(request, "{}"),
+            "/alpha/billing/credits" => Json(request,
+                $"{{\"windowLimits\":{{\"fiveHour\":{{\"used\":25,\"cap\":100,\"resetAt\":{resetAt}}},\"weekly\":{{\"used\":5,\"cap\":20}}}}}}"),
+            "/alpha/billing/subscriptions" => Json(request, """{"data":{"planId":"individual-pro","status":"active"}}"""),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(1);
+        var authReader = new CommandCodeQuotaAuthReader(
+            () => null,
+            () => selectedHome,
+            () => null,
+            _ => """{"apiKey":"same-synthetic-commandcode-key"}""");
+        using var provider = Provider(new MetricRegistry(), bus, client, authReader, time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        await provider.PublishCurrentAsync();
+        var blockedPublication = provider.PublishCurrentAsync();
+        Assert.IsFalse(blockedPublication.IsCompleted,
+            "A full capacity-one subscription must backpressure PublishAsync.");
+
+        selectedHome = @"C:\synthetic\command-code-home-b";
+        await provider.ObserveAuthOnceAsync();
+        await blockedPublication.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State,
+            "An immutable snapshot already buffered before the selected owner change cannot be retracted.");
+        var changedRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await changedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("account_changed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
     public async Task RetryAfterLongerThanCacheLifetimeIsNotShortened()
     {
         var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));

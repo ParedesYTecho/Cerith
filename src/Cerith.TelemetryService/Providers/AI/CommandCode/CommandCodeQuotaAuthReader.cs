@@ -18,16 +18,37 @@ internal enum CommandCodeAuthStatus
 
 internal sealed class CommandCodeCredential
 {
-    internal CommandCodeCredential(string source, string apiKey)
+    internal CommandCodeCredential(string source, string apiKey, string? selectedAuthFileIdentity = null)
     {
         Source = source;
         ApiKey = apiKey;
         Fingerprint = FingerprintOf(apiKey);
+        Identity = new OwnerIdentity(Source, Fingerprint, selectedAuthFileIdentity);
     }
 
     internal string Source { get; }
     internal string ApiKey { get; }
     internal string Fingerprint { get; }
+    internal OwnerIdentity Identity { get; }
+
+    internal sealed class OwnerIdentity
+    {
+        private readonly string _source;
+        private readonly string _fingerprint;
+        private readonly string? _selectedAuthFileIdentity;
+
+        internal OwnerIdentity(string source, string fingerprint, string? selectedAuthFileIdentity)
+        {
+            _source = source;
+            _fingerprint = fingerprint;
+            _selectedAuthFileIdentity = selectedAuthFileIdentity;
+        }
+
+        internal bool Matches(OwnerIdentity other) =>
+            string.Equals(_source, other._source, StringComparison.Ordinal) &&
+            string.Equals(_fingerprint, other._fingerprint, StringComparison.Ordinal) &&
+            string.Equals(_selectedAuthFileIdentity, other._selectedAuthFileIdentity, StringComparison.Ordinal);
+    }
 
     private static string FingerprintOf(string apiKey)
     {
@@ -71,6 +92,8 @@ internal sealed class CommandCodeAuthRead
 internal sealed class CommandCodeQuotaAuthReader
 {
     private const int MaxAuthFileBytes = 16 * 1024;
+    private const string EnvironmentSource = "environment";
+    private const string CliAuthFileSource = "cli-auth-file";
     private readonly Func<string?> _readEnvironmentKey;
     private readonly Func<string?> _readHome;
     private readonly Func<string?> _readUserProfile;
@@ -107,7 +130,7 @@ internal sealed class CommandCodeQuotaAuthReader
         {
             if (string.IsNullOrWhiteSpace(environmentKey) || environmentKey.Length > MaxAuthFileBytes)
                 return CommandCodeAuthRead.Invalid();
-            return CommandCodeAuthRead.Ready(new CommandCodeCredential("environment", environmentKey));
+            return CommandCodeAuthRead.Ready(new CommandCodeCredential(EnvironmentSource, environmentKey));
         }
 
         string? home;
@@ -126,8 +149,13 @@ internal sealed class CommandCodeQuotaAuthReader
         var selectedHome = home ?? userProfile;
         if (selectedHome is null) return CommandCodeAuthRead.Missing();
 
+        string authFilePath;
         string? contents;
-        try { contents = _readAuthFile(Path.Combine(selectedHome, ".commandcode", "auth.json")); }
+        try
+        {
+            authFilePath = Path.GetFullPath(Path.Combine(selectedHome, ".commandcode", "auth.json"));
+            contents = _readAuthFile(authFilePath);
+        }
         catch (FileNotFoundException) { return CommandCodeAuthRead.Missing(); }
         catch (DirectoryNotFoundException) { return CommandCodeAuthRead.Missing(); }
         catch { return CommandCodeAuthRead.Invalid(); }
@@ -148,7 +176,8 @@ internal sealed class CommandCodeQuotaAuthReader
             if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Length > MaxAuthFileBytes)
                 return CommandCodeAuthRead.Invalid();
 
-            return CommandCodeAuthRead.Ready(new CommandCodeCredential("cli-auth-file", apiKey));
+            return CommandCodeAuthRead.Ready(new CommandCodeCredential(
+                CliAuthFileSource, apiKey, AuthFileIdentityOf(authFilePath)));
         }
         catch (JsonException) { return CommandCodeAuthRead.Invalid(); }
         catch { return CommandCodeAuthRead.Invalid(); }
@@ -157,7 +186,23 @@ internal sealed class CommandCodeQuotaAuthReader
     private static string? NormalizeHome(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(value.Trim()));
+        var home = value.Trim();
+        if (!Path.IsPathFullyQualified(home)) throw new ArgumentException("Home path must be absolute.");
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(home));
+    }
+
+    private static string AuthFileIdentityOf(string path)
+    {
+        var absolutePath = Path.GetFullPath(path);
+        if (!Path.IsPathFullyQualified(absolutePath)) throw new ArgumentException("Auth file path must be absolute.");
+        var bytes = Encoding.UTF8.GetBytes(absolutePath.ToUpperInvariant());
+        try
+        {
+            var hash = SHA256.HashData(bytes);
+            try { return Convert.ToHexString(hash); }
+            finally { CryptographicOperations.ZeroMemory(hash); }
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 
     private static string? ReadAuthFile(string path)
