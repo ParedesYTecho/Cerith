@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Threading;
@@ -15,6 +16,7 @@ internal sealed class KiroQuotaProvider : IDisposable
     internal static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(2);
     internal static readonly TimeSpan MaximumCacheAge = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan StoppedPublishTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan WorkerDrainTimeout = TimeSpan.FromSeconds(1);
     private const string Source = "Kiro.Usage.ACP.v3";
     private const int IncludedRemainingIndex = 0;
     private const int IncludedResetIndex = 1;
@@ -34,20 +36,26 @@ internal sealed class KiroQuotaProvider : IDisposable
     private readonly Func<CancellationToken, Task<KiroAcquisition>> _readUsage;
     private readonly Func<CancellationToken, Task<KiroIdentityObservation>> _readIdentity;
     private readonly TimeProvider _timeProvider;
+    private readonly TimeSpan _pollInterval;
+    private readonly TimeSpan _staleAfter;
+    private readonly TimeSpan _maximumCacheAge;
     private readonly byte[] _identityKey = RandomNumberGenerator.GetBytes(32);
     private readonly CancellationTokenSource _shutdown = new();
     private readonly SemaphoreSlim _pollLock = new(1, 1);
     private readonly SemaphoreSlim _publishSignal = new(0, 1);
+    private readonly SemaphoreSlim _validitySignal = new(0, 1);
     private readonly object _gate = new();
     private readonly CachedQuota?[] _cache = new CachedQuota?[MetricIds.Length];
     private readonly KiroMetricPoint[] _fallback = new KiroMetricPoint[MetricIds.Length];
     private byte[]? _identityFingerprint;
     private byte[]? _identityMonitorFingerprint;
+    private KiroIdentityStatus? _identityStatus;
     private CancellationTokenSource? _activeAcquisitionStop;
     private CancellationTokenSource? _activePublicationStop;
     private string? _lastFailureCode;
     private DateTimeOffset _lastAttemptAt;
     private long _stateVersion;
+    private long _cacheVersion;
     private bool _acquisitionSuppressed;
     private bool _disposed;
 
@@ -59,12 +67,19 @@ internal sealed class KiroQuotaProvider : IDisposable
 
     internal KiroQuotaProvider(MetricRegistry registry, MetricBus bus,
         Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider timeProvider,
-        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null)
+        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null,
+        TimeSpan? pollInterval = null, TimeSpan? staleAfter = null, TimeSpan? maximumCacheAge = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         _bus = bus ?? throw new ArgumentNullException(nameof(bus));
         _readUsage = readUsage ?? throw new ArgumentNullException(nameof(readUsage));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _pollInterval = pollInterval ?? PollInterval;
+        _staleAfter = staleAfter ?? StaleAfter;
+        _maximumCacheAge = maximumCacheAge ?? MaximumCacheAge;
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_pollInterval, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_staleAfter, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(_maximumCacheAge, _staleAfter);
         _readIdentity = readIdentity ?? (cancellationToken => KiroAcpUsageClient.ReadIdentityAsync(
             _timeProvider, _identityKey, cancellationToken));
 
@@ -94,30 +109,29 @@ internal sealed class KiroQuotaProvider : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
-        Task[] workers = [PollLoopAsync(stop.Token), PublishLoopAsync(stop.Token)];
+        Task[] workers = [PollLoopAsync(stop.Token), PublishLoopAsync(stop.Token), ValidityLoopAsync(stop.Token)];
         SignalPublish();
-        Exception? workerFailure = null;
+        Exception? failure = null;
 
         try
         {
             var completed = await Task.WhenAny(workers).ConfigureAwait(false);
-            workerFailure = await ObserveWorkerAsync(completed, stop.Token).ConfigureAwait(false);
+            if (completed.IsCanceled && !stop.IsCancellationRequested)
+                failure = new TaskCanceledException("A Kiro provider worker stopped unexpectedly.");
         }
         finally
         {
-            stop.Cancel();
-            CancelActiveOperations();
-            try
-            {
-                workerFailure ??= await ObserveWorkersAsync(workers, stop.Token).ConfigureAwait(false);
-            }
-            finally
-            {
-                await PublishStoppedAsync().ConfigureAwait(false);
-            }
+            try { stop.Cancel(); }
+            catch (Exception exception) { failure = CombineFailures(failure, exception); }
+            try { CancelActiveOperations(); }
+            catch (Exception exception) { failure = CombineFailures(failure, exception); }
+            try { failure = CombineFailures(failure, await ObserveWorkersAsync(workers).ConfigureAwait(false)); }
+            catch (Exception exception) { failure = CombineFailures(failure, exception); }
+            try { await PublishStoppedAsync().ConfigureAwait(false); }
+            catch (Exception exception) { failure = CombineFailures(failure, exception); }
         }
 
-        if (workerFailure is not null) ExceptionDispatchInfo.Capture(workerFailure).Throw();
+        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)
@@ -129,71 +143,72 @@ internal sealed class KiroQuotaProvider : IDisposable
         {
             KiroIdentityObservation identity;
             lock (_gate) _activeAcquisitionStop = admission;
-            try
-            {
-                identity = await _readIdentity(admission.Token).ConfigureAwait(false);
-                admission.Token.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException) when (admission.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                identity = KiroIdentityObservation.Unavailable();
-            }
-
+            identity = await ReadIdentityObservationAsync(admission.Token).ConfigureAwait(false);
+            var ownerBefore = identity.Status == KiroIdentityStatus.Ready && identity.Fingerprint is { Length: 32 }
+                ? (byte[])identity.Fingerprint.Clone()
+                : null;
             ApplyIdentityObservation(identity);
-            if (identity.Status == KiroIdentityStatus.SignedOut)
-            {
-                ApplyFailure(MetricState.Unavailable, "identity_unavailable", _timeProvider.GetUtcNow());
-                return;
-            }
-
-            lock (_gate)
-            {
-                if (_acquisitionSuppressed) return;
-            }
-
-            KiroAcquisition acquisition;
             try
             {
-                acquisition = await _readUsage(admission.Token).ConfigureAwait(false);
-                admission.Token.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException) when (admission.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                acquisition = KiroAcquisition.Error("usage_query_failed");
-            }
+                if (ownerBefore is null) return;
 
-            if (acquisition.Status == KiroAcquisitionStatus.Ready && acquisition.Payload is not null)
-            {
+                lock (_gate)
+                {
+                    if (_acquisitionSuppressed) return;
+                }
+
+                KiroAcquisition acquisition;
+                byte[]? payload = null;
                 try
                 {
-                    var observedAt = _timeProvider.GetUtcNow();
-                    var parsed = KiroQuotaParser.Parse(acquisition.Payload, _identityKey, observedAt);
-                    if (parsed.Reading is null)
-                        ApplyFailure(MetricState.Error, parsed.ErrorCode ?? "schema_invalid", observedAt);
+                    try
+                    {
+                        acquisition = await _readUsage(admission.Token).ConfigureAwait(false);
+                        payload = acquisition.Payload;
+                        admission.Token.ThrowIfCancellationRequested();
+                    }
+                    catch (OperationCanceledException) when (admission.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception)
+                    {
+                        acquisition = KiroAcquisition.Error("usage_query_failed");
+                    }
+
+                    var ownerAfter = await ReadIdentityObservationAsync(admission.Token).ConfigureAwait(false);
+                    var sameOwner = ownerAfter.Status == KiroIdentityStatus.Ready &&
+                        ownerAfter.Fingerprint is { Length: 32 } &&
+                        CryptographicOperations.FixedTimeEquals(ownerBefore, ownerAfter.Fingerprint);
+                    ApplyIdentityObservation(ownerAfter);
+
+                    if (acquisition.Status == KiroAcquisitionStatus.RetrySuppressed)
+                    {
+                        ApplyAcquisitionSuppression(_timeProvider.GetUtcNow());
+                        return;
+                    }
+                    if (!sameOwner) return;
+
+                    if (acquisition.Status == KiroAcquisitionStatus.Ready && payload is not null)
+                    {
+                        var observedAt = _timeProvider.GetUtcNow();
+                        var parsed = KiroQuotaParser.Parse(payload, _identityKey, observedAt);
+                        if (parsed.Reading is null)
+                            ApplyFailure(MetricState.Error, parsed.ErrorCode ?? "schema_invalid", observedAt);
+                        else
+                            ApplyReading(parsed.Reading);
+                    }
                     else
-                        ApplyReading(parsed.Reading);
+                    {
+                        var state = acquisition.Status is KiroAcquisitionStatus.Unavailable or KiroAcquisitionStatus.Unsupported
+                            ? MetricState.Unavailable
+                            : MetricState.Error;
+                        ApplyFailure(state, SafeErrorCode(acquisition.ErrorCode), _timeProvider.GetUtcNow());
+                    }
                 }
-                finally { CryptographicOperations.ZeroMemory(acquisition.Payload); }
+                finally { if (payload is not null) CryptographicOperations.ZeroMemory(payload); }
             }
-            else if (acquisition.Status == KiroAcquisitionStatus.RetrySuppressed)
-            {
-                ApplyAcquisitionSuppression(_timeProvider.GetUtcNow());
-            }
-            else
-            {
-                var state = acquisition.Status is KiroAcquisitionStatus.Unavailable or KiroAcquisitionStatus.Unsupported
-                    ? MetricState.Unavailable
-                    : MetricState.Error;
-                ApplyFailure(state, SafeErrorCode(acquisition.ErrorCode), _timeProvider.GetUtcNow());
-            }
+            finally { if (ownerBefore is not null) CryptographicOperations.ZeroMemory(ownerBefore); }
         }
         finally
         {
@@ -221,32 +236,103 @@ internal sealed class KiroQuotaProvider : IDisposable
         while (true)
         {
             await PollOnceAsync(cancellationToken).ConfigureAwait(false);
-            var (delay, transitionDue) = GetNextPollDelay();
+            var delay = GetNextPollDelay();
             await Task.Delay(delay, _timeProvider, cancellationToken).ConfigureAwait(false);
-            if (transitionDue) RefreshCachedState();
         }
     }
 
-    private static async Task<Exception?> ObserveWorkerAsync(Task worker, CancellationToken stopToken)
+    private async Task ValidityLoopAsync(CancellationToken cancellationToken)
     {
-        try
+        while (true)
         {
-            await worker.ConfigureAwait(false);
-            return null;
+            var transition = GetNextCacheTransition();
+            using var wake = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var changed = _validitySignal.WaitAsync(wake.Token);
+            var delay = transition.Delay is TimeSpan dueIn
+                ? Task.Delay(dueIn, _timeProvider, wake.Token)
+                : Task.Delay(Timeout.InfiniteTimeSpan, wake.Token);
+            var completed = await Task.WhenAny(changed, delay).ConfigureAwait(false);
+            if (ReferenceEquals(completed, changed))
+            {
+                await changed.ConfigureAwait(false);
+                wake.Cancel();
+                await ObserveCancellationAsync(delay).ConfigureAwait(false);
+                continue;
+            }
+
+            await delay.ConfigureAwait(false);
+            wake.Cancel();
+            await ObserveCancellationAsync(changed).ConfigureAwait(false);
+            if (transition.Delay.HasValue) RefreshCachedState(transition.CacheVersion);
         }
-        catch (OperationCanceledException) when (stopToken.IsCancellationRequested) { return null; }
-        catch (Exception exception) { return exception; }
     }
 
-    private static async Task<Exception?> ObserveWorkersAsync(Task[] workers, CancellationToken stopToken)
+    private static async Task ObserveCancellationAsync(Task task)
+    {
+        try { await task.ConfigureAwait(false); }
+        catch (OperationCanceledException) { return; }
+    }
+
+    private static async Task<Exception?> ObserveWorkersAsync(Task[] workers)
+    {
+        var allWorkers = Task.WhenAll(workers);
+        try { await allWorkers.WaitAsync(WorkerDrainTimeout).ConfigureAwait(false); }
+        catch (TimeoutException timeout)
+        {
+            ObserveEventually(allWorkers);
+            foreach (var worker in workers) ObserveEventually(worker);
+            return CombineFailures(timeout, GetWorkerFailures(workers));
+        }
+        catch (Exception)
+        {
+            return GetWorkerFailures(workers);
+        }
+
+        return GetWorkerFailures(workers);
+    }
+
+    private static Exception? GetWorkerFailures(Task[] workers)
+    {
+        var failures = workers.Where(static worker => worker.IsFaulted)
+            .SelectMany(static worker => worker.Exception!.Flatten().InnerExceptions).ToArray();
+        return failures.Length switch
+        {
+            0 => null,
+            1 => failures[0],
+            _ => new AggregateException(failures)
+        };
+    }
+
+    private static void ObserveEventually(Task task)
+    {
+        _ = task.ContinueWith(static completed => { _ = completed.Exception; }, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static Exception? CombineFailures(Exception? first, Exception? second)
+    {
+        if (first is null) return second;
+        if (second is null) return first;
+        return new AggregateException(first, second);
+    }
+
+    private async Task<KiroIdentityObservation> ReadIdentityObservationAsync(CancellationToken cancellationToken)
     {
         try
         {
-            await Task.WhenAll(workers).ConfigureAwait(false);
-            return null;
+            var observation = await _readIdentity(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return observation;
         }
-        catch (OperationCanceledException) when (stopToken.IsCancellationRequested) { return null; }
-        catch (Exception exception) { return exception; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return KiroIdentityObservation.Unavailable();
+        }
     }
 
     private async Task PublishLoopAsync(CancellationToken cancellationToken)
@@ -353,70 +439,109 @@ internal sealed class KiroQuotaProvider : IDisposable
             _lastAttemptAt = reading.ObservedAt;
             _lastFailureCode = null;
             _stateVersion++;
+            _cacheVersion++;
             cancelPublication = _activePublicationStop;
         }
 
         CryptographicOperations.ZeroMemory(reading.IdentityFingerprint);
         TryCancel(cancelPublication);
+        SignalValidityChanged();
         SignalPublish();
     }
 
     private void ApplyIdentityObservation(KiroIdentityObservation observation)
     {
         var fingerprint = observation.Fingerprint;
-        if (observation.Status == KiroIdentityStatus.Unavailable ||
-            observation.Status == KiroIdentityStatus.Ready && fingerprint is null)
-        {
-            if (fingerprint is not null) CryptographicOperations.ZeroMemory(fingerprint);
-            return;
-        }
-
         CancellationTokenSource? cancelPublication = null;
-        var identityChanged = false;
+        var stateChanged = false;
+        var cacheInvalidated = false;
         lock (_gate)
         {
-            if (observation.Status == KiroIdentityStatus.Ready && fingerprint is not null)
-            {
-                identityChanged = _identityMonitorFingerprint is null
-                    ? _identityFingerprint is not null || HasCachedValuesLocked()
-                    : !CryptographicOperations.FixedTimeEquals(_identityMonitorFingerprint, fingerprint);
+            var ready = observation.Status == KiroIdentityStatus.Ready && fingerprint is { Length: 32 };
+            var observedStatus = ready ? KiroIdentityStatus.Ready :
+                observation.Status == KiroIdentityStatus.Ready ? KiroIdentityStatus.Unavailable : observation.Status;
+            var hasOwnedState = _identityFingerprint is not null || HasCachedValuesLocked();
 
-                if (_identityMonitorFingerprint is not null)
-                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
-                _identityMonitorFingerprint = (byte[])fingerprint.Clone();
-            }
-            else
+            if (!ready)
             {
-                identityChanged = _identityMonitorFingerprint is not null ||
-                    _identityFingerprint is not null || HasCachedValuesLocked();
-                if (_identityMonitorFingerprint is not null)
-                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
-                _identityMonitorFingerprint = null;
-            }
-
-            if (identityChanged)
-            {
-                if (_identityFingerprint is not null) CryptographicOperations.ZeroMemory(_identityFingerprint);
-                _identityFingerprint = null;
-                Array.Clear(_cache);
                 var errorCode = _acquisitionSuppressed
                     ? "rate_limit_retry_suppressed"
-                    : "identity_changed";
+                    : "identity_unavailable";
                 var point = _acquisitionSuppressed
                     ? KiroMetricPoint.Error(errorCode)
                     : KiroMetricPoint.Unavailable(errorCode);
-                Array.Fill(_fallback, point);
-                _lastFailureCode = _acquisitionSuppressed ? errorCode : null;
-                _lastAttemptAt = _timeProvider.GetUtcNow();
-                _stateVersion++;
-                cancelPublication = _activePublicationStop;
+                stateChanged = _identityStatus != observedStatus ||
+                    _identityMonitorFingerprint is not null || hasOwnedState || !FallbackMatchesLocked(point);
+                cacheInvalidated = hasOwnedState;
+
+                if (_identityMonitorFingerprint is not null)
+                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
+                _identityMonitorFingerprint = null;
+                if (_identityFingerprint is not null) CryptographicOperations.ZeroMemory(_identityFingerprint);
+                _identityFingerprint = null;
+                Array.Clear(_cache);
+                _identityStatus = observedStatus;
+
+                if (stateChanged)
+                {
+                    Array.Fill(_fallback, point);
+                    _lastFailureCode = point.ErrorCode;
+                    _lastAttemptAt = _timeProvider.GetUtcNow();
+                    _stateVersion++;
+                    if (cacheInvalidated) _cacheVersion++;
+                    cancelPublication = _activePublicationStop;
+                }
+            }
+            else
+            {
+                var ownerChanged = _identityStatus == KiroIdentityStatus.Ready
+                    ? _identityMonitorFingerprint is null ||
+                      !CryptographicOperations.FixedTimeEquals(_identityMonitorFingerprint, fingerprint!)
+                    : hasOwnedState;
+
+                if (ownerChanged)
+                {
+                    if (_identityFingerprint is not null) CryptographicOperations.ZeroMemory(_identityFingerprint);
+                    _identityFingerprint = null;
+                    Array.Clear(_cache);
+                    cacheInvalidated = hasOwnedState;
+                    var errorCode = _acquisitionSuppressed
+                        ? "rate_limit_retry_suppressed"
+                        : "identity_changed";
+                    var point = _acquisitionSuppressed
+                        ? KiroMetricPoint.Error(errorCode)
+                        : KiroMetricPoint.Unavailable(errorCode);
+                    Array.Fill(_fallback, point);
+                    _lastFailureCode = point.ErrorCode;
+                    _lastAttemptAt = _timeProvider.GetUtcNow();
+                    _stateVersion++;
+                    _cacheVersion++;
+                    cancelPublication = _activePublicationStop;
+                    stateChanged = true;
+                }
+
+                if (_identityMonitorFingerprint is not null)
+                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
+                _identityMonitorFingerprint = (byte[])fingerprint!.Clone();
+                _identityStatus = KiroIdentityStatus.Ready;
             }
         }
 
         if (fingerprint is not null) CryptographicOperations.ZeroMemory(fingerprint);
-        if (!identityChanged) return;
+        if (!stateChanged) return;
         TryCancel(cancelPublication);
+        if (cacheInvalidated) SignalValidityChanged();
         SignalPublish();
+    }
+
+    private bool FallbackMatchesLocked(KiroMetricPoint expected)
+    {
+        foreach (var point in _fallback)
+        {
+            if (point.State != expected.State || point.Value.HasValue ||
+                !StringComparer.Ordinal.Equals(point.ErrorCode, expected.ErrorCode)) return false;
+        }
+        return true;
     }
 
     private bool HasCachedValuesLocked()
@@ -465,17 +590,24 @@ internal sealed class KiroQuotaProvider : IDisposable
         SignalPublish();
     }
 
-    private void RefreshCachedState()
+    private void RefreshCachedState(long expectedCacheVersion)
     {
         CancellationTokenSource? cancelPublication;
         lock (_gate)
         {
+            if (_cacheVersion != expectedCacheVersion || !HasDueCacheTransitionLocked()) return;
             _stateVersion++;
             cancelPublication = _activePublicationStop;
         }
 
         TryCancel(cancelPublication);
         SignalPublish();
+    }
+
+    private void SignalValidityChanged()
+    {
+        try { _validitySignal.Release(); }
+        catch (SemaphoreFullException) { return; }
     }
 
     private MetricSnapshot[] CreateSnapshotsLocked(long timestamp)
@@ -505,7 +637,7 @@ internal sealed class KiroQuotaProvider : IDisposable
         if (age < TimeSpan.Zero) return KiroMetricPoint.Error("clock_invalid");
         if (cached.ValidFor is TimeSpan validFor && age >= validFor)
             return KiroMetricPoint.Unavailable("reset_elapsed");
-        if (age >= MaximumCacheAge) return KiroMetricPoint.Unavailable("cache_expired");
+        if (age >= _maximumCacheAge) return KiroMetricPoint.Unavailable("cache_expired");
 
         var value = cached.Value;
         var expiryCrossed = false;
@@ -528,48 +660,82 @@ internal sealed class KiroQuotaProvider : IDisposable
             value = MetricValue.From(remaining);
         }
 
-        var stale = age >= StaleAfter || expiryCrossed;
+        var stale = age >= _staleAfter || expiryCrossed;
         return new KiroMetricPoint(stale ? MetricState.Stale : MetricState.Fresh, value,
             stale ? _lastFailureCode : null);
     }
 
-    private (TimeSpan Delay, bool TransitionDue) GetNextPollDelay()
+    private TimeSpan GetNextPollDelay()
     {
         lock (_gate)
         {
-            var nowTimestamp = _timeProvider.GetTimestamp();
-            var shortest = PollInterval;
-            var transitionDue = false;
-            foreach (var cached in _cache)
+            var next = GetNextCacheTransitionDelayLocked(_timeProvider.GetTimestamp());
+            return next is TimeSpan delay && delay < _pollInterval ? delay : _pollInterval;
+        }
+    }
+
+    private (TimeSpan? Delay, long CacheVersion) GetNextCacheTransition()
+    {
+        lock (_gate)
+            return (GetNextCacheTransitionDelayLocked(_timeProvider.GetTimestamp()), _cacheVersion);
+    }
+
+    private TimeSpan? GetNextCacheTransitionDelayLocked(long timestamp)
+    {
+        TimeSpan? shortest = null;
+        foreach (var cached in _cache)
+        {
+            if (cached is null) continue;
+            var age = _timeProvider.GetElapsedTime(cached.Timestamp, timestamp);
+            Consider(_staleAfter - age);
+            Consider(_maximumCacheAge - age);
+            if (cached.ValidFor is TimeSpan validFor && validFor < _maximumCacheAge)
+                Consider(validFor - age);
+            if (cached.BonusAllocations is null) continue;
+            foreach (var allocation in cached.BonusAllocations)
             {
-                if (cached is null) continue;
-                var age = _timeProvider.GetElapsedTime(cached.Timestamp, nowTimestamp);
-                Consider(StaleAfter - age);
-                Consider(MaximumCacheAge - age);
-                if (cached.ValidFor is TimeSpan validFor) Consider(validFor - age);
-                if (cached.BonusAllocations is not null)
+                if (allocation.ExpiresAt is DateTimeOffset expiry)
                 {
-                    foreach (var allocation in cached.BonusAllocations)
-                    {
-                        if (allocation.ExpiresAt is DateTimeOffset expiry)
-                            Consider((expiry - cached.ObservedAt) - age);
-                    }
+                    var expiresAfter = expiry - cached.ObservedAt;
+                    if (expiresAfter > TimeSpan.Zero && expiresAfter < _maximumCacheAge)
+                        Consider(expiresAfter - age);
                 }
             }
-            return (shortest, transitionDue);
+        }
+        return shortest;
 
-            void Consider(TimeSpan candidate)
+        void Consider(TimeSpan candidate)
+        {
+            if (candidate <= TimeSpan.Zero || shortest is TimeSpan current && candidate >= current) return;
+            shortest = candidate;
+        }
+    }
+
+    private bool HasDueCacheTransitionLocked()
+    {
+        var timestamp = _timeProvider.GetTimestamp();
+        foreach (var cached in _cache)
+        {
+            if (cached is null) continue;
+            var age = _timeProvider.GetElapsedTime(cached.Timestamp, timestamp);
+            if (age < TimeSpan.Zero || age >= _staleAfter || age >= _maximumCacheAge ||
+                cached.ValidFor is TimeSpan validFor && age >= validFor) return true;
+            if (cached.BonusAllocations is null) continue;
+            foreach (var allocation in cached.BonusAllocations)
             {
-                if (candidate <= TimeSpan.Zero || candidate > shortest) return;
-                shortest = candidate;
-                transitionDue = true;
+                if (allocation.ExpiresAt is DateTimeOffset expiry)
+                {
+                    var expiresAfter = expiry - cached.ObservedAt;
+                    if (expiresAfter > TimeSpan.Zero && age >= expiresAfter) return true;
+                }
             }
         }
+        return false;
     }
 
     private async Task PublishStoppedAsync()
     {
-        using var deadline = new CancellationTokenSource(StoppedPublishTimeout, _timeProvider);
+        using var deadline = new CancellationTokenSource(StoppedPublishTimeout);
         var observedAt = _timeProvider.GetUtcNow();
         foreach (var descriptor in _descriptors)
         {
@@ -579,8 +745,6 @@ internal sealed class KiroQuotaProvider : IDisposable
                     MetricConfidence.Unknown, Source), deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (deadline.IsCancellationRequested) { return; }
-            catch (ObjectDisposedException) { return; }
-            catch (Exception) { return; }
         }
     }
 

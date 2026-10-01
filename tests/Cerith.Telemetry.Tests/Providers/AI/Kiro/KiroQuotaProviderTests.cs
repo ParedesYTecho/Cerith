@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -19,6 +20,13 @@ namespace Cerith.Telemetry.Tests.Providers.AI.Kiro;
 [TestClass]
 public sealed class KiroQuotaProviderTests
 {
+    private static readonly string[] TestMetricIds =
+    [
+        "ai.kiro.credits.included.remaining",
+        "ai.kiro.credits.included.reset",
+        "ai.kiro.credits.addon.remaining",
+        "ai.kiro.credits.bonus.remaining"
+    ];
     private static readonly byte[] IdentityKey = Enumerable.Range(0, 32).Select(static value => (byte)value).ToArray();
     private static readonly DateTimeOffset ObservedAt = new(2026, 10, 1, 8, 0, 0, TimeSpan.Zero);
 
@@ -384,6 +392,113 @@ public sealed class KiroQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task ProviderSkipsUsageWhenOfficialIdentityCannotBeVerified()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var usageCalls = 0;
+        using var provider = CreateProvider(registry, bus, _ =>
+        {
+            Interlocked.Increment(ref usageCalls);
+            return Task.FromResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        }, readIdentity: _ => Task.FromResult(KiroIdentityObservation.Unavailable()));
+        await using var readers = SubscribeAll(bus);
+        readers.Start();
+
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var snapshots = await readers.ReadNextBatchAsync();
+
+        Assert.AreEqual(0, usageCalls);
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.State == MetricState.Unavailable));
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.Value is null));
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.ErrorCode == "identity_unavailable"));
+    }
+
+    [TestMethod]
+    public async Task ProviderDiscardsDelayedUsageWhenOfficialIdentityChangesAcrossRequest()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var identityCalls = 0;
+        var usageStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseUsage = new TaskCompletionSource<KiroAcquisition>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var provider = CreateProvider(registry, bus, async _ =>
+        {
+            usageStarted.TrySetResult(true);
+            return await releaseUsage.Task.ConfigureAwait(false);
+        }, readIdentity: _ => Task.FromResult(
+            IdentityObservation(Interlocked.Increment(ref identityCalls) == 1 ? (byte)1 : (byte)2)));
+        await using var readers = SubscribeAll(bus);
+        readers.Start();
+
+        var poll = provider.PollOnceAsync();
+        await usageStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        releaseUsage.TrySetResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        await poll.WaitAsync(TimeSpan.FromSeconds(2));
+        await provider.PublishOnceAsync();
+        var snapshots = await readers.ReadNextBatchAsync();
+
+        Assert.AreEqual(2, identityCalls);
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.State == MetricState.Unavailable));
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.Value is null));
+        Assert.IsTrue(snapshots.All(static snapshot => snapshot.ErrorCode == "identity_changed"));
+    }
+
+    [TestMethod]
+    public async Task ProviderCancelsPendingOldOwnerPublicationWhenIdentityBecomesUnavailable()
+    {
+        using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
+        var identityCalls = 0;
+        var usageCalls = 0;
+        var usageStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseUsage = new TaskCompletionSource<KiroAcquisition>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var provider = CreateProvider(registry, bus, async _ =>
+        {
+            if (Interlocked.Increment(ref usageCalls) == 1)
+                return Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a"));
+            usageStarted.TrySetResult(true);
+            return await releaseUsage.Task.ConfigureAwait(false);
+        }, readIdentity: _ =>
+        {
+            var call = Interlocked.Increment(ref identityCalls);
+            return Task.FromResult(call < 4
+                ? IdentityObservation(1)
+                : KiroIdentityObservation.Unavailable());
+        });
+        await using var readers = SubscribeAll(bus);
+        readers.Start();
+
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var first = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(MetricState.Fresh, first[0].State);
+        Assert.AreEqual(87.25m, Decimal(first[0]));
+
+        foreach (var metricId in TestMetricIds)
+            await bus.PublishAsync(new MetricSnapshot(new MetricId(metricId), null, ObservedAt,
+                MetricState.Unavailable, MetricConfidence.Unknown, "test_marker", "test_marker"));
+        var oldOwnerPublication = provider.PublishOnceAsync();
+        await WaitForActivePublicationAsync(provider, oldOwnerPublication);
+        var poll = provider.PollOnceAsync();
+        await usageStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        releaseUsage.TrySetResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        await poll.WaitAsync(TimeSpan.FromSeconds(2));
+        await oldOwnerPublication.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var markers = await readers.ReadNextBatchAsync();
+        Assert.IsTrue(markers.All(static snapshot => snapshot.ErrorCode == "test_marker"));
+        await provider.PublishOnceAsync();
+        var unavailable = await readers.ReadNextBatchAsync();
+        Assert.IsTrue(unavailable.All(static snapshot => snapshot.State == MetricState.Unavailable));
+        Assert.IsTrue(unavailable.All(static snapshot => snapshot.Value is null));
+        Assert.IsTrue(unavailable.All(static snapshot => snapshot.ErrorCode == "identity_unavailable"));
+        Assert.AreEqual(4, identityCalls);
+        Assert.AreEqual(2, usageCalls);
+    }
+
+    [TestMethod]
     public async Task ProviderSuppressesUsageRetriesButContinuesIdentityAndCacheTransitions()
     {
         using var bus = new MetricBus(8);
@@ -441,7 +556,7 @@ public sealed class KiroQuotaProviderTests
         await provider.PublishOnceAsync();
         var stillSuppressed = await readers.ReadNextBatchAsync();
         Assert.AreEqual(2, usageCalls);
-        Assert.AreEqual(5, identityCalls);
+        Assert.AreEqual(7, identityCalls);
         Assert.AreEqual(MetricState.Unavailable, stillSuppressed[0].State);
         Assert.AreEqual("cache_expired", stillSuppressed[0].ErrorCode);
     }
@@ -476,7 +591,7 @@ public sealed class KiroQuotaProviderTests
         await provider.PollOnceAsync();
 
         Assert.AreEqual(2, usageCalls);
-        Assert.AreEqual(4, identityCalls);
+        Assert.AreEqual(6, identityCalls);
         Assert.IsTrue(identityChanged.All(static snapshot => snapshot.Value is null));
         Assert.IsTrue(identityChanged.All(static snapshot => snapshot.ErrorCode == "rate_limit_retry_suppressed"));
     }
@@ -535,6 +650,89 @@ public sealed class KiroQuotaProviderTests
 
         Assert.AreEqual(4, stopped.Length);
         Assert.IsTrue(stopped.All(static snapshot => snapshot.State == MetricState.Stopped));
+    }
+
+    [TestMethod]
+    public async Task RunInvalidatesBlockedPublicationAtPlanResetDuringAcquisition()
+    {
+        var resetAt = ObservedAt.AddSeconds(3).ToUnixTimeSeconds();
+        await AssertRunInvalidatesPendingPublicationAsync(
+            "ai.kiro.credits.included.remaining",
+            CompleteUsage("synthetic-user-a", "synthetic-account-a", resetAt),
+            TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3), 2, null,
+            MetricState.Unavailable, "reset_elapsed", null);
+    }
+
+    [TestMethod]
+    public async Task RunInvalidatesBlockedPublicationAtBonusExpiryDuringAcquisition()
+    {
+        var expiry = ObservedAt.AddSeconds(2).ToString("O", CultureInfo.InvariantCulture);
+        var payload = CompleteUsage("synthetic-user-a", "synthetic-account-a")
+            .Replace("2030-01-02T00:00:00Z", expiry, StringComparison.Ordinal);
+        await AssertRunInvalidatesPendingPublicationAsync(
+            "ai.kiro.credits.bonus.remaining", payload,
+            TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2), 2, null,
+            MetricState.Stale, null, 0m);
+    }
+
+    [TestMethod]
+    public async Task RunInvalidatesBlockedPublicationAtHardCacheExpiryDuringAcquisition()
+    {
+        await AssertRunInvalidatesPendingPublicationAsync(
+            "ai.kiro.credits.included.remaining",
+            CompleteUsage("synthetic-user-a", "synthetic-account-a"),
+            TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), TimeSpan.Zero, 3, 2,
+            MetricState.Unavailable, "cache_expired", null);
+    }
+
+    [TestMethod]
+    public async Task RunBoundsShutdownWhenUsageDependencyIgnoresCancellationAndDiscardsLateValue()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var readStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseRead = new TaskCompletionSource<KiroAcquisition>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var provider = CreateProvider(registry, bus, async _ =>
+        {
+            readStarted.TrySetResult(true);
+            return await releaseRead.Task.ConfigureAwait(false);
+        });
+        using var stop = new CancellationTokenSource();
+        await using var readers = SubscribeAll(bus);
+        var stoppedReaders = readers.ReadUntilStoppedAsync(
+            Enumerable.Range(0, 4).Select(static _ => new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously)).ToArray());
+        var run = provider.RunAsync(stop.Token);
+        await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        stop.Cancel();
+
+        var stopped = await stoppedReaders.WaitAsync(TimeSpan.FromSeconds(3));
+        Exception? failure = null;
+        try { await run.WaitAsync(TimeSpan.FromSeconds(3)); }
+        catch (Exception exception) { failure = exception; }
+
+        Assert.IsNotNull(failure);
+        Assert.IsTrue(Flatten(failure).Any(static exception => exception is TimeoutException));
+        Assert.IsTrue(stopped.All(static snapshot => snapshot.State == MetricState.Stopped));
+
+        var afterStopped = readers.ReadNextBatchAsync();
+        releaseRead.TrySetResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        await Task.Delay(100);
+        Assert.IsFalse(afterStopped.IsCompleted, "A late usage result was published after shutdown.");
+    }
+
+    [TestMethod]
+    public async Task CliStderrObservationHasAnActualDeadlineAndObservesLateFaults()
+    {
+        var unfinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = TimeProvider.System.GetTimestamp();
+
+        var failure = await KiroAcpUsageClient.ObserveAsync(unfinished.Task, TimeSpan.FromMilliseconds(50));
+
+        Assert.IsInstanceOfType<TimeoutException>(failure);
+        Assert.IsTrue(TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(1));
+        unfinished.SetException(new InvalidOperationException("synthetic late cleanup fault"));
+        await Task.Delay(25);
     }
 
     [TestMethod]
@@ -741,13 +939,31 @@ public sealed class KiroQuotaProviderTests
         var run = provider.RunAsync(CancellationToken.None);
 
         var stopped = await stoppedReaders.WaitAsync(TimeSpan.FromSeconds(3));
-        InvalidOperationException? failure = null;
+        Exception? failure = null;
         try { await run; }
-        catch (InvalidOperationException exception) { failure = exception; }
+        catch (Exception exception) { failure = exception; }
 
         Assert.IsNotNull(failure);
+        Assert.IsTrue(Flatten(failure).Any(static exception => exception is InvalidOperationException));
         Assert.AreEqual(4, stopped.Length);
         Assert.IsTrue(stopped.All(static snapshot => snapshot.State == MetricState.Stopped));
+    }
+
+    [TestMethod]
+    public async Task RunPreservesStoppedPublicationFailureAfterBoundedAttempt()
+    {
+        var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        using var provider = CreateProvider(registry, bus,
+            _ => Task.FromResult(Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a"))));
+        bus.Dispose();
+
+        Exception? failure = null;
+        try { await provider.RunAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3)); }
+        catch (Exception exception) { failure = exception; }
+
+        Assert.IsNotNull(failure);
+        Assert.IsTrue(Flatten(failure).Any(static exception => exception is ObjectDisposedException));
     }
 
     [TestMethod]
@@ -788,9 +1004,87 @@ public sealed class KiroQuotaProviderTests
 
     private static KiroQuotaProvider CreateProvider(MetricRegistry registry, MetricBus bus,
         Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider? timeProvider = null,
-        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null) =>
+        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null,
+        TimeSpan? pollInterval = null, TimeSpan? staleAfter = null, TimeSpan? maximumCacheAge = null) =>
         new(registry, bus, readUsage, timeProvider ?? TimeProvider.System,
-            readIdentity ?? (_ => Task.FromResult(KiroIdentityObservation.Unavailable())));
+            readIdentity ?? (_ => Task.FromResult(IdentityObservation(1))),
+            pollInterval, staleAfter, maximumCacheAge);
+
+    private static async Task AssertRunInvalidatesPendingPublicationAsync(string metricId, string usagePayload,
+        TimeSpan staleAfter, TimeSpan maximumCacheAge, TimeSpan transitionAfter, int expectedStateVersionDelta,
+        int? intermediateStateVersionDelta,
+        MetricState expectedState, string? expectedErrorCode, decimal? expectedValue)
+    {
+        using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
+        var time = new MutableTimeProvider(ObservedAt, manualTimers: true);
+        var pollInterval = TimeSpan.FromMilliseconds(10);
+        var usageCalls = 0;
+        var delayedUsageStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var provider = CreateProvider(registry, bus, async cancellationToken =>
+        {
+            if (Interlocked.Increment(ref usageCalls) == 1) return Ready(usagePayload);
+            delayedUsageStarted.TrySetResult(true);
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            return KiroAcquisition.Error("unreachable");
+        }, timeProvider: time, readIdentity: _ => Task.FromResult(IdentityObservation(1)),
+            pollInterval: pollInterval, staleAfter: staleAfter,
+            maximumCacheAge: maximumCacheAge);
+        using var stop = new CancellationTokenSource();
+        await using var readers = SubscribeAll(bus);
+        var initialStateVersion = ReadStateVersion(provider);
+        readers.Start();
+        foreach (var id in TestMetricIds)
+            await bus.PublishAsync(new MetricSnapshot(new MetricId(id), null, ObservedAt,
+                MetricState.Unavailable, MetricConfidence.Unknown, "test_registration", "test_registration"));
+        var registered = await readers.ReadNextBatchAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(registered.All(static snapshot => snapshot.ErrorCode == "test_registration"));
+        foreach (var id in TestMetricIds)
+            await bus.PublishAsync(new MetricSnapshot(new MetricId(id), null, ObservedAt,
+                MetricState.Unavailable, MetricConfidence.Unknown, "test_marker", "test_marker"));
+        var run = provider.RunAsync(stop.Token);
+
+        try
+        {
+            await WaitForStateVersionAsync(provider, initialStateVersion + 1, TimeSpan.FromSeconds(2));
+            await time.WaitForTimerDueWithinAsync(pollInterval, TimeSpan.FromSeconds(2));
+            time.Advance(pollInterval);
+            await delayedUsageStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.AreEqual(2, usageCalls);
+            var blockedPublication = await WaitForActivePublicationAsync(provider, run);
+            if (intermediateStateVersionDelta is int intermediateDelta)
+            {
+                time.Advance(staleAfter);
+                await WaitForStateVersionAsync(provider, initialStateVersion + intermediateDelta,
+                    TimeSpan.FromSeconds(5));
+                await WaitForPublicationCancellationAsync(blockedPublication);
+                blockedPublication = await WaitForDifferentActivePublicationAsync(provider, run, blockedPublication);
+                time.Advance(maximumCacheAge - staleAfter);
+            }
+            else time.Advance(transitionAfter);
+            await WaitForStateVersionAsync(provider, initialStateVersion + expectedStateVersionDelta,
+                TimeSpan.FromSeconds(5));
+            await WaitForPublicationCancellationAsync(blockedPublication);
+
+            var markers = await readers.ReadNextBatchAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.IsTrue(markers.All(static snapshot => snapshot.ErrorCode == "test_marker"));
+            var transitioned = await readers.ReadNextBatchAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            var target = transitioned[Array.IndexOf(TestMetricIds, metricId)];
+            Assert.AreEqual(expectedState, target.State);
+            Assert.AreEqual(expectedErrorCode, target.ErrorCode);
+            if (expectedValue.HasValue) Assert.AreEqual(expectedValue.Value, Decimal(target));
+            else Assert.IsNull(target.Value);
+        }
+        finally
+        {
+            stop.Cancel();
+            await run.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    private static IEnumerable<Exception> Flatten(Exception exception) => exception is AggregateException aggregate
+        ? aggregate.Flatten().InnerExceptions
+        : [exception];
 
     private static SubscriptionBatch SubscribeAll(MetricBus bus) => new(bus);
 
@@ -851,17 +1145,69 @@ public sealed class KiroQuotaProviderTests
         return startInfo;
     }
 
-    private static async Task WaitForActivePublicationAsync(KiroQuotaProvider provider, Task publication)
+    private static async Task<CancellationTokenSource> WaitForActivePublicationAsync(KiroQuotaProvider provider,
+        Task publication)
+    {
+        var started = TimeProvider.System.GetTimestamp();
+        while (GetActivePublication(provider)?.IsCancellationRequested != false &&
+            !publication.IsCompleted && TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(2))
+            await Task.Delay(1);
+        var active = GetActivePublication(provider);
+        Assert.IsNotNull(active);
+        Assert.IsFalse(active.IsCancellationRequested);
+        Assert.IsFalse(publication.IsCompleted);
+        return active;
+    }
+
+    private static async Task<CancellationTokenSource> WaitForDifferentActivePublicationAsync(
+        KiroQuotaProvider provider, Task run, CancellationTokenSource previous)
+    {
+        var started = TimeProvider.System.GetTimestamp();
+        CancellationTokenSource? active;
+        do
+        {
+            active = GetActivePublication(provider);
+            if (active is not null && !ReferenceEquals(active, previous) && !active.IsCancellationRequested) return active;
+            await Task.Delay(1);
+        } while (!run.IsCompleted && TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(2));
+        Assert.Fail("The provider did not start a new publication after invalidating the previous one.");
+        throw new AssertFailedException("Unreachable.");
+    }
+
+    private static async Task WaitForPublicationCancellationAsync(CancellationTokenSource publication)
+    {
+        var started = TimeProvider.System.GetTimestamp();
+        while (!publication.IsCancellationRequested &&
+            TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(2))
+            await Task.Delay(1);
+        Assert.IsTrue(publication.IsCancellationRequested,
+            "The obsolete publication was not canceled before the subscriber queue drained.");
+    }
+
+    private static CancellationTokenSource? GetActivePublication(KiroQuotaProvider provider)
     {
         var field = typeof(KiroQuotaProvider).GetField("_activePublicationStop",
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.IsNotNull(field);
+        return field.GetValue(provider) as CancellationTokenSource;
+    }
+
+    private static long ReadStateVersion(KiroQuotaProvider provider)
+    {
+        var field = typeof(KiroQuotaProvider).GetField("_stateVersion",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field);
+        return (long)field.GetValue(provider)!;
+    }
+
+    private static async Task WaitForStateVersionAsync(KiroQuotaProvider provider, long target, TimeSpan timeout)
+    {
         var started = TimeProvider.System.GetTimestamp();
-        while (field.GetValue(provider) is null && !publication.IsCompleted &&
-            TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(2))
+        while (ReadStateVersion(provider) < target &&
+            TimeProvider.System.GetElapsedTime(started) < timeout)
             await Task.Delay(1);
-        Assert.IsNotNull(field.GetValue(provider));
-        Assert.IsFalse(publication.IsCompleted);
+        Assert.IsTrue(ReadStateVersion(provider) >= target,
+            $"Expected provider state version to reach {target}, actual {ReadStateVersion(provider)}.");
     }
 
     private static async Task WaitForAcquisitionSuppressionAsync(KiroQuotaProvider provider, Task run)
@@ -877,41 +1223,127 @@ public sealed class KiroQuotaProviderTests
         Assert.IsFalse(run.IsCompleted);
     }
 
-    private sealed class MutableTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    private sealed class MutableTimeProvider(DateTimeOffset utcNow, bool manualTimers = false) : TimeProvider
     {
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
 
         public bool ThrowOnGetTimestamp { get; init; }
 
-        public override DateTimeOffset GetUtcNow() => _utcNow;
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_gate) return _utcNow;
+        }
 
-        public override long GetTimestamp() => ThrowOnGetTimestamp
-            ? throw new InvalidOperationException("Synthetic time source failure.")
-            : _timestamp;
+        public override long GetTimestamp()
+        {
+            if (ThrowOnGetTimestamp) throw new InvalidOperationException("Synthetic time source failure.");
+            lock (_gate) return _timestamp;
+        }
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
 
-        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
-            new Timer(callback, state, dueTime, period);
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (!manualTimers) return new Timer(callback, state, dueTime, period);
+            lock (_gate)
+            {
+                var timer = new ManualTimer(this, callback, state);
+                timer.ScheduleLocked(dueTime, period);
+                _timers.Add(timer);
+                return timer;
+            }
+        }
 
         public void Advance(TimeSpan elapsed)
         {
-            _utcNow += elapsed;
-            _timestamp += elapsed.Ticks;
+            List<(TimerCallback Callback, object? State)> callbacks = [];
+            lock (_gate)
+            {
+                _utcNow += elapsed;
+                _timestamp += elapsed.Ticks;
+                foreach (var timer in _timers)
+                {
+                    if (timer._disposed || timer._dueTimestamp > _timestamp) continue;
+                    callbacks.Add((timer.Callback, timer.State));
+                    timer._dueTimestamp = timer._periodTicks > 0
+                        ? AddSaturating(_timestamp, timer._periodTicks)
+                        : long.MaxValue;
+                }
+            }
+            foreach (var (callback, state) in callbacks) callback(state);
+        }
+
+        public async Task WaitForTimerDueWithinAsync(TimeSpan dueWithin, TimeSpan timeout)
+        {
+            var started = TimeProvider.System.GetTimestamp();
+            while (TimeProvider.System.GetElapsedTime(started) < timeout)
+            {
+                lock (_gate)
+                {
+                    var latestDue = AddSaturating(_timestamp, dueWithin.Ticks);
+                    if (_timers.Exists(timer => !timer._disposed && timer._dueTimestamp <= latestDue)) return;
+                }
+                await Task.Delay(1).ConfigureAwait(false);
+            }
+            throw new TimeoutException("The requested provider timer was not scheduled.");
+        }
+
+        private bool ChangeTimer(ManualTimer timer, TimeSpan dueTime, TimeSpan period)
+        {
+            lock (_gate)
+            {
+                if (timer._disposed) return false;
+                timer.ScheduleLocked(dueTime, period);
+                return true;
+            }
+        }
+
+        private void DisposeTimer(ManualTimer timer)
+        {
+            lock (_gate)
+            {
+                timer._disposed = true;
+                timer._dueTimestamp = long.MaxValue;
+            }
+        }
+
+        private static long AddSaturating(long left, long right) =>
+            right > long.MaxValue - left ? long.MaxValue : left + right;
+
+        private sealed class ManualTimer(MutableTimeProvider owner, TimerCallback callback, object? state) : ITimer
+        {
+            internal TimerCallback Callback { get; } = callback;
+            internal object? State { get; } = state;
+            internal long _dueTimestamp = long.MaxValue;
+            internal long _periodTicks;
+            internal bool _disposed;
+
+            public bool Change(TimeSpan dueTime, TimeSpan period) => owner.ChangeTimer(this, dueTime, period);
+
+            public void Dispose() => owner.DisposeTimer(this);
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+
+            internal void ScheduleLocked(TimeSpan dueTime, TimeSpan period)
+            {
+                var delayTicks = dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : Math.Max(0, dueTime.Ticks);
+                _dueTimestamp = delayTicks == long.MaxValue
+                    ? long.MaxValue
+                    : AddSaturating(owner._timestamp, delayTicks);
+                _periodTicks = period == Timeout.InfiniteTimeSpan || period <= TimeSpan.Zero ? 0 : period.Ticks;
+            }
         }
     }
 
     private sealed class SubscriptionBatch : IAsyncDisposable
     {
-        private static readonly string[] Ids =
-        [
-            "ai.kiro.credits.included.remaining",
-            "ai.kiro.credits.included.reset",
-            "ai.kiro.credits.addon.remaining",
-            "ai.kiro.credits.bonus.remaining"
-        ];
-
         private readonly IAsyncEnumerator<MetricSnapshot>[] _readers;
         private readonly CancellationTokenSource _stop = new();
         private Task<bool>[]? _pendingMoves;
@@ -919,7 +1351,7 @@ public sealed class KiroQuotaProviderTests
 
         public SubscriptionBatch(MetricBus bus)
         {
-            _readers = Ids.Select(id => bus.Subscribe(new MetricId(id), _stop.Token).GetAsyncEnumerator()).ToArray();
+            _readers = TestMetricIds.Select(id => bus.Subscribe(new MetricId(id), _stop.Token).GetAsyncEnumerator()).ToArray();
         }
 
         public void Start() => _pendingMoves ??= _readers.Select(static reader => reader.MoveNextAsync().AsTask()).ToArray();
@@ -955,7 +1387,9 @@ public sealed class KiroQuotaProviderTests
                 }
                 throw new AssertFailedException("Metric subscription ended before Stopped was published.");
             }).ToArray();
-            return await Task.WhenAll(tasks).ConfigureAwait(false);
+            var snapshots = await Task.WhenAll(tasks).ConfigureAwait(false);
+            _pendingMoves = null;
+            return snapshots;
         }
 
         public async ValueTask DisposeAsync()

@@ -146,7 +146,7 @@ internal static class KiroAcpUsageClient
 
             var payload = System.Text.Encoding.UTF8.GetBytes(usage.Result.Value.GetRawText());
             process.StandardInput.Close();
-            await StopChildAsync(process, timeProvider, requireGracefulExit: true).ConfigureAwait(false);
+            await StopChildAsync(process, requireGracefulExit: true).ConfigureAwait(false);
             return KiroAcquisition.Ready(payload);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -175,10 +175,7 @@ internal static class KiroAcpUsageClient
         }
         finally
         {
-            stderrStop.Cancel();
-            if (!process.HasExited) TryKill(process);
-            await StopChildAsync(process, timeProvider, requireGracefulExit: false).ConfigureAwait(false);
-            await ObserveAsync(stderrDrain).ConfigureAwait(false);
+            await CleanupChildAsync(process, stderrStop, stderrDrain).ConfigureAwait(false);
         }
     }
 
@@ -219,7 +216,7 @@ internal static class KiroAcpUsageClient
             process.StandardInput.Close();
             payload = await ReadBoundedOutputAsync(process.StandardOutput.BaseStream, linked.Token)
                 .ConfigureAwait(false);
-            await StopChildAsync(process, timeProvider, requireGracefulExit: true).ConfigureAwait(false);
+            await StopChildAsync(process, requireGracefulExit: true).ConfigureAwait(false);
             var observation = ParseIdentity(payload, identityKey);
             return process.ExitCode == 0 || observation.Status == KiroIdentityStatus.SignedOut
                 ? observation
@@ -248,10 +245,7 @@ internal static class KiroAcpUsageClient
         finally
         {
             if (payload is not null) CryptographicOperations.ZeroMemory(payload);
-            stderrStop.Cancel();
-            if (!process.HasExited) TryKill(process);
-            await StopChildAsync(process, timeProvider, requireGracefulExit: false).ConfigureAwait(false);
-            await ObserveAsync(stderrDrain).ConfigureAwait(false);
+            await CleanupChildAsync(process, stderrStop, stderrDrain).ConfigureAwait(false);
         }
     }
 
@@ -358,10 +352,10 @@ internal static class KiroAcpUsageClient
         }
     }
 
-    private static async Task StopChildAsync(Process process, TimeProvider timeProvider, bool requireGracefulExit)
+    private static async Task StopChildAsync(Process process, bool requireGracefulExit)
     {
         if (process.HasExited) return;
-        using var exitDeadline = new CancellationTokenSource(ExitTimeout, timeProvider);
+        using var exitDeadline = new CancellationTokenSource(ExitTimeout);
         try
         {
             await process.WaitForExitAsync(exitDeadline.Token).ConfigureAwait(false);
@@ -383,12 +377,53 @@ internal static class KiroAcpUsageClient
         catch (Win32Exception) { return; }
     }
 
-    private static async Task ObserveAsync(Task task)
+    private static async Task CleanupChildAsync(Process process, CancellationTokenSource stderrStop,
+        Task stderrDrain)
     {
-        try { await task.ConfigureAwait(false); }
-        catch (IOException) { return; }
-        catch (ObjectDisposedException) { return; }
-        catch (OperationCanceledException) { return; }
+        Exception? failure = null;
+        try { stderrStop.Cancel(); }
+        catch (Exception exception) { failure = exception; }
+        try
+        {
+            if (!process.HasExited) TryKill(process);
+        }
+        catch (Exception exception) { failure = CombineFailures(failure, exception); }
+        try { await StopChildAsync(process, requireGracefulExit: false).ConfigureAwait(false); }
+        catch (Exception exception) { failure = CombineFailures(failure, exception); }
+        failure = CombineFailures(failure, await ObserveAsync(stderrDrain, ExitTimeout).ConfigureAwait(false));
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    internal static async Task<Exception?> ObserveAsync(Task task, TimeSpan timeout)
+    {
+        try
+        {
+            await task.WaitAsync(timeout).ConfigureAwait(false);
+            return null;
+        }
+        catch (TimeoutException exception)
+        {
+            ObserveEventually(task);
+            return exception;
+        }
+        catch (IOException) { return null; }
+        catch (ObjectDisposedException) { return null; }
+        catch (OperationCanceledException) { return null; }
+        catch (Exception exception) { return exception; }
+    }
+
+    private static void ObserveEventually(Task task)
+    {
+        _ = task.ContinueWith(static completed => { _ = completed.Exception; }, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static Exception? CombineFailures(Exception? first, Exception? second)
+    {
+        if (first is null) return second;
+        if (second is null) return first;
+        return new AggregateException(first, second);
     }
 
     private static async Task<byte[]> ReadBoundedOutputAsync(Stream stream,
