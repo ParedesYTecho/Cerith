@@ -298,7 +298,7 @@ Buckets are selected by source type, unit, and documented number where the famil
 
 ## CER-M3-004 — GitHub Copilot quota
 
-The accepted provider reuses the official GitHub CLI owner for bounded read-only authentication-status, user-identity, and Copilot quota requests, and accepts the github.com account route only. It checks that the authenticated identity is unchanged around acquisition. A sanitized prior HTTP 200 preserved that identity; this does not establish credential lifetime or renewal. Renewal class remains UNKNOWN, and no current same-account quota comparison is claimed.
+The accepted provider reuses the official GitHub CLI owner for bounded read-only authentication-status, user-identity, and Copilot quota requests, and accepts the github.com account route only. It checks that the authenticated identity is unchanged around acquisition. A bounded live check used the built production provider constructor and `PollOnceAsync` with the existing official CLI credential owner, without synthetic transport/parser substitutions, and compared available remaining-percent fields against the same account's official included-usage UI; those percentages agreed. This is `LIVE_VERIFIED` for those comparable observations only. The live source omitted per-bucket reset instants, which remain valueless `Unavailable`; a general UI billing reset is not assigned to individual buckets. Credential class/lifetime and automatic renewal remain UNKNOWN, and this evidence does not validate every bucket, entitlement, billing mode, or plan.
 
 | MetricId | Kind / unit / semantic type | Source meaning |
 | --- | --- | --- |
