@@ -766,6 +766,74 @@ public sealed class CodexQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task HardwarePresentMonCodexAndAntigravityPublishTwiceWhileCursorRequestIsGated()
+    {
+        using var codexHarness = new Harness();
+        var registry = codexHarness.Registry;
+        var bus = codexHarness.Bus;
+        using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
+        using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
+        using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
+        await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
+        await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
+        await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
+        await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
+            .GetAsyncEnumerator();
+
+        codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
+        await codexHarness.Provider.PollOnceAsync();
+        await antigravityProvider.PollOnceAsync();
+
+        async Task PublishAndReadRoundAsync()
+        {
+            var cpuRead = cpuReader.MoveNextAsync().AsTask();
+            var memoryRead = memoryReader.MoveNextAsync().AsTask();
+            var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
+            var codexRead = codexReader.MoveNextAsync().AsTask();
+            var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
+
+            await hardwareProvider.PublishNextAsync();
+            await presentMonProvider.PublishNextAsync();
+            await codexHarness.Provider.PublishCurrentAsync();
+            await antigravityProvider.PublishCurrentAsync();
+
+            var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
+
+            var cpu = cpuReader.Current;
+            var cpuMeasured = cpu.State == MetricState.Fresh && cpu.Value.HasValue &&
+                cpu.Confidence == MetricConfidence.Measured;
+            var cpuUnavailable = cpu.State == MetricState.Unavailable && !cpu.Value.HasValue &&
+                cpu.Confidence == MetricConfidence.Unknown;
+            Assert.IsTrue(cpuMeasured || cpuUnavailable,
+                $"Real CPU telemetry must be measured or truthfully unavailable; received {cpu.State}/{cpu.Confidence}.");
+
+            var memory = memoryReader.Current;
+            Assert.AreEqual(MetricState.Fresh, memory.State);
+            Assert.AreEqual(MetricConfidence.Measured, memory.Confidence);
+            Assert.IsTrue(memory.Value.HasValue);
+            Assert.AreEqual("GlobalMemoryStatusEx", memory.Source);
+
+            Assert.AreEqual(MetricState.Fresh, presentMonReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, presentMonReader.Current.Confidence);
+            Assert.IsTrue(presentMonReader.Current.Value.HasValue);
+            Assert.AreEqual(MetricState.Fresh, codexReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
+            Assert.AreEqual(MetricState.Stale, antigravityReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, antigravityReader.Current.Confidence);
+
+        }
+
+        await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>
+        {
+            await PublishAndReadRoundAsync();
+            await PublishAndReadRoundAsync();
+        });
+    }
+
+    [TestMethod]
     public async Task OwnerChangeCancelsBlockedPublishButCannotRetractBufferedPreTransitionSnapshot()
     {
         using var harness = new Harness();

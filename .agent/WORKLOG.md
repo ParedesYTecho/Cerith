@@ -387,3 +387,15 @@ Event: decision
 Summary: The routing audit verified all six resumed implementation workers (integration plus five providers) were running GPT-6.1 Sol Medium. They were closed with all work preserved; six fresh GPT-6 Luna Max receipts were then verified.
 Files: `.agent/MODEL_ROUTING.md`, `.agent/WORKLOG.md`.
 Result: Existing provider work and lifecycle checkpoint `6e99d60` remain preserved; canonical `main` is untouched. MID/FINAL reviews remain external and read-only; no provider commits imported pending coordinator FINALPASS.
+
+## 2026-10-01 — Dewey One — CER-M3-004 bounded integration follow-up
+
+Event: applied Sol's bounded coexistence correction on top of preserved integration HEAD `ce99046`; no provider implementation was reopened.
+
+Summary: the shared-bus regression now signals entry into a gated Cursor quota request and keeps it pending while two rounds each of real Hardware, PresentMon through its existing synthetic capture seam, Codex and accepted Antigravity publish and are read from the same bus. It asserts real RAM Fresh/Measured and CPU Fresh/Measured or valueless Unavailable, then bounds service-runner completion and Cursor cancellation/drain to one second. The existing unexpected-provider-failure rows continue to exercise `KeepServiceAliveAfterProviderExitAsync`. Cursor's desktop token lifetime/renewal remains UNRESOLVED: official CLI/ACP docs do not define the exact `state.vscdb` credential lifecycle, the accepted reader performs no renewal, and synthetic manual token rewrites prove reread/recovery only. This remains separate from live Cursor UI/quota comparison, NOT RUN.
+
+Verification: Release solution build 0 warnings/errors; Core 39/39, Telemetry 129/129, Integration 10/10 (178/178); focused coexistence/failure cases 8/8; `git diff --check` PASS; configured sensitive-filename hygiene PASS (93 tracked paths, no matches); targeted added-diff scan for personal paths, email addresses, bearer strings and credential assignments PASS (zero matches; not a comprehensive secret scan); isolated Graphify refresh PASS (1,622 nodes / 4,185 edges). No live Cursor auth/status/UI/quota action or Antigravity RPC was run.
+
+Files: coexistence test seams/tests, Cursor silent-startup acceptance note, and current `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`.
+
+Status: ready for Sol read-only review of this follow-up. Cursor and Antigravity remain the only accepted imports; the full 16-provider mission stays active, M3 remains incomplete, and canonical `main` is untouched.

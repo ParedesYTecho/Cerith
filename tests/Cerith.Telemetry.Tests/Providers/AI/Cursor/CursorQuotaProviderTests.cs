@@ -798,6 +798,53 @@ public sealed class CursorQuotaProviderTests
         await harness.Provider.PublishCurrentAsync();
     }
 
+    internal static async Task RunWithPendingQuotaRequestAsync(MetricRegistry registry, MetricBus bus,
+        Func<Task> whilePending)
+    {
+        using var harness = new Harness(registry, bus, withAuth: true, requestTimeout: null);
+        using var serviceStop = new CancellationTokenSource();
+        var requestEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var requestCanceled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseRequest = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Handler.Responder = async (request, cancellationToken) =>
+        {
+            if (request.RequestUri == CursorQuotaProvider.UsageSummaryEndpoint)
+            {
+                requestEntered.TrySetResult();
+                try { await releaseRequest.Task.WaitAsync(cancellationToken); }
+                catch (OperationCanceledException)
+                {
+                    requestCanceled.TrySetResult();
+                    throw;
+                }
+                return JsonResponse(UsageSummary);
+            }
+
+            return request.RequestUri == CursorQuotaProvider.SandAccessEndpoint
+                ? ProtoResponse(MakeSandAccess(0))
+                : new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(serviceStop.Token), "cursor", serviceStop.Token);
+        try
+        {
+            await requestEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.IsFalse(requestCanceled.Task.IsCompleted, "The quota request must remain gated during coexistence.");
+            await whilePending();
+            Assert.IsFalse(runner.IsCompleted, "A pending provider request must not complete the service runner.");
+            Assert.IsFalse(requestCanceled.Task.IsCompleted, "The request is still pending before service shutdown.");
+        }
+        finally
+        {
+            serviceStop.Cancel();
+            releaseRequest.TrySetResult();
+            await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        }
+
+        await requestCanceled.Task.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "cerith-cursor-test-" + Guid.NewGuid().ToString("N"));

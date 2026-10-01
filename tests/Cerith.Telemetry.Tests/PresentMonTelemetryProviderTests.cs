@@ -484,9 +484,16 @@ public sealed class PresentMonTelemetryProviderTests
 
     internal static async Task PublishSyntheticReadingAsync(MetricRegistry registry, MetricBus bus)
     {
-        var capture = new FakeCapture(new PresentMonReading(MetricState.Fresh, 60, 16.6));
-        using var provider = new PresentMonTelemetryProvider(registry, bus, Environment.ProcessId,
-            _ => capture, static _ => "TelemetryTest");
+        using var provider = CreateSyntheticProvider(registry, bus);
         await provider.PublishNextAsync();
+    }
+
+    internal static PresentMonTelemetryProvider CreateSyntheticProvider(MetricRegistry registry, MetricBus bus)
+    {
+        var capture = new FakeCapture(
+            new PresentMonReading(MetricState.Fresh, 60, 16.6),
+            new PresentMonReading(MetricState.Fresh, 60, 16.6));
+        return new PresentMonTelemetryProvider(registry, bus, Environment.ProcessId,
+            _ => capture, static _ => "TelemetryTest");
     }
 }

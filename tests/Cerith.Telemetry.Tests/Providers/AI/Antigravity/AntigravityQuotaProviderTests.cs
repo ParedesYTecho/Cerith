@@ -463,6 +463,13 @@ public sealed class AntigravityQuotaProviderTests
 
     internal static async Task PublishSyntheticQuotaAsync(MetricRegistry registry, MetricBus bus)
     {
+        using var provider = CreateSyntheticProvider(registry, bus);
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+    }
+
+    internal static AntigravityQuotaProvider CreateSyntheticProvider(MetricRegistry registry, MetricBus bus)
+    {
         var observedAt = DateTimeOffset.UtcNow;
         var reset = observedAt.AddDays(1).ToString("O");
         var payload = JsonSerializer.Serialize(new
@@ -477,12 +484,10 @@ public sealed class AntigravityQuotaProviderTests
         });
         var acquisition = new AntigravityQuotaAcquisition(Owner(),
             AntigravityQuotaParser.Parse(Encoding.UTF8.GetBytes(payload), observedAt), MetricState.Error, null);
-        using var provider = new AntigravityQuotaProvider(registry, bus,
+        return new AntigravityQuotaProvider(registry, bus,
             _ => Task.FromResult(acquisition),
             static (owner, _) => Task.FromResult(new AntigravityOwnerVerification(
                 AntigravityOwnerVerificationState.Verified, owner)), TimeProvider.System);
-        await provider.PollOnceAsync();
-        await provider.PublishCurrentAsync();
     }
 
     private static async Task<MetricSnapshot> PublishOneAsync(AntigravityQuotaProvider provider, MetricBus bus,
