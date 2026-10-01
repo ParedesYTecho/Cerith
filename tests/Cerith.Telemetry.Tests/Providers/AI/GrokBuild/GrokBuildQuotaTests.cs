@@ -186,25 +186,77 @@ public sealed class GrokBuildQuotaTests
     }
 
     [TestMethod]
-    public async Task StaleSessionRejectsJwtShapedStaticKeyFallbackForAnotherOwner()
+    public async Task StaleSessionRejectsSameOwnerStaticKeyFallbackWithoutSessionProvenance()
     {
         using var harness = new Harness();
         var sessionIdentity = new GrokBuildAuthIdentity("oidc", "session-owner@example.invalid", "User",
             "session-user-001", null, null);
-        harness.Observation = new GrokBuildAuthObservation(sessionIdentity, CreateJwt("session-user-001"),
+        harness.Observation = GrokBuildAcpClient.RejectUnprovenBearer(sessionIdentity,
+            CreateJwt("session-user-001"), "1.0.34");
+        harness.Handler.OwnerJson = """
+            {"userId":"session-user-001","email":"session-owner@example.invalid","principalType":"User","principalId":"session-user-001"}
+            """;
+
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(0, harness.Handler.OwnerRequests.Length,
+            "A matching /user response cannot prove the ACP bearer was a renewed session token.");
+        Assert.AreEqual(0, harness.Handler.Requests.Length,
+            "An ambiguous static-key fallback must never reach billing.");
+        var snapshots = await ReadPublishedAsync(harness);
+        Assert.IsTrue(snapshots.All(item => item.State == MetricState.Error &&
+            item.ErrorCode == "auth_provenance_unavailable"));
+    }
+
+    [TestMethod]
+    public async Task SameEmailBearerCannotAddTeamScopeMissingFromSession()
+    {
+        using var harness = new Harness();
+        var sessionIdentity = new GrokBuildAuthIdentity("oidc", "shared@example.invalid", "User",
+            "user-17", null, null);
+        harness.Observation = new GrokBuildAuthObservation(sessionIdentity, CreateJwt("untrusted-subject"),
             "1.0.34", null);
         harness.Handler.OwnerJson = """
-            {"userId":"fallback-user-002","email":"fallback-owner@example.invalid","principalType":"User","principalId":"fallback-user-002"}
+            {"userId":"user-17","email":"shared@example.invalid","principalType":"User","principalId":"user-17","teamId":"new-team-9"}
             """;
 
         await harness.Provider.PollOnceAsync();
 
         Assert.AreEqual(1, harness.Handler.OwnerRequests.Length);
         Assert.AreEqual(0, harness.Handler.Requests.Length,
-            "The bearer owner must be verified before billing is queried.");
+            "An absent session team scope must not accept a bearer with a team scope.");
         var snapshots = await ReadPublishedAsync(harness);
         Assert.IsTrue(snapshots.All(item => item.State == MetricState.Error &&
             item.ErrorCode == "auth_owner_mismatch"));
+    }
+
+    [TestMethod]
+    public async Task ChangedVerifiedUserIdInvalidatesPreviousOwnerCache()
+    {
+        using var harness = new Harness();
+        var sessionIdentity = new GrokBuildAuthIdentity("oidc", "shared@example.invalid", "User",
+            null, null, null);
+        harness.Observation = new GrokBuildAuthObservation(sessionIdentity, CreateJwt("untrusted-subject"),
+            "1.0.34", null);
+        harness.Handler.OwnerJson = """
+            {"userId":"verified-user-a","email":"shared@example.invalid","principalType":"User"}
+            """;
+        harness.Handler.EnqueueJson(CreditsJson);
+
+        await harness.Provider.PollOnceAsync();
+
+        harness.Time.Advance(GrokBuildQuotaProvider.PollInterval);
+        harness.Handler.OwnerJson = """
+            {"userId":"verified-user-b","email":"shared@example.invalid","principalType":"User"}
+            """;
+
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(2, harness.Handler.OwnerRequests.Length);
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+        var snapshots = await ReadPublishedAsync(harness);
+        Assert.IsTrue(snapshots.All(item => item.State == MetricState.Unavailable && item.Value is null),
+            "A changed authoritative userId must clear the prior owner's cached quota before publication.");
     }
 
     [TestMethod]

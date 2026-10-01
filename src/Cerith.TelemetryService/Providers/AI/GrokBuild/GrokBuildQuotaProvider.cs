@@ -69,6 +69,8 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
     private readonly CachedPoint?[] _cache = new CachedPoint?[MetricCount];
     private readonly DateTimeOffset[] _pointObservedAt = new DateTimeOffset[MetricCount];
     private GrokBuildAuthIdentity? _activeIdentity;
+    private GrokBuildOwnerEvidence? _activeOwnerEvidence;
+    private string? _activeSessionIdentityKey;
     private string? _activeIdentityKey;
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublishStop;
@@ -280,6 +282,38 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
                     retryAfter = owner.RetryAfter;
                     if (failureCode is "http_failure" or "upstream_unavailable")
                         noCacheFailureState = MetricState.Unavailable;
+
+                    if (owner.Evidence is { } ownerEvidence)
+                    {
+                        await _stateAndPublish.WaitAsync(linked.Token).ConfigureAwait(false);
+                        try
+                        {
+                            var now = _timeProvider.GetUtcNow();
+                            var nowTimestamp = _timeProvider.GetTimestamp();
+                            ObserveClockLocked(now, nowTimestamp);
+                            if (requestStop.IsCancellationRequested || requestGeneration != _authGeneration)
+                            {
+                                ownerCancelled = true;
+                            }
+                            else if (failureCode is null)
+                            {
+                                requestGeneration = BindVerifiedOwnerLocked(auth.Identity!, ownerEvidence,
+                                    requestStop, now);
+                            }
+                            else
+                            {
+                                InvalidateChangedRejectedOwnerLocked(auth.Identity!, ownerEvidence,
+                                    requestStop, now);
+                            }
+                        }
+                        finally
+                        {
+                            _stateAndPublish.Release();
+                        }
+
+                        if (ownerCancelled)
+                            return;
+                    }
 
                     if (failureCode is null && owner.UserId is { } userId)
                     {
@@ -574,6 +608,8 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
                 _retryNotBeforeTimestamp = 0;
             }
             _activeIdentity = null;
+            _activeOwnerEvidence = null;
+            _activeSessionIdentityKey = null;
             _activeIdentityKey = null;
             _rejectedTokenFingerprint = null;
             var code = observation.ErrorCode ?? "auth_unavailable";
@@ -584,13 +620,14 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         }
 
         var identityKey = Fingerprint(_identityKey, IdentityBytes(observation.Identity));
-        var changedOwner = _activeIdentityKey is not null &&
-            !StringComparer.Ordinal.Equals(_activeIdentityKey, identityKey);
+        var changedOwner = _activeSessionIdentityKey is not null &&
+            !StringComparer.Ordinal.Equals(_activeSessionIdentityKey, identityKey);
         if (changedOwner)
         {
             InvalidateOwnerWorkLocked();
             ClearCacheLocked(observedAt);
             ClearToStateLocked(MetricState.Unavailable, null, observedAt);
+            _activeOwnerEvidence = null;
             _rejectedTokenFingerprint = null;
             _rateLimitFailures = 0;
             _requestFailures = 0;
@@ -603,14 +640,54 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
             _rejectedTokenFingerprint = null;
 
         _activeIdentity = observation.Identity;
-        _activeIdentityKey = identityKey;
+        _activeSessionIdentityKey = identityKey;
+        _activeIdentityKey = _activeOwnerEvidence is null
+            ? identityKey
+            : Fingerprint(_identityKey, OwnerIdentityBytes(observation.Identity, _activeOwnerEvidence));
     }
 
-    private void InvalidateOwnerWorkLocked()
+    private void InvalidateOwnerWorkLocked(CancellationTokenSource? exceptRequestStop = null)
     {
         _authGeneration++;
-        _activeRequestStop?.Cancel();
+        if (!ReferenceEquals(_activeRequestStop, exceptRequestStop))
+            _activeRequestStop?.Cancel();
         _activePublishStop?.Cancel();
+    }
+
+    private long BindVerifiedOwnerLocked(GrokBuildAuthIdentity identity, GrokBuildOwnerEvidence owner,
+        CancellationTokenSource requestStop, DateTimeOffset observedAt)
+    {
+        var ownerKey = Fingerprint(_identityKey, OwnerIdentityBytes(identity, owner));
+        if (_activeOwnerEvidence == owner && StringComparer.Ordinal.Equals(_activeIdentityKey, ownerKey))
+            return _authGeneration;
+
+        InvalidateOwnerWorkLocked(requestStop);
+        ClearCacheLocked(observedAt);
+        ClearToStateLocked(MetricState.Unavailable, null, observedAt);
+        _rateLimitFailures = 0;
+        _requestFailures = 0;
+        _retryNotBeforeTimestamp = 0;
+        _rejectedTokenFingerprint = null;
+        _activeOwnerEvidence = owner;
+        _activeIdentityKey = ownerKey;
+        return _authGeneration;
+    }
+
+    private void InvalidateChangedRejectedOwnerLocked(GrokBuildAuthIdentity identity,
+        GrokBuildOwnerEvidence owner, CancellationTokenSource requestStop, DateTimeOffset observedAt)
+    {
+        if (_activeOwnerEvidence is null || _activeOwnerEvidence == owner)
+            return;
+
+        InvalidateOwnerWorkLocked(requestStop);
+        ClearCacheLocked(observedAt);
+        ClearToStateLocked(MetricState.Unavailable, null, observedAt);
+        _rateLimitFailures = 0;
+        _requestFailures = 0;
+        _retryNotBeforeTimestamp = 0;
+        _rejectedTokenFingerprint = null;
+        _activeOwnerEvidence = null;
+        _activeIdentityKey = _activeSessionIdentityKey ?? Fingerprint(_identityKey, IdentityBytes(identity));
     }
 
     private void ReplaceFromReadingLocked(GrokBuildQuotaReading reading, DateTimeOffset observedAt, long timestamp)
@@ -827,7 +904,7 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         return TimeSpan.FromSeconds(seconds + jitter);
     }
 
-    private async Task<(string? UserId, string? ErrorCode, TimeSpan? RetryAfter)> VerifyBearerOwnerAsync(
+    private async Task<(string? UserId, GrokBuildOwnerEvidence? Evidence, string? ErrorCode, TimeSpan? RetryAfter)> VerifyBearerOwnerAsync(
         GrokBuildAuthObservation auth, CancellationToken cancellationToken)
     {
         using var request = CreateOwnerRequest(auth);
@@ -835,32 +912,32 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
             cancellationToken).ConfigureAwait(false);
         if (response.RequestMessage?.RequestUri != OwnerEndpoint ||
             (int)response.StatusCode is >= 300 and < 400)
-            return (null, "redirect_rejected", null);
+            return (null, null, "redirect_rejected", null);
         if (response.StatusCode == HttpStatusCode.Unauthorized)
-            return (null, "auth_required", null);
+            return (null, null, "auth_required", null);
         if (response.StatusCode == HttpStatusCode.Forbidden)
-            return (null, "auth_forbidden", null);
+            return (null, null, "auth_forbidden", null);
         if ((int)response.StatusCode == 429)
-            return (null, "rate_limited", ReadRetryAfter(response, _timeProvider.GetUtcNow()));
+            return (null, null, "rate_limited", ReadRetryAfter(response, _timeProvider.GetUtcNow()));
         if (!response.IsSuccessStatusCode)
-            return (null, (int)response.StatusCode >= 500 ? "upstream_unavailable" : "http_failure", null);
+            return (null, null, (int)response.StatusCode >= 500 ? "upstream_unavailable" : "http_failure", null);
 
         var result = await ReadResponseBodyAsync(response, cancellationToken).ConfigureAwait(false);
         if (result.TooLarge)
-            return (null, "response_too_large", null);
+            return (null, null, "response_too_large", null);
         if (result.Body is null)
-            return (null, "auth_owner_unverified", null);
+            return (null, null, "auth_owner_unverified", null);
 
         try
         {
             var owner = ParseOwnerEvidence(result.Body);
             return owner is not null && IsBoundToSession(auth.Identity!, owner)
-                ? (owner.UserId, null, null)
-                : (null, owner is null ? "auth_owner_unverified" : "auth_owner_mismatch", null);
+                ? (owner.UserId, owner, null, null)
+                : (null, owner, owner is null ? "auth_owner_unverified" : "auth_owner_mismatch", null);
         }
         catch (JsonException)
         {
-            return (null, "auth_owner_unverified", null);
+            return (null, null, "auth_owner_unverified", null);
         }
         finally
         {
@@ -892,26 +969,27 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
     {
         var sessionIsTeam = StringComparer.Ordinal.Equals(identity.PrincipalType, "Team");
         var bearerIsTeam = StringComparer.Ordinal.Equals(owner.PrincipalType, "Team");
+        if (!MatchesExpectedOwnerField(identity.PrincipalType, owner.PrincipalType) ||
+            !MatchesExpectedOwnerField(identity.PrincipalId, owner.PrincipalId) ||
+            !MatchesExpectedOwnerField(identity.TeamId, owner.TeamId) ||
+            !MatchesExpectedOwnerField(identity.OrganizationId, owner.OrganizationId))
+            return false;
+
         if (sessionIsTeam || bearerIsTeam)
         {
             return sessionIsTeam && bearerIsTeam &&
                 IsBoundedOwnerValue(identity.PrincipalId) &&
                 StringComparer.Ordinal.Equals(identity.PrincipalId, owner.PrincipalId) &&
                 StringComparer.Ordinal.Equals(identity.PrincipalId, owner.UserId) &&
-                MatchesExpectedOwnerField(identity.TeamId, owner.TeamId) &&
-                MatchesExpectedOwnerField(identity.OrganizationId, owner.OrganizationId);
+                MatchesExpectedOwnerField(identity.Email, owner.Email);
         }
 
         return IsBoundedOwnerValue(identity.Email) && IsBoundedOwnerValue(owner.Email) &&
-            StringComparer.OrdinalIgnoreCase.Equals(identity.Email, owner.Email) &&
-            MatchesExpectedOwnerField(identity.PrincipalType, owner.PrincipalType) &&
-            MatchesExpectedOwnerField(identity.PrincipalId, owner.PrincipalId) &&
-            MatchesExpectedOwnerField(identity.TeamId, owner.TeamId) &&
-            MatchesExpectedOwnerField(identity.OrganizationId, owner.OrganizationId);
+            StringComparer.OrdinalIgnoreCase.Equals(identity.Email, owner.Email);
     }
 
     private static bool MatchesExpectedOwnerField(string? expected, string? actual) =>
-        expected is null || StringComparer.Ordinal.Equals(expected, actual);
+        StringComparer.Ordinal.Equals(expected, actual);
 
     private static bool IsBoundedOwnerValue(string? value) =>
         !string.IsNullOrWhiteSpace(value) && value.Length <= 512;
@@ -1045,6 +1123,14 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
             identity.TeamId, identity.OrganizationId
         });
 
+    private static byte[] OwnerIdentityBytes(GrokBuildAuthIdentity identity, GrokBuildOwnerEvidence owner) =>
+        JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            identity.MethodId, identity.Email, identity.PrincipalType, identity.PrincipalId,
+            identity.TeamId, identity.OrganizationId, owner.UserId, owner.Email,
+            owner.PrincipalType, owner.PrincipalId, owner.TeamId, owner.OrganizationId
+        });
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposeStarted, 1) != 0)
@@ -1058,6 +1144,8 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         try
         {
             _activeIdentity = null;
+            _activeOwnerEvidence = null;
+            _activeSessionIdentityKey = null;
             _activeIdentityKey = null;
             _activeRequestStop = null;
             _activePublishStop = null;

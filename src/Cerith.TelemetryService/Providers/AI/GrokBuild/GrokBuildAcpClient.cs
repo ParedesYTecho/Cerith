@@ -78,12 +78,9 @@ internal sealed class GrokBuildAcpClient : IDisposable
                 if (!HasSessionOwnerEvidence(after))
                     return GrokBuildAuthObservation.Unavailable("auth_owner_unavailable");
 
-                return new GrokBuildAuthObservation(
-                    new GrokBuildAuthIdentity(after.MethodId!, after.Email, after.PrincipalType,
-                        after.PrincipalId, after.TeamId, after.OrganizationId),
-                    token,
-                    _clientVersion,
-                    null);
+                var identity = new GrokBuildAuthIdentity(after.MethodId!, after.Email, after.PrincipalType,
+                    after.PrincipalId, after.TeamId, after.OrganizationId);
+                return RejectUnprovenBearer(identity, token, _clientVersion);
             }
             finally
             {
@@ -289,6 +286,20 @@ internal sealed class GrokBuildAcpClient : IDisposable
             return IsBoundedOwnerValue(info.PrincipalId);
 
         return IsBoundedOwnerValue(info.Email);
+    }
+
+    internal static GrokBuildAuthObservation RejectUnprovenBearer(GrokBuildAuthIdentity identity,
+        string? bearer, string? clientVersion)
+    {
+        if (!IsSessionMethod(identity.MethodId))
+            return GrokBuildAuthObservation.Unavailable("auth_unsupported");
+        if (string.IsNullOrWhiteSpace(bearer) || bearer.Length > MaximumTokenCharacters ||
+            string.IsNullOrWhiteSpace(clientVersion))
+            return GrokBuildAuthObservation.Unavailable("auth_unavailable");
+
+        // ACP returns no provenance flag; a matching /user identity cannot distinguish a renewed
+        // session bearer from the static-key fallback returned after renewal failure.
+        return GrokBuildAuthObservation.Unavailable("auth_provenance_unavailable");
     }
 
     private static bool IsBoundedOwnerValue(string? value)
