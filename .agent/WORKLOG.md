@@ -464,6 +464,8 @@ Shared QA: recorded once in docs/TESTING_QA.md that worker-fault tests must let 
 
 Verification: serial Release solution build passed with 0 warnings/errors. Core 39/39, Telemetry 214/214, Integration 10/10; focused gated coexistence 1/1 and provider failure isolation 6/6. Configured obvious-private-artifact hygiene passed for 107 tracked files; targeted added-diff privacy patterns and git diff --check passed. These checks are scoped and are not a comprehensive secret scan. No Graphify refresh was needed because no product structure changed.
 
+GitHub Actions Build and Test run [36915798758](https://github.com/ParedesYTecho/Cerith/actions/runs/36915798758) and Repository Quality run [36915798869](https://github.com/ParedesYTecho/Cerith/actions/runs/36915798869) passed at code/test commit 283f182; CodeQL was skipped under workflow policy.
+
 Provider checkpoint: Command Code MID PASS at 939bd24; FINAL fixes are active Luna at 12bf7f0cf782c5724ba0be8b6f4a8172ae6a17e8. Kiro has an active bounded follow-up at 98a1a0d3fa5c50bc4a3ac6c8a3b82adca85159f2 for propagation of unexpected child/dependency cleanup faults. Devin is BLOCKED at MID tip 1a8e169e2bf73f7650ed22c630cb01a63739eafb for unresolved product/team scope/provenance. Qoder International is active at MID; Qoder CN and Ark Coding/Agent remain pending. Other accepted, deferred and blocked dispositions are unchanged; no new provider import is authorized without exact FINAL PASS.
 
 PR #47 remains draft. Local main remains 3f5ca74a26edf88a02e6bda05f759ee3c74032cd and origin/main remains 72b43b268b4992d0b0ea45b6e29067d10450274f. No canonical-main merge or M3/mission completion claim.
