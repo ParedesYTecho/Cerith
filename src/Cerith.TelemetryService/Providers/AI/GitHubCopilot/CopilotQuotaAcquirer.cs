@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -34,6 +35,19 @@ internal sealed class CopilotQuotaAcquirer
         "GITHUB_TOKEN",
         "GH_ENTERPRISE_TOKEN",
         "GITHUB_ENTERPRISE_TOKEN"
+    ];
+
+    private static readonly string[] UntrustedNetworkEnvironmentVariables =
+    [
+        "GH_DEBUG",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "no_proxy"
     ];
 
     private readonly Func<CopilotGhRequest, CancellationToken, Task<byte[]>> _request;
@@ -185,6 +199,12 @@ internal sealed class CopilotQuotaAcquirer
                 if (stderrTask.IsFaulted || stderrTask.IsCanceled)
                     await stderrTask.ConfigureAwait(false);
 
+                if (stdoutTask.IsCompleted && stderrTask.IsCompleted)
+                {
+                    await exitTask.ConfigureAwait(false);
+                    break;
+                }
+
                 Task completed = stdoutTask.IsCompleted
                     ? await Task.WhenAny(stderrTask, exitTask).ConfigureAwait(false)
                     : stderrTask.IsCompleted
@@ -225,6 +245,34 @@ internal sealed class CopilotQuotaAcquirer
     private static async Task<byte[]> RequestThroughGitHubCliAsync(CopilotGhRequest request,
         CancellationToken cancellationToken)
     {
+        var startInfo = CreateStartInfo(request);
+
+        var maximumOutput = request switch
+        {
+            CopilotGhRequest.AuthStatus => MaxAuthStatusBytes,
+            CopilotGhRequest.AuthenticatedUser => MaxIdentityResponseBytes,
+            _ => MaxQuotaProcessOutputBytes
+        };
+        try
+        {
+            return await RunProcessAsync(startInfo, maximumOutput, ProcessTimeout, cancellationToken,
+                acceptNonZeroExitCode: request == CopilotGhRequest.Quota).ConfigureAwait(false);
+        }
+        catch (CopilotQuotaAcquisitionException exception) when
+            (exception.ErrorCode == "request_failed" && request == CopilotGhRequest.AuthStatus)
+        {
+            throw new CopilotQuotaAcquisitionException("auth_unavailable");
+        }
+        catch (CopilotQuotaAcquisitionException exception) when
+            (exception.ErrorCode == "request_failed" && request == CopilotGhRequest.AuthenticatedUser)
+        {
+            throw new CopilotQuotaAcquisitionException("identity_unavailable");
+        }
+    }
+
+    internal static ProcessStartInfo CreateStartInfo(CopilotGhRequest request,
+        IReadOnlyDictionary<string, string?>? syntheticEnvironment = null)
+    {
         var startInfo = new ProcessStartInfo
         {
             FileName = "gh",
@@ -235,7 +283,13 @@ internal sealed class CopilotQuotaAcquirer
             RedirectStandardError = true
         };
 
+        if (syntheticEnvironment is not null)
+            foreach (var pair in syntheticEnvironment)
+                startInfo.Environment[pair.Key] = pair.Value;
+
         foreach (var variable in CredentialEnvironmentVariables)
+            startInfo.Environment.Remove(variable);
+        foreach (var variable in UntrustedNetworkEnvironmentVariables)
             startInfo.Environment.Remove(variable);
         startInfo.Environment["GH_HOST"] = "github.com";
         startInfo.Environment["GH_PROMPT"] = "disabled";
@@ -264,27 +318,7 @@ internal sealed class CopilotQuotaAcquirer
                 throw new ArgumentOutOfRangeException(nameof(request));
         }
 
-        var maximumOutput = request switch
-        {
-            CopilotGhRequest.AuthStatus => MaxAuthStatusBytes,
-            CopilotGhRequest.AuthenticatedUser => MaxIdentityResponseBytes,
-            _ => MaxQuotaProcessOutputBytes
-        };
-        try
-        {
-            return await RunProcessAsync(startInfo, maximumOutput, ProcessTimeout, cancellationToken,
-                acceptNonZeroExitCode: request == CopilotGhRequest.Quota).ConfigureAwait(false);
-        }
-        catch (CopilotQuotaAcquisitionException exception) when
-            (exception.ErrorCode == "request_failed" && request == CopilotGhRequest.AuthStatus)
-        {
-            throw new CopilotQuotaAcquisitionException("auth_unavailable");
-        }
-        catch (CopilotQuotaAcquisitionException exception) when
-            (exception.ErrorCode == "request_failed" && request == CopilotGhRequest.AuthenticatedUser)
-        {
-            throw new CopilotQuotaAcquisitionException("identity_unavailable");
-        }
+        return startInfo;
     }
 
     private static void AddApiArguments(ProcessStartInfo startInfo, string endpoint)

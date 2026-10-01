@@ -18,6 +18,7 @@ internal sealed class CopilotQuotaProvider : IDisposable
     internal static readonly TimeSpan RetryMaximumDelay = TimeSpan.FromMinutes(15);
     internal static readonly TimeSpan StopPublishTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan MaximumSleepChunk = TimeSpan.FromDays(1);
+    private static readonly TimeSpan LifecycleObservationInterval = TimeSpan.FromSeconds(1);
 
     private const string Source = "GitHubCopilot.GhCli.ReadOnly.v1";
 
@@ -80,22 +81,39 @@ internal sealed class CopilotQuotaProvider : IDisposable
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
         try
         {
-            while (true)
-            {
-                await PollOnceAsync(stop.Token).ConfigureAwait(false);
-                var delay = GetNextWakeDelay();
-                if (delay > MaximumSleepChunk) delay = MaximumSleepChunk;
-                await Task.Delay(delay, _timeProvider, stop.Token).ConfigureAwait(false);
-            }
+            var polling = RunPollingLoopAsync(stop.Token);
+            var observing = RunLifecycleObservationLoopAsync(stop.Token);
+            _ = await Task.WhenAny(polling, observing).ConfigureAwait(false);
+            if (!stop.IsCancellationRequested) stop.Cancel();
+            await Task.WhenAll(polling, observing).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
+            return;
         }
         finally
         {
             InvalidateForStop();
             _ = await PublishStoppedAsync().ConfigureAwait(false);
         }
+    }
+
+    private async Task RunPollingLoopAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            await PollOnceAsync(cancellationToken).ConfigureAwait(false);
+            var delay = GetNextWakeDelay();
+            if (delay > MaximumSleepChunk) delay = MaximumSleepChunk;
+            await Task.Delay(delay, _timeProvider, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RunLifecycleObservationLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(LifecycleObservationInterval, _timeProvider);
+        while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            await PollOnceAsync(cancellationToken).ConfigureAwait(false);
     }
 
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)

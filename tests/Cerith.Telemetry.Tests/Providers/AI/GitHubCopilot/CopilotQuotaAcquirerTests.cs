@@ -148,6 +148,32 @@ public sealed class CopilotQuotaAcquirerTests
     }
 
     [TestMethod]
+    public void ConstructedGitHubCliRequestDropsDebugCredentialAndAmbientProxyOverrides()
+    {
+        var syntheticEnvironment = new Dictionary<string, string?>
+        {
+            ["GH_DEBUG"] = "api",
+            ["GH_TOKEN"] = "synthetic-token",
+            ["HTTP_PROXY"] = "http://proxy.invalid",
+            ["HTTPS_PROXY"] = "http://proxy.invalid",
+            ["ALL_PROXY"] = "http://proxy.invalid",
+            ["NO_PROXY"] = "github.com",
+            ["http_proxy"] = "http://proxy.invalid",
+            ["https_proxy"] = "http://proxy.invalid",
+            ["all_proxy"] = "http://proxy.invalid",
+            ["no_proxy"] = "github.com"
+        };
+
+        var startInfo = CopilotQuotaAcquirer.CreateStartInfo(CopilotGhRequest.Quota, syntheticEnvironment);
+
+        foreach (var variable in syntheticEnvironment.Keys)
+            Assert.IsFalse(startInfo.Environment.ContainsKey(variable), variable);
+        Assert.AreEqual("github.com", startInfo.Environment["GH_HOST"]);
+        Assert.AreEqual("disabled", startInfo.Environment["GH_PROMPT"]);
+        Assert.AreEqual("0", startInfo.Environment["GIT_TERMINAL_PROMPT"]);
+    }
+
+    [TestMethod]
     public async Task ProcessOutputLimitTerminatesOversizedChildOutput()
     {
         var startInfo = CreatePowerShellStartInfo("[Console]::Out.Write('x' * 65536)");
@@ -184,6 +210,26 @@ public sealed class CopilotQuotaAcquirerTests
         Assert.AreEqual("request_timeout", exception.ErrorCode);
         Assert.IsFalse(exception.Message.Contains("Start-Sleep", StringComparison.Ordinal));
         Assert.IsTrue(DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(4));
+    }
+
+    [TestMethod]
+    public async Task ProcessWaitsForChildAfterBothOutputStreamsCloseWithoutSpinning()
+    {
+        var startInfo = CreatePowerShellStartInfo(
+            "[Console]::Out.Close(); [Console]::Error.Close(); Start-Sleep -Seconds 30");
+        using var currentProcess = Process.GetCurrentProcess();
+        var cpuBefore = currentProcess.TotalProcessorTime;
+        var started = Stopwatch.StartNew();
+
+        var exception = await Assert.ThrowsAsync<CopilotQuotaAcquisitionException>(async () =>
+            await CopilotQuotaAcquirer.RunProcessAsync(startInfo, 1024,
+                TimeSpan.FromMilliseconds(1000), CancellationToken.None));
+
+        var cpuUsed = currentProcess.TotalProcessorTime - cpuBefore;
+        Assert.AreEqual("request_timeout", exception.ErrorCode);
+        Assert.IsTrue(started.Elapsed >= TimeSpan.FromMilliseconds(700));
+        Assert.IsTrue(cpuUsed < TimeSpan.FromMilliseconds(800),
+            "Waiting for a child with closed output streams should not consume a CPU core.");
     }
 
     [TestMethod]

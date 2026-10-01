@@ -363,6 +363,103 @@ public sealed class CopilotQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task RunObservesResetAndCancelsObsoletePublicationUnderBackpressure()
+    {
+        using var context = new RegistryAndBus(subscriberCapacity: 1);
+        var time = new TestTimeProvider(InitialUtc);
+        var resetAt = InitialUtc.AddSeconds(150);
+        var script = new Queue<ScriptedResponse>();
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, resetAt, 80));
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, resetAt, 70));
+        EnqueueRateLimitedRound(script, 24680, 600);
+        var requests = new List<CopilotGhRequest>();
+        var roundSignals = new[] { NewSignal(), NewSignal(), NewSignal() };
+        var requestCount = 0;
+        var acquirer = CreateScriptedAcquirer(script, requests, () =>
+        {
+            var count = Interlocked.Increment(ref requestCount);
+            if (count % 4 == 0) roundSignals[(count / 4) - 1].TrySetResult();
+        });
+        using var provider = new CopilotQuotaProvider(context.Registry, context.Bus, acquirer, time);
+        using var cancellation = new CancellationTokenSource();
+        await using var reader = context.Bus.Subscribe(new MetricId(ChatPercentId)).GetAsyncEnumerator();
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        var run = provider.RunAsync(cancellation.Token);
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
+
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[2].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        time.Advance(TimeSpan.FromSeconds(30));
+        await Task.Delay(100);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(70d, reader.Current.Value!.Value.AsDouble());
+        Assert.AreEqual(InitialUtc.AddSeconds(60), reader.Current.ObservedAt);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+
+        cancellation.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [TestMethod]
+    public async Task RunOwnerTransitionCancelsPendingClearWhenSubscriberIsBackpressured()
+    {
+        using var context = new RegistryAndBus(subscriberCapacity: 1);
+        var time = new TestTimeProvider(InitialUtc);
+        var script = new Queue<ScriptedResponse>();
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 80));
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 70));
+        EnqueueSuccessfulRound(script, 13579, QuotaPayload(13579, percentRemaining: 50));
+        EnqueueSuccessfulRound(script, 13579, QuotaPayload(13579, percentRemaining: 40));
+        var requests = new List<CopilotGhRequest>();
+        var roundSignals = Enumerable.Range(0, 4).Select(_ => NewSignal()).ToArray();
+        var requestCount = 0;
+        var acquirer = CreateScriptedAcquirer(script, requests, () =>
+        {
+            var count = Interlocked.Increment(ref requestCount);
+            if (count % 4 == 0) roundSignals[(count / 4) - 1].TrySetResult();
+        });
+        using var provider = new CopilotQuotaProvider(context.Registry, context.Bus, acquirer, time);
+        using var cancellation = new CancellationTokenSource();
+        await using var reader = context.Bus.Subscribe(new MetricId(ChatPercentId)).GetAsyncEnumerator();
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        var run = provider.RunAsync(cancellation.Token);
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
+
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[2].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[3].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await Task.Delay(50);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(70d, reader.Current.Value!.Value.AsDouble());
+        Assert.AreEqual(InitialUtc.AddSeconds(60), reader.Current.ObservedAt);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(40d, reader.Current.Value!.Value.AsDouble());
+        Assert.AreEqual(InitialUtc.AddSeconds(180), reader.Current.ObservedAt);
+
+        cancellation.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [TestMethod]
     public async Task RunCancelsAndDrainsAnInFlightAcquisitionBeforeStoppedPublication()
     {
         using var context = new RegistryAndBus();
@@ -445,6 +542,9 @@ public sealed class CopilotQuotaProviderTests
             return Task.FromResult(Encoding.UTF8.GetBytes(responses.Dequeue()));
         });
 
+    private static TaskCompletionSource NewSignal() =>
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     private static CopilotQuotaAcquirer CreateScriptedAcquirer(Queue<ScriptedResponse> responses,
         List<CopilotGhRequest> requests, Action? requestObserved = null) =>
         new((request, cancellationToken) =>
@@ -525,17 +625,103 @@ public sealed class CopilotQuotaProviderTests
 
     private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
-        public override DateTimeOffset GetUtcNow() => _utcNow;
-        public override long GetTimestamp() => _timestamp;
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_gate) return _utcNow;
+        }
+
+        public override long GetTimestamp()
+        {
+            lock (_gate) return _timestamp;
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state,
+            TimeSpan dueTime, TimeSpan period)
+        {
+            lock (_gate)
+            {
+                var timer = new ManualTimer(this, callback, state, dueTime, period, _timestamp);
+                _timers.Add(timer);
+                return timer;
+            }
+        }
 
         public void Advance(TimeSpan elapsed)
         {
-            _utcNow += elapsed;
-            _timestamp += elapsed.Ticks;
+            List<ManualTimer> due;
+            lock (_gate)
+            {
+                _utcNow += elapsed;
+                _timestamp += elapsed.Ticks;
+                due = _timers.Where(timer => timer.PrepareFire(_timestamp)).ToList();
+                _timers.RemoveAll(timer => timer.IsDisposed);
+            }
+
+            foreach (var timer in due) timer.Invoke();
+        }
+
+        private bool ChangeTimer(ManualTimer timer, TimeSpan dueTime, TimeSpan period)
+        {
+            lock (_gate) return timer.Change(_timestamp, dueTime, period);
+        }
+
+        private void RemoveTimer(ManualTimer timer)
+        {
+            lock (_gate)
+            {
+                timer.MarkDisposed();
+                _timers.Remove(timer);
+            }
+        }
+
+        private sealed class ManualTimer(TestTimeProvider owner, TimerCallback callback,
+            object? state, TimeSpan dueTime, TimeSpan period, long timestamp) : ITimer
+        {
+            private long _dueTimestamp = DueTimestamp(timestamp, dueTime);
+            private long _periodTicks = PeriodTicks(period);
+
+            internal bool IsDisposed { get; private set; }
+
+            internal bool PrepareFire(long timestamp)
+            {
+                if (IsDisposed || timestamp < _dueTimestamp) return false;
+                _dueTimestamp = _periodTicks > 0 ? timestamp + _periodTicks : long.MaxValue;
+                return true;
+            }
+
+            internal void Invoke() => callback(state);
+
+            internal bool Change(long timestamp, TimeSpan dueTime, TimeSpan period)
+            {
+                if (IsDisposed) return false;
+                _dueTimestamp = DueTimestamp(timestamp, dueTime);
+                _periodTicks = PeriodTicks(period);
+                return true;
+            }
+
+            internal void MarkDisposed() => IsDisposed = true;
+
+            public bool Change(TimeSpan dueTime, TimeSpan period) => owner.ChangeTimer(this, dueTime, period);
+
+            public void Dispose() => owner.RemoveTimer(this);
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+
+            private static long DueTimestamp(long timestamp, TimeSpan dueTime) =>
+                dueTime == Timeout.InfiniteTimeSpan ? long.MaxValue : timestamp + Math.Max(0, dueTime.Ticks);
+
+            private static long PeriodTicks(TimeSpan period) =>
+                period == Timeout.InfiniteTimeSpan || period <= TimeSpan.Zero ? 0 : period.Ticks;
         }
     }
 }
