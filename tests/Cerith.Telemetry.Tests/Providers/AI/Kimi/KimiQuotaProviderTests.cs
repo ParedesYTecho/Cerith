@@ -407,7 +407,7 @@ public sealed class KimiQuotaProviderTests
     {
         using var harness = new Harness();
         harness.WriteCredentials("synthetic-subscription-token");
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time,
+        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.Time,
             name => name == variable ? value : null);
         var read = reader.Read();
         Assert.AreEqual(defaultSubscription ? KimiAuthStatus.Ready : KimiAuthStatus.Error, read.Status);
@@ -440,7 +440,7 @@ public sealed class KimiQuotaProviderTests
         harness.WriteCredentials("synthetic-token");
         File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), DefaultOAuthConfig.Replace(
             expected, replacement, StringComparison.Ordinal));
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time, _ => null);
+        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.Time, _ => null);
         var read = reader.Read();
         Assert.AreEqual(KimiAuthStatus.Error, read.Status);
         Assert.AreEqual("auth_selection_conflict", read.ErrorCode);
@@ -452,7 +452,7 @@ public sealed class KimiQuotaProviderTests
         using var harness = new Harness();
         harness.WriteCredentials("synthetic-token");
         File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), "theme = \"dark\"\n");
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time, _ => null);
+        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.Time, _ => null);
         var read = reader.Read();
         Assert.AreEqual(KimiAuthStatus.Error, read.Status);
         Assert.AreEqual("auth_selection_unverified", read.ErrorCode);
@@ -468,7 +468,7 @@ public sealed class KimiQuotaProviderTests
             "[providers.\"managed:kimi-code\".env]\nKIMI_API_KEY = \"synthetic-api-key\"\n\n" +
             "[providers.\"managed:kimi-code\".oauth]", StringComparison.Ordinal);
         File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), config);
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time, _ => null);
+        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.Time, _ => null);
         Assert.AreEqual("auth_selection_conflict", reader.Read().ErrorCode);
     }
 
@@ -528,7 +528,7 @@ public sealed class KimiQuotaProviderTests
         var jsonValue = stringValue ? $"\"{expiry}\"" : expiry;
         File.WriteAllText(harness.CredentialPath,
             $"{{\"access_token\":\"synthetic-token\",\"expires_at\":{jsonValue}}}");
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time, _ => null);
+        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.Time, _ => null);
         Assert.AreEqual(KimiAuthStatus.Ready, reader.Read().Status);
         harness.Time.Advance(TimeSpan.FromMilliseconds(250));
         Assert.AreEqual(KimiAuthStatus.Ready, reader.Read().Status);
@@ -540,21 +540,68 @@ public sealed class KimiQuotaProviderTests
     }
 
     [TestMethod]
-    public void AuthReaderUsesOfficialCredentialLocationsAndRejectsExpiredOrMalformedCurrentFile()
+    public async Task MissingConfigAndLegacyHomeCannotProveOfficialSelection()
     {
-        using var harness = new Harness(createDefaultConfig: false);
-        harness.WriteDefaultOAuthConfiguration(harness.LegacyHome);
-        harness.WriteCredentials("legacy-token", legacy: true);
-        var reader = new KimiQuotaAuthReader(harness.CodeHome, harness.LegacyHome, harness.Time, _ => null);
-        Assert.AreEqual("legacy-token", reader.Read().Identity?.AccessToken);
+        await using var missingConfig = new Harness(createDefaultConfig: false);
+        missingConfig.WriteCredentials("synthetic-token");
+        var snapshots = await missingConfig.PollAndReadAsync();
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "auth_selection_unverified"));
+        Assert.AreEqual(0, missingConfig.Requests.Count);
 
-        harness.WriteCredentials("ignored-fallback", legacy: false, expiresAt: InitialUtc.AddSeconds(-1));
-        var expired = reader.Read();
-        Assert.AreEqual(KimiAuthStatus.RefreshPending, expired.Status);
-        Assert.AreEqual("auth_refresh_pending", expired.ErrorCode);
+        await using var legacy = new Harness(createDefaultConfig: false);
+        var legacyCredential = Path.Combine(legacy.LegacyHome, "credentials", "kimi-code.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyCredential)!);
+        File.WriteAllText(legacyCredential, "{\"access_token\":\"legacy-token\"}");
+        var reader = new KimiQuotaAuthReader(legacy.CodeHome, legacy.Time,
+            name => name == "KIMI_HOME" ? legacy.LegacyHome : null);
+        Assert.AreEqual(KimiAuthStatus.Unavailable, reader.Read().Status);
+        Assert.IsNull(reader.Read().Identity);
+    }
 
-        File.WriteAllText(harness.CredentialPath, "{not-json");
-        Assert.AreEqual("auth_file_invalid", reader.Read().ErrorCode);
+    [TestMethod]
+    [DataRow("\"\"\"")]
+    [DataRow("'''")]
+    public async Task MultilineConfigStringCannotSupplyFakeManagedOAuthHeaders(string delimiter)
+    {
+        await using var harness = new Harness();
+        harness.WriteCredentials("synthetic-token");
+        var config = string.Join(Environment.NewLine,
+            "default_model = \"kimi-code/k3\"",
+            "[models.\"kimi-code/k3\"]",
+            "model = " + delimiter,
+            "provider = \"managed:kimi-code\"",
+            "[providers.\"managed:kimi-code\"]",
+            "type = \"kimi\"",
+            "base_url = \"https://api.kimi.com/coding/v1\"",
+            "api_key = \"\"",
+            "[providers.\"managed:kimi-code\".oauth]",
+            "storage = \"file\"",
+            "key = \"oauth/kimi-code\"",
+            delimiter);
+        File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), config);
+
+        var snapshots = await harness.PollAndReadAsync();
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "auth_selection_unverified"));
+        Assert.AreEqual(0, harness.Requests.Count);
+    }
+
+    [TestMethod]
+    [DataRow("protocol = \"openai\"")]
+    [DataRow("base_url = \"https://api.example.invalid/v1\"")]
+    [DataRow("protocol = \"openai\"\nbase_url = \"https://api.example.invalid/v1\"")]
+    public async Task SelectedModelRouteOverrideCannotReachUsageEndpoint(string routeOverride)
+    {
+        await using var harness = new Harness();
+        harness.WriteCredentials("synthetic-token");
+        var config = DefaultOAuthConfig.Replace(
+            "provider = \"managed:kimi-code\"",
+            "provider = \"managed:kimi-code\"\n" + routeOverride,
+            StringComparison.Ordinal);
+        File.WriteAllText(Path.Combine(harness.CodeHome, "config.toml"), config);
+
+        var snapshots = await harness.PollAndReadAsync();
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "auth_selection_conflict"));
+        Assert.AreEqual(0, harness.Requests.Count);
     }
 
     private const string DefaultOAuthConfig = """
@@ -615,7 +662,7 @@ public sealed class KimiQuotaProviderTests
             });
             _client = new HttpClient(_handler) { Timeout = Timeout.InfiniteTimeSpan };
             Provider = new KimiQuotaProvider(Registry, Bus,
-                new KimiQuotaAuthReader(CodeHome, LegacyHome, Time, _ => null), _client, Time, requestTimeout);
+                new KimiQuotaAuthReader(CodeHome, Time, _ => null), _client, Time, requestTimeout);
             _readers = subscribeAll
                 ? Ids.Select(id => Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray()
                 : Array.Empty<IAsyncEnumerator<MetricSnapshot>>();
@@ -627,11 +674,10 @@ public sealed class KimiQuotaProviderTests
             File.WriteAllText(Path.Combine(home, "config.toml"), DefaultOAuthConfig);
         }
 
-        public void WriteCredentials(string token, bool legacy = false, DateTimeOffset? expiresAt = null,
+        public void WriteCredentials(string token, DateTimeOffset? expiresAt = null,
             bool includeRefreshToken = true)
         {
-            var home = legacy ? LegacyHome : CodeHome;
-            var path = Path.Combine(home, "credentials", "kimi-code.json");
+            var path = CredentialPath;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var expiry = expiresAt is DateTimeOffset value ? $",\"expires_at\":{value.ToUnixTimeSeconds()}" : string.Empty;
             var refreshToken = includeRefreshToken ? ",\"refresh_token\":\"synthetic-refresh-token\"" : string.Empty;

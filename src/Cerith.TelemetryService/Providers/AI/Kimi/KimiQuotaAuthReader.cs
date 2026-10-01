@@ -22,15 +22,13 @@ internal sealed class KimiQuotaAuthReader
     private const string ManagedProvider = "managed:kimi-code";
     private const string ExpectedOAuthKey = "oauth/kimi-code";
     private readonly string? _codeHome;
-    private readonly string? _legacyHome;
     private readonly TimeProvider _timeProvider;
     private readonly Func<string, string?> _readEnvironment;
 
-    public KimiQuotaAuthReader(string? codeHome = null, string? legacyHome = null,
-        TimeProvider? timeProvider = null, Func<string, string?>? readEnvironment = null)
+    public KimiQuotaAuthReader(string? codeHome = null, TimeProvider? timeProvider = null,
+        Func<string, string?>? readEnvironment = null)
     {
         _codeHome = codeHome;
-        _legacyHome = legacyHome;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _readEnvironment = readEnvironment ?? Environment.GetEnvironmentVariable;
     }
@@ -46,14 +44,11 @@ internal sealed class KimiQuotaAuthReader
             var configError = VerifyConfiguration(codeHome, out var hasConfig);
             if (configError is not null) return new(KimiAuthStatus.Error, null, configError);
             var codePath = CredentialPath(codeHome);
-            if (File.Exists(codePath)) return ReadFile(codePath);
-            if (hasConfig) return new(KimiAuthStatus.Unavailable, null, null);
-
-            var legacyHome = ResolveHome(_legacyHome, "KIMI_HOME", ".kimi");
-            configError = VerifyConfiguration(legacyHome, out _);
-            if (configError is not null) return new(KimiAuthStatus.Error, null, configError);
-            var legacyPath = CredentialPath(legacyHome);
-            return File.Exists(legacyPath) ? ReadFile(legacyPath) : new(KimiAuthStatus.Unavailable, null, null);
+            if (!hasConfig)
+                return File.Exists(codePath)
+                    ? new(KimiAuthStatus.Error, null, "auth_selection_unverified")
+                    : new(KimiAuthStatus.Unavailable, null, null);
+            return File.Exists(codePath) ? ReadFile(codePath) : new(KimiAuthStatus.Unavailable, null, null);
         }
         catch (FileNotFoundException) { return new(KimiAuthStatus.Unavailable, null, null); }
         catch (DirectoryNotFoundException) { return new(KimiAuthStatus.Unavailable, null, null); }
@@ -152,13 +147,15 @@ internal sealed class KimiQuotaAuthReader
                 FileShare.ReadWrite | FileShare.Delete);
             if (stream.Length > MaxFileBytes) return "auth_selection_unverified";
             using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
-            return VerifyConfigurationText(reader);
+            return VerifyConfigurationText(reader.ReadToEnd());
         }
         catch (Exception) { return "auth_selection_unverified"; }
     }
 
-    private static string? VerifyConfigurationText(TextReader reader)
+    private static string? VerifyConfigurationText(string text)
     {
+        if (HasUnsupportedStringSyntax(text)) return "auth_selection_unverified";
+        using var reader = new StringReader(text);
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var assigned = new HashSet<string>(StringComparer.Ordinal);
         var tables = new HashSet<string>(StringComparer.Ordinal);
@@ -184,7 +181,8 @@ internal sealed class KimiQuotaAuthReader
             var rawValue = content[(separator + 1)..].Trim();
             string? target = null;
             if (section == "root" && key == "default_model") target = "default_model";
-            else if (section == "model" && key == "provider") target = "model_provider:" + modelAlias;
+            else if (section == "model" && key is "provider" or "base_url" or "protocol")
+                target = "model:" + modelAlias + ":" + key;
             else if (section == "provider" && key is "type" or "base_url" or "api_key" or "api_key_env")
                 target = "provider:" + key;
             else if (section == "oauth" && key is "storage" or "key") target = "oauth:" + key;
@@ -197,9 +195,12 @@ internal sealed class KimiQuotaAuthReader
         }
 
         if (!values.TryGetValue("default_model", out var model) ||
-            !values.TryGetValue("model_provider:" + model, out var selectedProvider))
+            !values.TryGetValue("model:" + model + ":provider", out var selectedProvider))
             return "auth_selection_unverified";
         if (selectedProvider != ManagedProvider) return "auth_selection_conflict";
+        if (values.ContainsKey("model:" + model + ":protocol") ||
+            values.ContainsKey("model:" + model + ":base_url"))
+            return "auth_selection_conflict";
         if (!values.TryGetValue("provider:type", out var type)) return "auth_selection_unverified";
         if (type != "kimi") return "auth_selection_conflict";
         if (values.TryGetValue("provider:base_url", out var baseUrl) &&
@@ -216,6 +217,42 @@ internal sealed class KimiQuotaAuthReader
         if (!values.TryGetValue("oauth:storage", out var storage) ||
             !values.TryGetValue("oauth:key", out var oauthKey)) return "auth_selection_unverified";
         return storage == "file" && oauthKey == ExpectedOAuthKey ? null : "auth_selection_conflict";
+    }
+
+    private static bool HasUnsupportedStringSyntax(string text)
+    {
+        char quote = '\0';
+        var escaped = false;
+        var comment = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var character = text[i];
+            if (comment)
+            {
+                if (character is '\r' or '\n') comment = false;
+                continue;
+            }
+            if (quote != '\0')
+            {
+                if (escaped)
+                {
+                    if (character is '\r' or '\n') return true;
+                    escaped = false;
+                }
+                else if (quote == '"' && character == '\\') escaped = true;
+                else if (character == quote) quote = '\0';
+                else if (character is '\r' or '\n') return true;
+                continue;
+            }
+            if (character == '#') comment = true;
+            else if (character is '"' or '\'')
+            {
+                if (i + 2 < text.Length && text[i + 1] == character && text[i + 2] == character)
+                    return true;
+                quote = character;
+            }
+        }
+        return quote != '\0' || escaped;
     }
 
     private static string ReadSection(string header, out string modelAlias)
