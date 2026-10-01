@@ -21,7 +21,7 @@ internal static class CopilotQuotaParser
         "premium_interactions"
     };
 
-    internal static CopilotQuotaReading Parse(ReadOnlyMemory<byte> payload)
+    internal static CopilotQuotaReading Parse(ReadOnlyMemory<byte> payload, long? expectedAccountId = null)
     {
         if (payload.Length > MaxResponseBytes)
             throw new CopilotQuotaParseException("response_too_large");
@@ -35,6 +35,9 @@ internal static class CopilotQuotaParser
             EnsureUniqueProperties(root);
 
             var accountId = ReadPositiveAccountId(root);
+            if (expectedAccountId.HasValue && accountId != expectedAccountId.Value)
+                throw new CopilotQuotaParseException("identity_mismatch");
+
             var tokenBasedBilling = ReadRequiredBoolean(root, "token_based_billing");
             var accountKey = HashAccountId(accountId);
             var buckets = new Dictionary<string, CopilotQuotaBucket>(StringComparer.Ordinal);
@@ -73,6 +76,30 @@ internal static class CopilotQuotaParser
         catch (OverflowException)
         {
             throw InvalidResponse();
+        }
+    }
+
+    internal static long ReadAuthenticatedAccountId(ReadOnlyMemory<byte> payload)
+    {
+        if (payload.Length > 64 * 1024)
+            throw new CopilotQuotaParseException("response_too_large");
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload, new JsonDocumentOptions { MaxDepth = 16 });
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                throw new CopilotQuotaParseException("identity_unavailable");
+            EnsureUniqueProperties(root);
+            return ReadPositiveAccountId(root);
+        }
+        catch (CopilotQuotaParseException)
+        {
+            throw;
+        }
+        catch (JsonException)
+        {
+            throw new CopilotQuotaParseException("identity_unavailable");
         }
     }
 
@@ -179,6 +206,7 @@ internal static class CopilotQuotaParser
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out var seconds) ||
             !double.IsFinite(seconds) || seconds < 0 || seconds > DateTimeOffset.MaxValue.ToUnixTimeMilliseconds() / 1000d)
             throw InvalidResponse();
+        if (seconds == 0) return null;
 
         return DateTimeOffset.FromUnixTimeMilliseconds(checked((long)Math.Round(seconds * 1000d)));
     }

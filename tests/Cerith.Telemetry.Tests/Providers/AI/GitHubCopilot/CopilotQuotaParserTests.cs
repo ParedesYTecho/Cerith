@@ -93,11 +93,12 @@ public sealed class CopilotQuotaParserTests
         Assert.IsNull(chat.HasQuota);
 
         var explicitZero = Parse("""
-            {"id":8642,"token_based_billing":true,"quota_snapshots":{"chat":{"entitlement":0,"credits_used":0,"quota_remaining":0,"percent_remaining":0,"unlimited":false}}}
+            {"id":8642,"token_based_billing":true,"quota_snapshots":{"chat":{"entitlement":0,"credits_used":0,"quota_remaining":0,"percent_remaining":0,"quota_reset_at":0,"unlimited":false}}}
             """);
         Assert.AreEqual(0d, explicitZero.Buckets["chat"].Entitlement);
         Assert.AreEqual(0d, explicitZero.Buckets["chat"].CreditsUsed);
         Assert.AreEqual(0d, explicitZero.Buckets["chat"].QuotaRemaining);
+        Assert.IsNull(explicitZero.Buckets["chat"].ResetAt);
     }
 
     [TestMethod]
