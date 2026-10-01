@@ -82,6 +82,44 @@ public sealed class KiroQuotaProviderTests
     }
 
     [TestMethod]
+    public void ParserRejectsOverLimitIncludedCreditsWithoutClamping()
+    {
+        var json = CompleteUsage("synthetic-user-a", "synthetic-account-a")
+            .Replace("\"currentUsageWithPrecision\":\"12.75\"",
+                "\"currentUsageWithPrecision\":\"100.01\"");
+
+        var parsed = Parse(json);
+
+        Assert.IsNotNull(parsed.Reading);
+        AssertValuelessError(parsed.Reading.IncludedRemaining, "invalid_quota");
+    }
+
+    [TestMethod]
+    public void ParserRejectsOverLimitAddOnCreditsWithoutClamping()
+    {
+        var json = CompleteUsage("synthetic-user-a", "synthetic-account-a")
+            .Replace("\"addOnTotalUsage\":\"10.25\"", "\"addOnTotalUsage\":\"40.01\"");
+
+        var parsed = Parse(json);
+
+        Assert.IsNotNull(parsed.Reading);
+        AssertValuelessError(parsed.Reading.AddOnRemaining, "invalid_addon");
+    }
+
+    [TestMethod]
+    public void ParserRejectsOverLimitBonusCreditsWithoutClamping()
+    {
+        var json = CompleteUsage("synthetic-user-a", "synthetic-account-a")
+            .Replace("\"currentUsage\":\"1.25\"", "\"currentUsage\":\"10.01\"");
+
+        var parsed = Parse(json);
+
+        Assert.IsNotNull(parsed.Reading);
+        AssertValuelessError(parsed.Reading.BonusRemaining, "invalid_bonus");
+        Assert.IsNull(parsed.Reading.BonusAllocations);
+    }
+
+    [TestMethod]
     public void AcpUsageDispatchRequiresAdvertisedTypedExtension()
     {
         using var supported = JsonDocument.Parse("""
@@ -222,6 +260,13 @@ public sealed class KiroQuotaProviderTests
     {
         Assert.IsTrue(snapshot.Value.HasValue);
         return snapshot.Value!.Value.AsDecimal();
+    }
+
+    private static void AssertValuelessError(KiroMetricPoint point, string errorCode)
+    {
+        Assert.AreEqual(MetricState.Error, point.State);
+        Assert.IsNull(point.Value);
+        Assert.AreEqual(errorCode, point.ErrorCode);
     }
 
     private sealed class SubscriptionBatch : IAsyncDisposable

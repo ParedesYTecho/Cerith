@@ -190,10 +190,11 @@ internal static class KiroQuotaParser
                 ? KiroMetricPoint.Error("invalid_quota")
                 : KiroMetricPoint.Unavailable();
         if (used < 0 || limit < 0) return KiroMetricPoint.Error("invalid_quota");
+        if (used > limit) return KiroMetricPoint.Error("invalid_quota");
         if (reset.State == MetricState.Unavailable && reset.ErrorCode == "reset_elapsed")
             return KiroMetricPoint.Unavailable("reset_elapsed");
 
-        var remaining = Math.Max(0m, limit - used);
+        var remaining = limit - used;
         return KiroMetricPoint.Fresh(MetricValue.From(remaining));
     }
 
@@ -212,7 +213,8 @@ internal static class KiroQuotaParser
                 ? KiroMetricPoint.Error("invalid_addon")
                 : KiroMetricPoint.Unavailable();
         if (limit < 0 || used < 0) return KiroMetricPoint.Error("invalid_addon");
-        return KiroMetricPoint.Fresh(MetricValue.From(Math.Max(0m, limit - used)));
+        if (used > limit) return KiroMetricPoint.Error("invalid_addon");
+        return KiroMetricPoint.Fresh(MetricValue.From(limit - used));
     }
 
     private static KiroMetricPoint ReadBonusCredits(JsonElement root, DateTimeOffset observedAt,
@@ -246,6 +248,7 @@ internal static class KiroQuotaParser
                     ? KiroMetricPoint.Error("invalid_bonus")
                     : KiroMetricPoint.Error("schema_invalid");
             if (used < 0 || limit < 0) return KiroMetricPoint.Error("invalid_bonus");
+            if (used > limit) return KiroMetricPoint.Error("invalid_bonus");
 
             DateTimeOffset? expiresAt = null;
             if (TryGetAlias(bonus, "expiresAt", "expires_at", out var expiry, out duplicate))
@@ -255,7 +258,7 @@ internal static class KiroQuotaParser
                 expiresAt = parsedExpiry.ToUniversalTime();
             }
 
-            var remaining = Math.Max(0m, limit - used);
+            var remaining = limit - used;
             parsed[index++] = new KiroBonusAllocation(remaining, expiresAt);
             if (expiresAt is null || expiresAt > observedAt)
             {
