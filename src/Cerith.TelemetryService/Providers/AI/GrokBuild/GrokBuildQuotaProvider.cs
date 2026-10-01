@@ -20,12 +20,14 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
 {
     internal static readonly Uri BillingEndpoint =
         new("https://cli-chat-proxy.grok.com/v1/billing?format=credits");
+    internal static readonly Uri OwnerEndpoint =
+        new("https://cli-chat-proxy.grok.com/v1/user");
     internal static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
     internal static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(120);
     internal static readonly TimeSpan MaximumCacheAge = TimeSpan.FromMinutes(15);
     internal const int MaxResponseBytes = 1024 * 1024;
-    internal const int MetricCount = 11;
+    internal const int MetricCount = 10;
 
     private static readonly string[] MetricIds =
     [
@@ -38,8 +40,7 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         "ai.grok_build.balance.on_demand.used",
         "ai.grok_build.balance.on_demand.cap",
         "ai.grok_build.balance.prepaid",
-        "ai.grok_build.quota.included.unified_billing",
-        "ai.grok_build.usage.product.grok_build.used_percent"
+        "ai.grok_build.quota.included.unified_billing"
     ];
 
     private static readonly MetricValueKind[] ValueKinds =
@@ -47,7 +48,7 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         MetricValueKind.Double, MetricValueKind.Double, MetricValueKind.String,
         MetricValueKind.DateTimeOffset, MetricValueKind.DateTimeOffset, MetricValueKind.TimeSpan,
         MetricValueKind.Int64, MetricValueKind.Int64, MetricValueKind.Int64,
-        MetricValueKind.Boolean, MetricValueKind.Double
+        MetricValueKind.Boolean
     ];
 
     private readonly MetricBus _bus;
@@ -134,16 +135,16 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         {
             "Included Usage", "Included Remaining", "Included Period Type", "Included Period Start",
             "Included Period Reset", "Included Period Duration", "On-Demand Used", "On-Demand Cap",
-            "Prepaid Balance", "Unified Included Billing", "Product Grok Build Usage"
+            "Prepaid Balance", "Unified Included Billing"
         };
         var semanticTypes = new[]
         {
             "quota_usage", "quota_remaining", "billing_period", "timestamp", "timestamp", "duration",
-            "balance", "balance_limit", "balance", "billing_mode", "product_usage"
+            "balance", "balance_limit", "balance", "billing_mode"
         };
         var units = new string?[]
         {
-            "%", "%", null, null, null, null, "USD cents", "USD cents", "USD cents", null, "%"
+            "%", "%", null, null, null, null, "USD cents", "USD cents", "USD cents", null
         };
         _descriptors = new MetricDescriptor[MetricCount];
         for (var i = 0; i < _descriptors.Length; i++)
@@ -274,41 +275,52 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
             {
                 try
                 {
-                    using var request = CreateRequest(auth);
-                    response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
-                        linked.Token).ConfigureAwait(false);
-                    if (response.RequestMessage?.RequestUri != BillingEndpoint)
-                        failureCode = "redirect_rejected";
-                    else if (response.StatusCode == HttpStatusCode.Unauthorized)
-                        failureCode = "auth_required";
-                    else if (response.StatusCode == HttpStatusCode.Forbidden)
-                        failureCode = "auth_forbidden";
-                    else if ((int)response.StatusCode == 429)
-                    {
-                        failureCode = "rate_limited";
-                        retryAfter = ReadRetryAfter(response, _timeProvider.GetUtcNow());
-                    }
-                    else if ((int)response.StatusCode is >= 300 and < 400)
-                        failureCode = "redirect_rejected";
-                    else if (!response.IsSuccessStatusCode)
-                    {
-                        failureCode = (int)response.StatusCode >= 500 ? "upstream_unavailable" : "http_failure";
+                    var owner = await VerifyBearerOwnerAsync(auth, linked.Token).ConfigureAwait(false);
+                    failureCode = owner.ErrorCode;
+                    retryAfter = owner.RetryAfter;
+                    if (failureCode is "http_failure" or "upstream_unavailable")
                         noCacheFailureState = MetricState.Unavailable;
-                    }
-                    else
+
+                    if (failureCode is null && owner.UserId is { } userId)
                     {
-                        var result = await ReadResponseBodyAsync(response, linked.Token).ConfigureAwait(false);
-                        body = result.Body;
-                        if (result.TooLarge)
-                            failureCode = "response_too_large";
-                        else if (body is null)
-                            failureCode = "response_empty";
+                        using var request = CreateRequest(auth, userId);
+                        response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+                            linked.Token).ConfigureAwait(false);
+                        if (response.RequestMessage?.RequestUri != BillingEndpoint)
+                            failureCode = "redirect_rejected";
+                        else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                            failureCode = "auth_required";
+                        else if (response.StatusCode == HttpStatusCode.Forbidden)
+                            failureCode = "auth_forbidden";
+                        else if ((int)response.StatusCode == 429)
+                        {
+                            failureCode = "rate_limited";
+                            retryAfter = ReadRetryAfter(response, _timeProvider.GetUtcNow());
+                        }
+                        else if ((int)response.StatusCode is >= 300 and < 400)
+                            failureCode = "redirect_rejected";
+                        else if (!response.IsSuccessStatusCode)
+                        {
+                            failureCode = (int)response.StatusCode >= 500 ? "upstream_unavailable" : "http_failure";
+                            noCacheFailureState = MetricState.Unavailable;
+                        }
                         else
                         {
-                            observedAt = _timeProvider.GetUtcNow();
-                            reading = GrokBuildQuotaParser.Parse(body, observedAt);
+                            var result = await ReadResponseBodyAsync(response, linked.Token).ConfigureAwait(false);
+                            body = result.Body;
+                            if (result.TooLarge)
+                                failureCode = "response_too_large";
+                            else if (body is null)
+                                failureCode = "response_empty";
+                            else
+                            {
+                                observedAt = _timeProvider.GetUtcNow();
+                                reading = GrokBuildQuotaParser.Parse(body, observedAt);
+                            }
                         }
                     }
+                    else if (failureCode is null)
+                        failureCode = "auth_owner_unverified";
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested ||
                     _shutdown.IsCancellationRequested)
@@ -740,18 +752,7 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
             }
         }
 
-        for (var i = GrokBuildQuotaParser.OnDemandUsed; i <= GrokBuildQuotaParser.PrepaidBalance; i++)
-        {
-            if (_cache[i] is not CachedPoint cached ||
-                _timeProvider.GetElapsedTime(cached.Timestamp, timestamp) < MaximumCacheAge)
-                continue;
-            _activePublishStop?.Cancel();
-            _cache[i] = null;
-            _points[i] = GrokBuildQuotaPoint.Unavailable("cache_expired");
-            _pointObservedAt[i] = utcNow;
-        }
-
-        for (var i = GrokBuildQuotaParser.UnifiedBilling; i <= GrokBuildQuotaParser.ProductUsagePercent; i++)
+        for (var i = GrokBuildQuotaParser.OnDemandUsed; i <= GrokBuildQuotaParser.UnifiedBilling; i++)
         {
             if (_cache[i] is not CachedPoint cached ||
                 _timeProvider.GetElapsedTime(cached.Timestamp, timestamp) < MaximumCacheAge)
@@ -826,15 +827,129 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         return TimeSpan.FromSeconds(seconds + jitter);
     }
 
-    private static HttpRequestMessage CreateRequest(GrokBuildAuthObservation auth)
+    private async Task<(string? UserId, string? ErrorCode, TimeSpan? RetryAfter)> VerifyBearerOwnerAsync(
+        GrokBuildAuthObservation auth, CancellationToken cancellationToken)
+    {
+        using var request = CreateOwnerRequest(auth);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
+        if (response.RequestMessage?.RequestUri != OwnerEndpoint ||
+            (int)response.StatusCode is >= 300 and < 400)
+            return (null, "redirect_rejected", null);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            return (null, "auth_required", null);
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            return (null, "auth_forbidden", null);
+        if ((int)response.StatusCode == 429)
+            return (null, "rate_limited", ReadRetryAfter(response, _timeProvider.GetUtcNow()));
+        if (!response.IsSuccessStatusCode)
+            return (null, (int)response.StatusCode >= 500 ? "upstream_unavailable" : "http_failure", null);
+
+        var result = await ReadResponseBodyAsync(response, cancellationToken).ConfigureAwait(false);
+        if (result.TooLarge)
+            return (null, "response_too_large", null);
+        if (result.Body is null)
+            return (null, "auth_owner_unverified", null);
+
+        try
+        {
+            var owner = ParseOwnerEvidence(result.Body);
+            return owner is not null && IsBoundToSession(auth.Identity!, owner)
+                ? (owner.UserId, null, null)
+                : (null, owner is null ? "auth_owner_unverified" : "auth_owner_mismatch", null);
+        }
+        catch (JsonException)
+        {
+            return (null, "auth_owner_unverified", null);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(result.Body);
+        }
+    }
+
+    private static GrokBuildOwnerEvidence? ParseOwnerEvidence(byte[] payload)
+    {
+        using var document = JsonDocument.Parse(payload, new JsonDocumentOptions { MaxDepth = 16 });
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("userId", out var userIdElement) ||
+            userIdElement.ValueKind != JsonValueKind.String ||
+            !IsSafeHeaderValue(userIdElement.GetString()))
+            return null;
+
+        return new GrokBuildOwnerEvidence(userIdElement.GetString()!, ReadOwnerField(root, "email"),
+            ReadOwnerField(root, "principalType"), ReadOwnerField(root, "principalId"),
+            ReadOwnerField(root, "teamId"), ReadOwnerField(root, "organizationId"));
+    }
+
+    private static string? ReadOwnerField(JsonElement owner, string name) =>
+        owner.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    private static bool IsBoundToSession(GrokBuildAuthIdentity identity, GrokBuildOwnerEvidence owner)
+    {
+        var sessionIsTeam = StringComparer.Ordinal.Equals(identity.PrincipalType, "Team");
+        var bearerIsTeam = StringComparer.Ordinal.Equals(owner.PrincipalType, "Team");
+        if (sessionIsTeam || bearerIsTeam)
+        {
+            return sessionIsTeam && bearerIsTeam &&
+                IsBoundedOwnerValue(identity.PrincipalId) &&
+                StringComparer.Ordinal.Equals(identity.PrincipalId, owner.PrincipalId) &&
+                StringComparer.Ordinal.Equals(identity.PrincipalId, owner.UserId) &&
+                MatchesExpectedOwnerField(identity.TeamId, owner.TeamId) &&
+                MatchesExpectedOwnerField(identity.OrganizationId, owner.OrganizationId);
+        }
+
+        return IsBoundedOwnerValue(identity.Email) && IsBoundedOwnerValue(owner.Email) &&
+            StringComparer.OrdinalIgnoreCase.Equals(identity.Email, owner.Email) &&
+            MatchesExpectedOwnerField(identity.PrincipalType, owner.PrincipalType) &&
+            MatchesExpectedOwnerField(identity.PrincipalId, owner.PrincipalId) &&
+            MatchesExpectedOwnerField(identity.TeamId, owner.TeamId) &&
+            MatchesExpectedOwnerField(identity.OrganizationId, owner.OrganizationId);
+    }
+
+    private static bool MatchesExpectedOwnerField(string? expected, string? actual) =>
+        expected is null || StringComparer.Ordinal.Equals(expected, actual);
+
+    private static bool IsBoundedOwnerValue(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length <= 512;
+
+    private static bool IsSafeHeaderValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 512)
+            return false;
+        foreach (var character in value)
+            if (!char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_' and not '.' and not ':')
+                return false;
+        return true;
+    }
+
+    private static HttpRequestMessage CreateOwnerRequest(GrokBuildAuthObservation auth)
     {
         if (auth.Identity is null || auth.AccessToken is null || auth.ClientVersion is null)
+            throw new InvalidOperationException("Grok Build session is unavailable.");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, OwnerEndpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+        request.Headers.Add("X-XAI-Token-Auth", "xai-grok-cli");
+        request.Headers.Add("x-grok-client-version", auth.ClientVersion);
+        request.Headers.Add("x-grok-client-mode", "headless");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return request;
+    }
+
+    private static HttpRequestMessage CreateRequest(GrokBuildAuthObservation auth, string userId)
+    {
+        if (auth.Identity is null || auth.AccessToken is null || auth.ClientVersion is null ||
+            !IsSafeHeaderValue(userId))
             throw new InvalidOperationException("Grok Build session is unavailable.");
 
         var request = new HttpRequestMessage(HttpMethod.Get, BillingEndpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
         request.Headers.Add("X-XAI-Token-Auth", "xai-grok-cli");
-        request.Headers.Add("x-userid", auth.Identity.UserId);
+        request.Headers.Add("x-userid", userId);
         request.Headers.Add("x-grok-client-version", auth.ClientVersion);
         request.Headers.Add("x-grok-client-mode", "headless");
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -926,7 +1041,7 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
     private static byte[] IdentityBytes(GrokBuildAuthIdentity identity) =>
         JsonSerializer.SerializeToUtf8Bytes(new[]
         {
-            identity.MethodId, identity.UserId, identity.PrincipalType, identity.PrincipalId,
+            identity.MethodId, identity.Email, identity.PrincipalType, identity.PrincipalId,
             identity.TeamId, identity.OrganizationId
         });
 
@@ -976,4 +1091,12 @@ internal sealed class GrokBuildQuotaProvider : IDisposable
         DateTimeOffset ObservedAt,
         long Timestamp,
         bool ForceStale = false);
+
+    private sealed record GrokBuildOwnerEvidence(
+        string UserId,
+        string? Email,
+        string? PrincipalType,
+        string? PrincipalId,
+        string? TeamId,
+        string? OrganizationId);
 }

@@ -13,20 +13,11 @@ namespace Cerith.TelemetryService.Providers.AI.GrokBuild;
 
 internal sealed record GrokBuildAuthIdentity(
     string MethodId,
-    string UserId,
+    string? Email,
     string? PrincipalType,
     string? PrincipalId,
     string? TeamId,
-    string? OrganizationId)
-{
-    public bool SameOwner(GrokBuildAuthIdentity other) =>
-        StringComparer.Ordinal.Equals(MethodId, other.MethodId) &&
-        StringComparer.Ordinal.Equals(UserId, other.UserId) &&
-        StringComparer.Ordinal.Equals(PrincipalType, other.PrincipalType) &&
-        StringComparer.Ordinal.Equals(PrincipalId, other.PrincipalId) &&
-        StringComparer.Ordinal.Equals(TeamId, other.TeamId) &&
-        StringComparer.Ordinal.Equals(OrganizationId, other.OrganizationId);
-}
+    string? OrganizationId);
 
 internal sealed record GrokBuildAuthObservation(
     GrokBuildAuthIdentity? Identity,
@@ -84,13 +75,12 @@ internal sealed class GrokBuildAcpClient : IDisposable
                 if (after is null || !before.SameMethodAndPrincipal(after))
                     return GrokBuildAuthObservation.Unavailable("auth_changed");
 
-                var userId = ResolveBillingUserId(after, token);
-                if (userId is null)
-                    return GrokBuildAuthObservation.Unavailable("auth_identity_unavailable");
+                if (!HasSessionOwnerEvidence(after))
+                    return GrokBuildAuthObservation.Unavailable("auth_owner_unavailable");
 
                 return new GrokBuildAuthObservation(
-                    new GrokBuildAuthIdentity(after.MethodId!, userId, after.PrincipalType, after.PrincipalId,
-                        after.TeamId, after.OrganizationId),
+                    new GrokBuildAuthIdentity(after.MethodId!, after.Email, after.PrincipalType,
+                        after.PrincipalId, after.TeamId, after.OrganizationId),
                     token,
                     _clientVersion,
                     null);
@@ -234,15 +224,9 @@ internal sealed class GrokBuildAcpClient : IDisposable
         if (result.ValueKind != JsonValueKind.Object)
             return null;
 
-        var methodId = ReadString(result, "methodId");
-        if (!IsSessionMethod(methodId))
-            return new GrokBuildAuthInfo(methodId, ReadString(result, "principalType"),
-                ReadString(result, "principalId"), ReadString(result, "teamId"),
-                ReadString(result, "organizationId"));
-
-        return new GrokBuildAuthInfo(methodId, ReadString(result, "principalType"),
-            ReadString(result, "principalId"), ReadString(result, "teamId"),
-            ReadString(result, "organizationId"));
+        return new GrokBuildAuthInfo(ReadString(result, "methodId"), ReadString(result, "email"),
+            ReadString(result, "principalType"), ReadString(result, "principalId"),
+            ReadString(result, "teamId"), ReadString(result, "organizationId"));
     }
 
     private async Task<JsonElement> SendRequestAsync(string method, object parameters,
@@ -299,65 +283,20 @@ internal sealed class GrokBuildAcpClient : IDisposable
     private static bool IsSessionMethod(string? methodId) =>
         methodId is "cached_token" or "grok.com" or "oidc";
 
-    private static string? ResolveBillingUserId(GrokBuildAuthInfo info, string accessToken)
+    private static bool HasSessionOwnerEvidence(GrokBuildAuthInfo info)
     {
         if (StringComparer.Ordinal.Equals(info.PrincipalType, "Team"))
-            return IsSafeHeaderValue(info.PrincipalId) ? info.PrincipalId : null;
+            return IsBoundedOwnerValue(info.PrincipalId);
 
-        var subject = ReadJwtSubject(accessToken);
-        return IsSafeHeaderValue(subject) ? subject : null;
+        return IsBoundedOwnerValue(info.Email);
     }
 
-    private static string? ReadJwtSubject(string token)
-    {
-        var parts = token.Split('.');
-        if (parts.Length != 3 || parts[1].Length is 0 or > MaximumTokenCharacters)
-            return null;
-
-        var payload = parts[1].Replace('-', '+').Replace('_', '/');
-        payload += (payload.Length % 4) switch
-        {
-            0 => string.Empty,
-            2 => "==",
-            3 => "=",
-            _ => "!"
-        };
-        if (payload.EndsWith('!'))
-            return null;
-
-        byte[]? bytes = null;
-        try
-        {
-            bytes = Convert.FromBase64String(payload);
-            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
-            return document.RootElement.ValueKind == JsonValueKind.Object &&
-                document.RootElement.TryGetProperty("sub", out var subject) &&
-                subject.ValueKind == JsonValueKind.String &&
-                subject.GetString() is { Length: > 0 and <= 512 } value
-                ? value
-                : null;
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-        finally
-        {
-            if (bytes is not null)
-                System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes);
-        }
-    }
-
-    private static bool IsSafeHeaderValue(string? value)
+    private static bool IsBoundedOwnerValue(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 512)
             return false;
         foreach (var character in value)
-            if (!char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_' and not '.' and not ':')
+            if (char.IsControl(character))
                 return false;
         return true;
     }
@@ -412,6 +351,7 @@ internal sealed class GrokBuildAcpClient : IDisposable
 
     private sealed record GrokBuildAuthInfo(
         string? MethodId,
+        string? Email,
         string? PrincipalType,
         string? PrincipalId,
         string? TeamId,
@@ -419,6 +359,7 @@ internal sealed class GrokBuildAcpClient : IDisposable
     {
         public bool SameMethodAndPrincipal(GrokBuildAuthInfo other) =>
             StringComparer.Ordinal.Equals(MethodId, other.MethodId) &&
+            StringComparer.Ordinal.Equals(Email, other.Email) &&
             StringComparer.Ordinal.Equals(PrincipalType, other.PrincipalType) &&
             StringComparer.Ordinal.Equals(PrincipalId, other.PrincipalId) &&
             StringComparer.Ordinal.Equals(TeamId, other.TeamId) &&

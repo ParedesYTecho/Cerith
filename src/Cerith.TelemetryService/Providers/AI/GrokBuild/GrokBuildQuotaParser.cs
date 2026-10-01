@@ -39,7 +39,6 @@ internal static class GrokBuildQuotaParser
     internal const int OnDemandCap = 7;
     internal const int PrepaidBalance = 8;
     internal const int UnifiedBilling = 9;
-    internal const int ProductUsagePercent = 10;
 
     public static GrokBuildQuotaReading Parse(ReadOnlyMemory<byte> payload, DateTimeOffset observedAt)
     {
@@ -72,7 +71,6 @@ internal static class GrokBuildQuotaParser
             points[OnDemandCap] = ReadCent(config, "onDemandCap");
             points[PrepaidBalance] = ReadCent(config, "prepaidBalance");
             points[UnifiedBilling] = ReadBoolean(config, "isUnifiedBillingUser");
-            points[ProductUsagePercent] = ReadProductUsage(config);
             return new GrokBuildQuotaReading(points);
         }
     }
@@ -192,35 +190,4 @@ internal static class GrokBuildQuotaParser
         };
     }
 
-    private static GrokBuildQuotaPoint ReadProductUsage(JsonElement config)
-    {
-        if (!config.TryGetProperty("productUsage", out var products) || products.ValueKind == JsonValueKind.Null)
-            return GrokBuildQuotaPoint.Unavailable();
-        if (products.ValueKind != JsonValueKind.Array)
-            return GrokBuildQuotaPoint.Error("schema_invalid");
-
-        JsonElement? grokBuild = null;
-        foreach (var product in products.EnumerateArray())
-        {
-            if (product.ValueKind != JsonValueKind.Object)
-                return GrokBuildQuotaPoint.Error("schema_invalid");
-            if (!product.TryGetProperty("product", out var name) || name.ValueKind != JsonValueKind.String)
-                continue;
-            if (!StringComparer.Ordinal.Equals(name.GetString(), "PRODUCT_GROK_BUILD"))
-                continue;
-            if (grokBuild.HasValue)
-                return GrokBuildQuotaPoint.Error("duplicate_product_usage");
-            grokBuild = product;
-        }
-
-        if (!grokBuild.HasValue)
-            return GrokBuildQuotaPoint.Unavailable();
-        var entry = grokBuild.Value;
-        if (!entry.TryGetProperty("usagePercent", out var usage) || usage.ValueKind == JsonValueKind.Null)
-            return GrokBuildQuotaPoint.Unavailable();
-        if (usage.ValueKind != JsonValueKind.Number || !usage.TryGetDouble(out var percentage) ||
-            !double.IsFinite(percentage) || percentage is < 0 or > 100)
-            return GrokBuildQuotaPoint.Error("invalid_product_usage");
-        return GrokBuildQuotaPoint.Fresh(MetricValue.From(percentage));
-    }
 }

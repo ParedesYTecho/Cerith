@@ -30,14 +30,13 @@ public sealed class GrokBuildQuotaTests
         "ai.grok_build.balance.on_demand.used",
         "ai.grok_build.balance.on_demand.cap",
         "ai.grok_build.balance.prepaid",
-        "ai.grok_build.quota.included.unified_billing",
-        "ai.grok_build.usage.product.grok_build.used_percent"
+        "ai.grok_build.quota.included.unified_billing"
     ];
 
     private static readonly DateTimeOffset InitialUtc = new(2026, 6, 2, 12, 0, 0, TimeSpan.Zero);
 
     private const string CreditsJson = """
-        {"config":{"creditUsagePercent":42.5,"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","start":"2026-06-01T00:00:00Z","end":"2026-06-08T00:00:00Z"},"onDemandUsed":{"val":300},"onDemandCap":{"val":5000},"prepaidBalance":{"val":1250},"isUnifiedBillingUser":true,"productUsage":[{"product":"PRODUCT_GROK_BUILD","usagePercent":61.2}]}}
+        {"config":{"creditUsagePercent":42.5,"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","start":"2026-06-01T00:00:00Z","end":"2026-06-08T00:00:00Z"},"onDemandUsed":{"val":300},"onDemandCap":{"val":5000},"prepaidBalance":{"val":1250},"isUnifiedBillingUser":true}}
         """;
 
     [TestMethod]
@@ -55,10 +54,13 @@ public sealed class GrokBuildQuotaTests
         Assert.AreEqual("xai-grok-cli", request.TokenAuth);
         Assert.AreEqual("1.0.34", request.ClientVersion);
         Assert.AreEqual("headless", request.ClientMode);
+        Assert.AreEqual(1, harness.Handler.OwnerRequests.Length);
+        Assert.IsTrue(harness.Handler.OwnerRequests.Single().HasBearerToken);
+        Assert.IsNull(harness.Handler.OwnerRequests.Single().UserId);
 
         var snapshots = ReadPublishedAsync(harness).GetAwaiter().GetResult()
             .ToDictionary(item => item.MetricId.Value, StringComparer.Ordinal);
-        Assert.AreEqual(11, harness.Registry.Count);
+        Assert.AreEqual(10, harness.Registry.Count);
         Assert.AreEqual(42.5, snapshots[MetricIds[0]].Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual(57.5, snapshots[MetricIds[1]].Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual("USAGE_PERIOD_TYPE_WEEKLY", snapshots[MetricIds[2]].Value!.Value.AsString());
@@ -71,10 +73,8 @@ public sealed class GrokBuildQuotaTests
         Assert.AreEqual(5000, snapshots[MetricIds[7]].Value!.Value.AsInt64());
         Assert.AreEqual(1250, snapshots[MetricIds[8]].Value!.Value.AsInt64());
         Assert.IsTrue(snapshots[MetricIds[9]].Value!.Value.AsBoolean());
-        Assert.AreEqual(61.2, snapshots[MetricIds[10]].Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual("%", harness.Registry.GetSnapshot().Single(item => item.Id.Value == MetricIds[0]).Unit);
         Assert.AreEqual("USD cents", harness.Registry.GetSnapshot().Single(item => item.Id.Value == MetricIds[8]).Unit);
-        Assert.AreEqual("%", harness.Registry.GetSnapshot().Single(item => item.Id.Value == MetricIds[10]).Unit);
     }
 
     [TestMethod]
@@ -92,7 +92,6 @@ public sealed class GrokBuildQuotaTests
         Assert.AreEqual(MetricState.Unavailable, reading.Points[GrokBuildQuotaParser.OnDemandUsed].State);
         Assert.AreEqual(MetricState.Unavailable, reading.Points[GrokBuildQuotaParser.PrepaidBalance].State);
         Assert.AreEqual(MetricState.Unavailable, reading.Points[GrokBuildQuotaParser.UnifiedBilling].State);
-        Assert.AreEqual(MetricState.Unavailable, reading.Points[GrokBuildQuotaParser.ProductUsagePercent].State);
     }
 
     [TestMethod]
@@ -114,7 +113,6 @@ public sealed class GrokBuildQuotaTests
         var elapsedReading = GrokBuildQuotaParser.Parse(Encoding.UTF8.GetBytes(elapsed), InitialUtc);
         Assert.AreEqual(MetricState.Unavailable, elapsedReading.Points[GrokBuildQuotaParser.IncludedUsedPercent].State);
         Assert.AreEqual("reset_elapsed", elapsedReading.Points[GrokBuildQuotaParser.IncludedRemainingPercent].ErrorCode);
-        Assert.AreEqual(MetricState.Unavailable, elapsedReading.Points[GrokBuildQuotaParser.ProductUsagePercent].State);
     }
 
     [TestMethod]
@@ -187,9 +185,65 @@ public sealed class GrokBuildQuotaTests
         Assert.IsTrue(snapshots.All(item => item.State == MetricState.Error && item.ErrorCode == "auth_unsupported"));
     }
 
+    [TestMethod]
+    public async Task StaleSessionRejectsJwtShapedStaticKeyFallbackForAnotherOwner()
+    {
+        using var harness = new Harness();
+        var sessionIdentity = new GrokBuildAuthIdentity("oidc", "session-owner@example.invalid", "User",
+            "session-user-001", null, null);
+        harness.Observation = new GrokBuildAuthObservation(sessionIdentity, CreateJwt("session-user-001"),
+            "1.0.34", null);
+        harness.Handler.OwnerJson = """
+            {"userId":"fallback-user-002","email":"fallback-owner@example.invalid","principalType":"User","principalId":"fallback-user-002"}
+            """;
+
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(1, harness.Handler.OwnerRequests.Length);
+        Assert.AreEqual(0, harness.Handler.Requests.Length,
+            "The bearer owner must be verified before billing is queried.");
+        var snapshots = await ReadPublishedAsync(harness);
+        Assert.IsTrue(snapshots.All(item => item.State == MetricState.Error &&
+            item.ErrorCode == "auth_owner_mismatch"));
+    }
+
+    [TestMethod]
+    public async Task TeamBearerUsesServerVerifiedPrincipalForBillingIdentity()
+    {
+        using var harness = new Harness();
+        var sessionIdentity = new GrokBuildAuthIdentity("oidc", null, "Team", "team-42", "team-42", null);
+        harness.Observation = new GrokBuildAuthObservation(sessionIdentity, CreateJwt("untrusted-subject"),
+            "1.0.34", null);
+        harness.Handler.OwnerJson = """
+            {"userId":"team-42","principalType":"Team","principalId":"team-42","teamId":"team-42"}
+            """;
+        harness.Handler.EnqueueJson(CreditsJson);
+
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(1, harness.Handler.Requests.Length);
+        Assert.AreEqual("team-42", harness.Handler.Requests.Single().UserId);
+    }
+
+    [TestMethod]
+    public async Task MissingOwnerEvidenceFailsClosedBeforeBilling()
+    {
+        using var harness = new Harness();
+        harness.Handler.OwnerJson = """{"email":"synthetic-user-a@example.invalid"}""";
+        harness.Handler.EnqueueJson(CreditsJson);
+
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        var snapshots = await ReadPublishedAsync(harness);
+        Assert.IsTrue(snapshots.All(item => item.State == MetricState.Error &&
+            item.ErrorCode == "auth_owner_unverified"));
+    }
+
     private static GrokBuildAuthObservation Observation(string userId)
     {
-        var identity = new GrokBuildAuthIdentity("cached_token", userId, "User", userId, null, null);
+        var identity = new GrokBuildAuthIdentity("cached_token", $"{userId}@example.invalid", "User", userId,
+            null, null);
         var token = CreateJwt(userId);
         return new GrokBuildAuthObservation(identity, token, "1.0.34", null);
     }
@@ -249,11 +303,18 @@ public sealed class GrokBuildQuotaTests
 
     private sealed class RecordingHandler : HttpMessageHandler
     {
+        private const string DefaultOwnerJson = """
+            {"userId":"synthetic-user-a","email":"synthetic-user-a@example.invalid","principalType":"User","principalId":"synthetic-user-a"}
+            """;
         private readonly ConcurrentQueue<Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>>
             _responses = new();
         private readonly ConcurrentQueue<RequestObservation> _requests = new();
 
-        public RequestObservation[] Requests => _requests.ToArray();
+        public string OwnerJson { get; set; } = DefaultOwnerJson;
+        public RequestObservation[] Requests => _requests.Where(request => request.Uri == GrokBuildQuotaProvider.BillingEndpoint)
+            .ToArray();
+        public RequestObservation[] OwnerRequests => _requests.Where(request => request.Uri == GrokBuildQuotaProvider.OwnerEndpoint)
+            .ToArray();
 
         public void EnqueueJson(string json) =>
             Enqueue(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -297,9 +358,14 @@ public sealed class GrokBuildQuotaTests
                     !string.IsNullOrWhiteSpace(request.Headers.Authorization.Parameter),
                 userId, tokenAuth, version, mode));
 
-            var response = _responses.TryDequeue(out var queued)
-                ? await queued(request, cancellationToken)
-                : new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            var response = request.RequestUri == GrokBuildQuotaProvider.OwnerEndpoint
+                ? new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(OwnerJson, Encoding.UTF8, "application/json")
+                }
+                : _responses.TryDequeue(out var queued)
+                    ? await queued(request, cancellationToken)
+                    : new HttpResponseMessage(HttpStatusCode.InternalServerError);
             response.RequestMessage ??= request;
             return response;
         }
