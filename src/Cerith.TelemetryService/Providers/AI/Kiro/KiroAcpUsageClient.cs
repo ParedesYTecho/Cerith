@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ internal enum KiroAcquisitionStatus
     Ready,
     Unavailable,
     Unsupported,
+    RetrySuppressed,
     Error
 }
 
@@ -25,13 +27,31 @@ internal sealed record KiroAcquisition(KiroAcquisitionStatus Status, byte[]? Pay
         new(KiroAcquisitionStatus.Unavailable, null, errorCode);
     public static KiroAcquisition Unsupported(string errorCode) =>
         new(KiroAcquisitionStatus.Unsupported, null, errorCode);
+    public static KiroAcquisition RetrySuppressed() =>
+        new(KiroAcquisitionStatus.RetrySuppressed, null, "rate_limit_timing_unknown");
     public static KiroAcquisition Error(string errorCode) =>
         new(KiroAcquisitionStatus.Error, null, errorCode);
+}
+
+internal enum KiroIdentityStatus
+{
+    Ready,
+    SignedOut,
+    Unavailable
+}
+
+internal sealed record KiroIdentityObservation(KiroIdentityStatus Status, byte[]? Fingerprint)
+{
+    public static KiroIdentityObservation Ready(byte[] fingerprint) =>
+        new(KiroIdentityStatus.Ready, fingerprint);
+    public static KiroIdentityObservation SignedOut() => new(KiroIdentityStatus.SignedOut, null);
+    public static KiroIdentityObservation Unavailable() => new(KiroIdentityStatus.Unavailable, null);
 }
 
 internal static class KiroAcpUsageClient
 {
     internal const string UsageMethod = "_kiro/account/getUsage";
+    internal const string RateLimitMethod = "_kiro/error/rate_limit";
     internal const int MaxResponseBytes = 1024 * 1024;
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromMilliseconds(300);
@@ -47,6 +67,24 @@ internal static class KiroAcpUsageClient
 
     internal static ProcessStartInfo CreateStartInfo()
     {
+        var startInfo = CreateCliStartInfo();
+        startInfo.ArgumentList.Add("acp");
+        startInfo.ArgumentList.Add("--agent-engine=v3");
+        startInfo.ArgumentList.Add("--auth-method=cli");
+        return startInfo;
+    }
+
+    internal static ProcessStartInfo CreateIdentityStartInfo()
+    {
+        var startInfo = CreateCliStartInfo();
+        startInfo.ArgumentList.Add("whoami");
+        startInfo.ArgumentList.Add("--format");
+        startInfo.ArgumentList.Add("json");
+        return startInfo;
+    }
+
+    private static ProcessStartInfo CreateCliStartInfo()
+    {
         var startInfo = new ProcessStartInfo
         {
             FileName = "kiro-cli",
@@ -57,9 +95,6 @@ internal static class KiroAcpUsageClient
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        startInfo.ArgumentList.Add("acp");
-        startInfo.ArgumentList.Add("--agent-engine=v3");
-        startInfo.ArgumentList.Add("--auth-method=cli");
         startInfo.Environment["KIRO_LOG_LEVEL"] = "error";
         startInfo.Environment["KIRO_API_KEY"] = null;
         return startInfo;
@@ -96,6 +131,7 @@ internal static class KiroAcpUsageClient
             await WriteRequestAsync(process.StandardInput.BaseStream, 1, "initialize", includeInitializeParams: true,
                 linked.Token).ConfigureAwait(false);
             var initialize = await ReadResponseAsync(reader, 1, linked.Token).ConfigureAwait(false);
+            if (initialize.RateLimitSignaled) return KiroAcquisition.RetrySuppressed();
             if (initialize.Error || initialize.Result is null)
                 return KiroAcquisition.Unsupported("acp_initialize_failed");
             if (!AdvertisesUsageMethod(initialize.Result.Value))
@@ -104,6 +140,7 @@ internal static class KiroAcpUsageClient
             await WriteRequestAsync(process.StandardInput.BaseStream, 2, UsageMethod, includeInitializeParams: false,
                 linked.Token).ConfigureAwait(false);
             var usage = await ReadResponseAsync(reader, 2, linked.Token).ConfigureAwait(false);
+            if (usage.RateLimitSignaled) return KiroAcquisition.RetrySuppressed();
             if (usage.Error || usage.Result is null)
                 return KiroAcquisition.Error("usage_query_failed");
 
@@ -143,6 +180,99 @@ internal static class KiroAcpUsageClient
             await StopChildAsync(process, timeProvider, requireGracefulExit: false).ConfigureAwait(false);
             await ObserveAsync(stderrDrain).ConfigureAwait(false);
         }
+    }
+
+    public static Task<KiroIdentityObservation> ReadIdentityAsync(TimeProvider timeProvider,
+        byte[] identityKey, CancellationToken cancellationToken) =>
+        ReadIdentityAsync(timeProvider, identityKey, cancellationToken, CreateIdentityStartInfo(), RequestTimeout);
+
+    internal static async Task<KiroIdentityObservation> ReadIdentityAsync(TimeProvider timeProvider,
+        byte[] identityKey, CancellationToken cancellationToken, ProcessStartInfo startInfo,
+        TimeSpan requestTimeout)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(identityKey);
+        ArgumentNullException.ThrowIfNull(startInfo);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(requestTimeout, TimeSpan.Zero);
+        startInfo.UseShellExecute = false;
+        startInfo.CreateNoWindow = true;
+        startInfo.RedirectStandardInput = true;
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+
+        using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+        try
+        {
+            if (!process.Start()) return KiroIdentityObservation.Unavailable();
+        }
+        catch (Win32Exception) { return KiroIdentityObservation.Unavailable(); }
+        catch (FileNotFoundException) { return KiroIdentityObservation.Unavailable(); }
+        catch (InvalidOperationException) { return KiroIdentityObservation.Unavailable(); }
+
+        using var deadline = new CancellationTokenSource(requestTimeout, timeProvider);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        using var stderrStop = new CancellationTokenSource();
+        var stderrDrain = process.StandardError.BaseStream.CopyToAsync(Stream.Null, stderrStop.Token);
+        byte[]? payload = null;
+        try
+        {
+            process.StandardInput.Close();
+            payload = await ReadBoundedOutputAsync(process.StandardOutput.BaseStream, linked.Token)
+                .ConfigureAwait(false);
+            await StopChildAsync(process, timeProvider, requireGracefulExit: true).ConfigureAwait(false);
+            var observation = ParseIdentity(payload, identityKey);
+            return process.ExitCode == 0 || observation.Status == KiroIdentityStatus.SignedOut
+                ? observation
+                : KiroIdentityObservation.Unavailable();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return KiroIdentityObservation.Unavailable();
+        }
+        catch (InvalidDataException)
+        {
+            return KiroIdentityObservation.Unavailable();
+        }
+        catch (IOException)
+        {
+            return KiroIdentityObservation.Unavailable();
+        }
+        catch (InvalidOperationException)
+        {
+            return KiroIdentityObservation.Unavailable();
+        }
+        finally
+        {
+            if (payload is not null) CryptographicOperations.ZeroMemory(payload);
+            stderrStop.Cancel();
+            if (!process.HasExited) TryKill(process);
+            await StopChildAsync(process, timeProvider, requireGracefulExit: false).ConfigureAwait(false);
+            await ObserveAsync(stderrDrain).ConfigureAwait(false);
+        }
+    }
+
+    internal static KiroIdentityObservation ParseIdentity(ReadOnlyMemory<byte> payload,
+        ReadOnlySpan<byte> identityKey)
+    {
+        if (payload.Length is 0 or > MaxResponseBytes || identityKey.Length != 32)
+            return KiroIdentityObservation.Unavailable();
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload, new JsonDocumentOptions { MaxDepth = 32 });
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("account", out var account))
+                return KiroIdentityObservation.Unavailable();
+            if (account.ValueKind == JsonValueKind.Null) return KiroIdentityObservation.SignedOut();
+            if (account.ValueKind != JsonValueKind.Object) return KiroIdentityObservation.Unavailable();
+
+            return KiroIdentityObservation.Ready(HMACSHA256.HashData(identityKey, payload.Span));
+        }
+        catch (JsonException) { return KiroIdentityObservation.Unavailable(); }
     }
 
     internal static bool AdvertisesUsageMethod(JsonElement initializeResult)
@@ -213,15 +343,18 @@ internal static class KiroAcpUsageClient
                 !StringComparer.Ordinal.Equals(version.GetString(), "2.0"))
                 throw new JsonException("ACP response is invalid.");
 
+            if (root.TryGetProperty("method", out var method) && method.ValueKind == JsonValueKind.String &&
+                StringComparer.Ordinal.Equals(method.GetString(), RateLimitMethod))
+                return new AcpResponse(false, null, true);
             if (root.TryGetProperty("method", out _) && root.TryGetProperty("id", out _))
                 throw new JsonException("Unexpected ACP server request.");
             if (!root.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.Number ||
                 !id.TryGetInt32(out var responseId) || responseId != expectedId)
                 continue;
 
-            if (root.TryGetProperty("error", out _)) return new AcpResponse(true, null);
-            if (!root.TryGetProperty("result", out var result)) return new AcpResponse(true, null);
-            return new AcpResponse(false, result.Clone());
+            if (root.TryGetProperty("error", out _)) return new AcpResponse(true, null, false);
+            if (!root.TryGetProperty("result", out var result)) return new AcpResponse(true, null, false);
+            return new AcpResponse(false, result.Clone(), false);
         }
     }
 
@@ -258,7 +391,30 @@ internal static class KiroAcpUsageClient
         catch (OperationCanceledException) { return; }
     }
 
-    private readonly record struct AcpResponse(bool Error, JsonElement? Result);
+    private static async Task<byte[]> ReadBoundedOutputAsync(Stream stream,
+        CancellationToken cancellationToken)
+    {
+        using var output = new MemoryStream();
+        var buffer = new byte[4096];
+        try
+        {
+            while (true)
+            {
+                var count = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (count == 0) return output.ToArray();
+                if (output.Length + count > MaxResponseBytes)
+                    throw new InvalidDataException("CLI identity output exceeded its limit.");
+                output.Write(buffer, 0, count);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            CryptographicOperations.ZeroMemory(output.GetBuffer());
+        }
+    }
+
+    private readonly record struct AcpResponse(bool Error, JsonElement? Result, bool RateLimitSignaled);
 
     internal sealed class BoundedLineReader(Stream stream, int maximumBytes)
     {

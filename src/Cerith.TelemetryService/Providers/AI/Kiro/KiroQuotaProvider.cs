@@ -32,6 +32,7 @@ internal sealed class KiroQuotaProvider : IDisposable
     private readonly MetricBus _bus;
     private readonly MetricDescriptor[] _descriptors;
     private readonly Func<CancellationToken, Task<KiroAcquisition>> _readUsage;
+    private readonly Func<CancellationToken, Task<KiroIdentityObservation>> _readIdentity;
     private readonly TimeProvider _timeProvider;
     private readonly byte[] _identityKey = RandomNumberGenerator.GetBytes(32);
     private readonly CancellationTokenSource _shutdown = new();
@@ -41,27 +42,31 @@ internal sealed class KiroQuotaProvider : IDisposable
     private readonly CachedQuota?[] _cache = new CachedQuota?[MetricIds.Length];
     private readonly KiroMetricPoint[] _fallback = new KiroMetricPoint[MetricIds.Length];
     private byte[]? _identityFingerprint;
+    private byte[]? _identityMonitorFingerprint;
     private CancellationTokenSource? _activeAcquisitionStop;
     private CancellationTokenSource? _activePublicationStop;
     private string? _lastFailureCode;
     private DateTimeOffset _lastAttemptAt;
     private long _stateVersion;
+    private bool _acquisitionSuppressed;
     private bool _disposed;
 
     public KiroQuotaProvider(MetricRegistry registry, MetricBus bus)
-        : this(registry, bus,
-            cancellationToken => KiroAcpUsageClient.ReadAsync(TimeProvider.System, cancellationToken),
-            TimeProvider.System)
+        : this(registry, bus, cancellationToken => KiroAcpUsageClient.ReadAsync(TimeProvider.System,
+            cancellationToken), TimeProvider.System)
     {
     }
 
     internal KiroQuotaProvider(MetricRegistry registry, MetricBus bus,
-        Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider timeProvider)
+        Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider timeProvider,
+        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         _bus = bus ?? throw new ArgumentNullException(nameof(bus));
         _readUsage = readUsage ?? throw new ArgumentNullException(nameof(readUsage));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _readIdentity = readIdentity ?? (cancellationToken => KiroAcpUsageClient.ReadIdentityAsync(
+            _timeProvider, _identityKey, cancellationToken));
 
         var now = _timeProvider.GetUtcNow();
         _lastAttemptAt = now;
@@ -122,8 +127,35 @@ internal sealed class KiroQuotaProvider : IDisposable
         await _pollLock.WaitAsync(admission.Token).ConfigureAwait(false);
         try
         {
-            KiroAcquisition acquisition;
+            KiroIdentityObservation identity;
             lock (_gate) _activeAcquisitionStop = admission;
+            try
+            {
+                identity = await _readIdentity(admission.Token).ConfigureAwait(false);
+                admission.Token.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException) when (admission.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                identity = KiroIdentityObservation.Unavailable();
+            }
+
+            ApplyIdentityObservation(identity);
+            if (identity.Status == KiroIdentityStatus.SignedOut)
+            {
+                ApplyFailure(MetricState.Unavailable, "identity_unavailable", _timeProvider.GetUtcNow());
+                return;
+            }
+
+            lock (_gate)
+            {
+                if (_acquisitionSuppressed) return;
+            }
+
+            KiroAcquisition acquisition;
             try
             {
                 acquisition = await _readUsage(admission.Token).ConfigureAwait(false);
@@ -150,6 +182,10 @@ internal sealed class KiroQuotaProvider : IDisposable
                         ApplyReading(parsed.Reading);
                 }
                 finally { CryptographicOperations.ZeroMemory(acquisition.Payload); }
+            }
+            else if (acquisition.Status == KiroAcquisitionStatus.RetrySuppressed)
+            {
+                ApplyAcquisitionSuppression(_timeProvider.GetUtcNow());
             }
             else
             {
@@ -321,6 +357,91 @@ internal sealed class KiroQuotaProvider : IDisposable
         }
 
         CryptographicOperations.ZeroMemory(reading.IdentityFingerprint);
+        TryCancel(cancelPublication);
+        SignalPublish();
+    }
+
+    private void ApplyIdentityObservation(KiroIdentityObservation observation)
+    {
+        var fingerprint = observation.Fingerprint;
+        if (observation.Status == KiroIdentityStatus.Unavailable ||
+            observation.Status == KiroIdentityStatus.Ready && fingerprint is null)
+        {
+            if (fingerprint is not null) CryptographicOperations.ZeroMemory(fingerprint);
+            return;
+        }
+
+        CancellationTokenSource? cancelPublication = null;
+        var identityChanged = false;
+        lock (_gate)
+        {
+            if (observation.Status == KiroIdentityStatus.Ready && fingerprint is not null)
+            {
+                identityChanged = _identityMonitorFingerprint is null
+                    ? _identityFingerprint is not null || HasCachedValuesLocked()
+                    : !CryptographicOperations.FixedTimeEquals(_identityMonitorFingerprint, fingerprint);
+
+                if (_identityMonitorFingerprint is not null)
+                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
+                _identityMonitorFingerprint = (byte[])fingerprint.Clone();
+            }
+            else
+            {
+                identityChanged = _identityMonitorFingerprint is not null ||
+                    _identityFingerprint is not null || HasCachedValuesLocked();
+                if (_identityMonitorFingerprint is not null)
+                    CryptographicOperations.ZeroMemory(_identityMonitorFingerprint);
+                _identityMonitorFingerprint = null;
+            }
+
+            if (identityChanged)
+            {
+                if (_identityFingerprint is not null) CryptographicOperations.ZeroMemory(_identityFingerprint);
+                _identityFingerprint = null;
+                Array.Clear(_cache);
+                var errorCode = _acquisitionSuppressed
+                    ? "rate_limit_retry_suppressed"
+                    : "identity_changed";
+                var point = _acquisitionSuppressed
+                    ? KiroMetricPoint.Error(errorCode)
+                    : KiroMetricPoint.Unavailable(errorCode);
+                Array.Fill(_fallback, point);
+                _lastFailureCode = _acquisitionSuppressed ? errorCode : null;
+                _lastAttemptAt = _timeProvider.GetUtcNow();
+                _stateVersion++;
+                cancelPublication = _activePublicationStop;
+            }
+        }
+
+        if (fingerprint is not null) CryptographicOperations.ZeroMemory(fingerprint);
+        if (!identityChanged) return;
+        TryCancel(cancelPublication);
+        SignalPublish();
+    }
+
+    private bool HasCachedValuesLocked()
+    {
+        foreach (var cached in _cache)
+        {
+            if (cached is not null) return true;
+        }
+        return false;
+    }
+
+    private void ApplyAcquisitionSuppression(DateTimeOffset observedAt)
+    {
+        CancellationTokenSource? cancelPublication;
+        lock (_gate)
+        {
+            _acquisitionSuppressed = true;
+            var point = KiroMetricPoint.Error("rate_limit_retry_suppressed");
+            Array.Fill(_fallback, point);
+            _lastAttemptAt = observedAt;
+            _lastFailureCode = point.ErrorCode;
+            _stateVersion++;
+            cancelPublication = _activePublicationStop;
+        }
+
         TryCancel(cancelPublication);
         SignalPublish();
     }

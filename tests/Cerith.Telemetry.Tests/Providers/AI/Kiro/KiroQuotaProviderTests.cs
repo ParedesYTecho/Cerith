@@ -172,9 +172,12 @@ public sealed class KiroQuotaProviderTests
     public void AcpStartInfoUsesOfficialCliAuthAndDoesNotForwardApiKey()
     {
         var startInfo = KiroAcpUsageClient.CreateStartInfo();
+        var identityStartInfo = KiroAcpUsageClient.CreateIdentityStartInfo();
 
         CollectionAssert.AreEqual(new[] { "acp", "--agent-engine=v3", "--auth-method=cli" },
             startInfo.ArgumentList.ToArray());
+        CollectionAssert.AreEqual(new[] { "whoami", "--format", "json" },
+            identityStartInfo.ArgumentList.ToArray());
         Assert.AreEqual(Path.GetTempPath(), startInfo.WorkingDirectory);
         Assert.IsFalse(startInfo.UseShellExecute);
         Assert.IsTrue(startInfo.RedirectStandardInput);
@@ -183,6 +186,61 @@ public sealed class KiroQuotaProviderTests
         Assert.AreEqual("error", startInfo.Environment["KIRO_LOG_LEVEL"]);
         Assert.IsTrue(startInfo.Environment.TryGetValue("KIRO_API_KEY", out var apiKey));
         Assert.IsNull(apiKey);
+        Assert.IsTrue(identityStartInfo.Environment.TryGetValue("KIRO_API_KEY", out apiKey));
+        Assert.IsNull(apiKey);
+    }
+
+    [TestMethod]
+    public void IdentityParserTreatsAccountAsOpaqueAndRecognizesSignedOutState()
+    {
+        var signedOut = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":null}"), IdentityKey);
+        var first = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"synthetic\":\"account-a\"}}"), IdentityKey);
+        var second = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"synthetic\":\"account-b\"}}"), IdentityKey);
+
+        Assert.AreEqual(KiroIdentityStatus.SignedOut, signedOut.Status);
+        Assert.AreEqual(KiroIdentityStatus.Ready, first.Status);
+        Assert.AreEqual(KiroIdentityStatus.Ready, second.Status);
+        Assert.AreEqual(32, first.Fingerprint!.Length);
+        Assert.IsFalse(System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            first.Fingerprint, second.Fingerprint!));
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(first.Fingerprint);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(second.Fingerprint!);
+    }
+
+    [TestMethod]
+    public async Task IdentityClientReadsOnlySyntheticCliWhoAmIJson()
+    {
+        const string script = "[Console]::Out.WriteLine('{\"account\":{\"opaque\":\"synthetic\"}}')";
+
+        var observation = await KiroAcpUsageClient.ReadIdentityAsync(TimeProvider.System, IdentityKey,
+            CancellationToken.None, CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(5));
+
+        Assert.AreEqual(KiroIdentityStatus.Ready, observation.Status);
+        Assert.AreEqual(32, observation.Fingerprint!.Length);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(observation.Fingerprint);
+    }
+
+    [TestMethod]
+    public async Task AcpClientSuppressesRetriesOnV3RateLimitNotificationWithoutParsingTiming()
+    {
+        const string script = """
+            $initialize = [Console]::In.ReadLine() | ConvertFrom-Json
+            if ($initialize.method -ne 'initialize') { exit 21 }
+            [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":1,"result":{"agentCapabilities":{"_meta":{"kiro":{"extensionMethods":["_kiro/account/getUsage"]}}}}}')
+            $usage = [Console]::In.ReadLine() | ConvertFrom-Json
+            if ($usage.method -ne '_kiro/account/getUsage') { exit 22 }
+            [Console]::Out.WriteLine('{"jsonrpc":"2.0","method":"_kiro/error/rate_limit","params":{"opaque":true}}')
+            """;
+
+        var acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
+            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(5));
+
+        Assert.AreEqual(KiroAcquisitionStatus.RetrySuppressed, acquisition.Status);
+        Assert.AreEqual("rate_limit_timing_unknown", acquisition.ErrorCode);
+        Assert.IsNull(acquisition.Payload);
     }
 
     [TestMethod]
@@ -323,6 +381,132 @@ public sealed class KiroQuotaProviderTests
         Assert.IsTrue(snapshots.All(static snapshot => snapshot.State == MetricState.Unavailable));
         Assert.IsTrue(snapshots.All(static snapshot => snapshot.Value is null));
         Assert.IsTrue(snapshots.All(static snapshot => snapshot.ErrorCode == "cli_unavailable"));
+    }
+
+    [TestMethod]
+    public async Task ProviderSuppressesUsageRetriesButContinuesIdentityAndCacheTransitions()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var time = new MutableTimeProvider(ObservedAt);
+        var usageCalls = 0;
+        var identityCalls = 0;
+        using var provider = CreateProvider(registry, bus, _ =>
+        {
+            var call = Interlocked.Increment(ref usageCalls);
+            return Task.FromResult(call == 1
+                ? Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a"))
+                : call == 2
+                    ? KiroAcquisition.RetrySuppressed()
+                    : Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a")));
+        }, time,
+            _ =>
+            {
+                Interlocked.Increment(ref identityCalls);
+                return Task.FromResult(IdentityObservation(1));
+            });
+        await using var readers = SubscribeAll(bus);
+        readers.Start();
+
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var fresh = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(MetricState.Fresh, fresh[0].State);
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var rateLimited = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(MetricState.Fresh, rateLimited[0].State);
+
+        time.Advance(KiroQuotaProvider.StaleAfter - TimeSpan.FromMinutes(1));
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var stale = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(MetricState.Stale, stale[0].State);
+        Assert.AreEqual(ObservedAt, stale[0].ObservedAt);
+        Assert.AreEqual("rate_limit_retry_suppressed", stale[0].ErrorCode);
+
+        time.Advance(KiroQuotaProvider.MaximumCacheAge - KiroQuotaProvider.StaleAfter);
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var expired = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(MetricState.Unavailable, expired[0].State);
+        Assert.IsNull(expired[0].Value);
+        Assert.AreEqual(ObservedAt, expired[0].ObservedAt);
+        Assert.AreEqual("cache_expired", expired[0].ErrorCode);
+
+        time.Advance(TimeSpan.FromHours(1));
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var stillSuppressed = await readers.ReadNextBatchAsync();
+        Assert.AreEqual(2, usageCalls);
+        Assert.AreEqual(5, identityCalls);
+        Assert.AreEqual(MetricState.Unavailable, stillSuppressed[0].State);
+        Assert.AreEqual("cache_expired", stillSuppressed[0].ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task ProviderClearsCachedIdentityOnMonitorChangeWithoutResumingSuppressedUsage()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var identityCalls = 0;
+        var usageCalls = 0;
+        using var provider = CreateProvider(registry, bus, _ => Task.FromResult(
+            Interlocked.Increment(ref usageCalls) == 1
+                ? Ready(CompleteUsage("synthetic-user-a", "synthetic-account-a"))
+                : KiroAcquisition.RetrySuppressed()), TimeProvider.System, _ =>
+        {
+            var observation = Interlocked.Increment(ref identityCalls) < 3
+                ? IdentityObservation(1)
+                : IdentityObservation(2);
+            return Task.FromResult(observation);
+        });
+        await using var readers = SubscribeAll(bus);
+        readers.Start();
+
+        await provider.PollOnceAsync();
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        _ = await readers.ReadNextBatchAsync();
+        await provider.PollOnceAsync();
+        await provider.PublishOnceAsync();
+        var identityChanged = await readers.ReadNextBatchAsync();
+        await provider.PollOnceAsync();
+
+        Assert.AreEqual(2, usageCalls);
+        Assert.AreEqual(4, identityCalls);
+        Assert.IsTrue(identityChanged.All(static snapshot => snapshot.Value is null));
+        Assert.IsTrue(identityChanged.All(static snapshot => snapshot.ErrorCode == "rate_limit_retry_suppressed"));
+    }
+
+    [TestMethod]
+    public async Task RunPublishesStoppedSnapshotsWhileUsageRetriesAreSuppressed()
+    {
+        using var bus = new MetricBus(8);
+        var registry = new MetricRegistry();
+        var usageCalls = 0;
+        using var provider = CreateProvider(registry, bus, _ =>
+        {
+            Interlocked.Increment(ref usageCalls);
+            return Task.FromResult(KiroAcquisition.RetrySuppressed());
+        }, readIdentity: _ => Task.FromResult(IdentityObservation(1)));
+        using var stop = new CancellationTokenSource();
+        await using var readers = SubscribeAll(bus);
+        var stoppedReaders = readers.ReadUntilStoppedAsync(
+            Enumerable.Range(0, 4).Select(static _ => new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously)).ToArray());
+        var run = provider.RunAsync(stop.Token);
+        await WaitForAcquisitionSuppressionAsync(provider, run);
+        stop.Cancel();
+
+        var stopped = await stoppedReaders.WaitAsync(TimeSpan.FromSeconds(3));
+        await run.WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.AreEqual(1, usageCalls);
+        Assert.AreEqual(4, stopped.Length);
+        Assert.IsTrue(stopped.All(static snapshot => snapshot.State == MetricState.Stopped));
     }
 
     [TestMethod]
@@ -603,13 +787,18 @@ public sealed class KiroQuotaProviderTests
         Encoding.UTF8.GetBytes(json), IdentityKey, ObservedAt);
 
     private static KiroQuotaProvider CreateProvider(MetricRegistry registry, MetricBus bus,
-        Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider? timeProvider = null) =>
-        new(registry, bus, readUsage, timeProvider ?? TimeProvider.System);
+        Func<CancellationToken, Task<KiroAcquisition>> readUsage, TimeProvider? timeProvider = null,
+        Func<CancellationToken, Task<KiroIdentityObservation>>? readIdentity = null) =>
+        new(registry, bus, readUsage, timeProvider ?? TimeProvider.System,
+            readIdentity ?? (_ => Task.FromResult(KiroIdentityObservation.Unavailable())));
 
     private static SubscriptionBatch SubscribeAll(MetricBus bus) => new(bus);
 
     private static KiroAcquisition Ready(string json) =>
         KiroAcquisition.Ready(Encoding.UTF8.GetBytes(json));
+
+    private static KiroIdentityObservation IdentityObservation(byte value) =>
+        KiroIdentityObservation.Ready(Enumerable.Repeat(value, 32).ToArray());
 
     private static string CompleteUsage(string userId, string accountId, long resetAt = 1893456000) => $$"""
         {
@@ -673,6 +862,19 @@ public sealed class KiroQuotaProviderTests
             await Task.Delay(1);
         Assert.IsNotNull(field.GetValue(provider));
         Assert.IsFalse(publication.IsCompleted);
+    }
+
+    private static async Task WaitForAcquisitionSuppressionAsync(KiroQuotaProvider provider, Task run)
+    {
+        var field = typeof(KiroQuotaProvider).GetField("_acquisitionSuppressed",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field);
+        var started = TimeProvider.System.GetTimestamp();
+        while (field.GetValue(provider) is not true && !run.IsCompleted &&
+            TimeProvider.System.GetElapsedTime(started) < TimeSpan.FromSeconds(2))
+            await Task.Delay(1);
+        Assert.AreEqual(true, field.GetValue(provider));
+        Assert.IsFalse(run.IsCompleted);
     }
 
     private sealed class MutableTimeProvider(DateTimeOffset utcNow) : TimeProvider
