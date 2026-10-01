@@ -411,3 +411,19 @@ Cursor auth evidence: followed the official Windows x64 user-installer route fro
 Disposition: Cursor full product acceptance DEFERRED/UNRESOLVED; live UI/quota comparison remains separately NOT RUN. Do not import another provider group until current-group acceptance is resolved. No provider production edit, dependency, framework, PR or canonical-main merge. ZCode returned MID FIXES at 962ee24; Averroes remains Luna Max on the same branch. The full 16-provider CER-M3-004 mission remains active and M3 is incomplete.
 
 Files: .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md, docs/PROVIDERS_AI_QUOTAS.md.
+
+## 2026-10-01 — Dewey One — CER-M3-004 routing and queue checkpoint
+
+Event: corrected the current operational gate and recorded verified owner/coordinator/worker routing on the preserved integration branch.
+
+Runtime: integration owner GPT-6 Luna Max verified from authoritative `turn_context` at 2026-10-01 11:53:02.136 UTC. Main coordinator/reviewer GPT-6.1 Sol Medium was verified at 11:45:23.649 UTC and remains external/read-only. The five existing worker receipts were checked as Luna Max: Kiro 11:50:58.056Z, Grok Build 11:51:07.930Z, Copilot 11:51:18.258Z, ZCode 11:51:29.260Z, and OpenCode Go 11:58:03.827Z.
+
+Status: Cursor implementation FINALPASS `24ca7027e204fb1361cb79f573ddf132c9490994` and Antigravity FINALPASS `8889e4b34da1445c2bafe08093c11dc8c63fd1e3` remain imported. Cursor silent-startup auth is DEFERRED/UNRESOLVED; live UI/quota comparison is separately NOT RUN. This terminal Cursor disposition does not block importing other exact provider FINALPASS commits. The five retained workers are Kiro MID FOLLOW-UP PASS (focused 11/11), Grok Build MID FIXES, Copilot MID PASS (17/17), ZCode MID PASS (22/22), and OpenCode Go MID PASS with a final-refactor compile issue (`CachedPoint`) under investigation. No FINALPASS was reported for them. Claude, Gemini and Kimi remain BLOCKED at preserved tips.
+
+Queue: based on existing route/cost evidence, next dispatch priority is Command Code, Devin, Qoder, Qoder CN, Ark Coding Plan, then Ark Agent Plan. This records priority only; no worker was started. Retain the current five workers; future queue concurrency defaults to three and expands only with clear route evidence and no shared-auth/review backlog. MID/FINAL remain the only scheduled review gates.
+
+Authorization-gate policy: exhaust safe existing official session, browser and local-owner routes before classifying a human gate. Reserve `HUMAN_GATE_PENDING` for a concrete user action such as MFA or consent; it does not pause other objective work and must not mask an architectural or credential-ownership blocker.
+
+Verification: documentation-only checkpoint; no provider tests or unchanged accepted-provider reviews were rerun. The last implementation verification remains the 2640d43 evidence above. No provider code, dependency, main merge or M3 completion.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
