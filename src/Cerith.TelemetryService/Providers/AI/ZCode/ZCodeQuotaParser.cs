@@ -98,7 +98,7 @@ internal static class ZCodeQuotaParser
 
         points[remainingIndex] = ReadRemaining(selected);
         points[resetIndex] = ReadReset(selected);
-        points[metadataIndex] = ReadMetadata(selected, label, expectedType, expectedUnit, expectedNumber);
+        points[metadataIndex] = ReadMetadata(selected, label, expectedType, expectedUnit);
     }
 
     private static ZCodeQuotaPoint ReadRemaining(JsonElement limit)
@@ -116,23 +116,13 @@ internal static class ZCodeQuotaParser
         if (!limit.TryGetProperty("nextResetTime", out var reset) || reset.ValueKind == JsonValueKind.Null)
             return ZCodeQuotaPoint.Unavailable("reset_missing");
         if (reset.ValueKind == JsonValueKind.Number)
-        {
-            if (!reset.TryGetDouble(out var number) || !double.IsFinite(number) || number <= 0)
-                return ZCodeQuotaPoint.Error("invalid_reset");
-            try
-            {
-                var milliseconds = number >= 10_000_000_000d ? number : number * 1000d;
-                if (milliseconds > long.MaxValue || milliseconds < long.MinValue) return ZCodeQuotaPoint.Error("invalid_reset");
-                return ZCodeQuotaPoint.Fresh(MetricValue.From(DateTimeOffset.FromUnixTimeMilliseconds((long)milliseconds)));
-            }
-            catch (ArgumentOutOfRangeException) { return ZCodeQuotaPoint.Error("invalid_reset"); }
-        }
+            return ZCodeQuotaPoint.Unavailable("reset_unit_unverified");
         if (reset.ValueKind != JsonValueKind.String || !TryParseExplicitOffset(reset.GetString(), out var dateTime))
             return ZCodeQuotaPoint.Error("invalid_reset");
         return ZCodeQuotaPoint.Fresh(MetricValue.From(dateTime));
     }
 
-    private static ZCodeQuotaPoint ReadMetadata(JsonElement limit, string label, string type, int unit, int? number)
+    private static ZCodeQuotaPoint ReadMetadata(JsonElement limit, string label, string type, int unit)
     {
         var details = new List<ModelDetail>();
         if (limit.TryGetProperty("usageDetails", out var usageDetails) && usageDetails.ValueKind == JsonValueKind.Array)
@@ -148,7 +138,10 @@ internal static class ZCodeQuotaParser
             }
         }
         var distinct = details.Distinct().ToArray();
-        var value = JsonSerializer.Serialize(new BucketMetadata(label, type, unit, number, distinct));
+        JsonElement? sourceNumber = limit.TryGetProperty("number", out var sourceNumberElement)
+            ? sourceNumberElement.Clone()
+            : null;
+        var value = JsonSerializer.Serialize(new BucketMetadata(label, type, unit, sourceNumber, distinct));
         return value.Length <= 8192
             ? ZCodeQuotaPoint.Fresh(MetricValue.From(value))
             : ZCodeQuotaPoint.Error("metadata_too_large");
@@ -203,6 +196,6 @@ internal static class ZCodeQuotaParser
     private static ZCodeQuotaReading AllError(string errorCode) =>
         new(Enumerable.Range(0, PointCount).Select(_ => ZCodeQuotaPoint.Error(errorCode)).ToArray());
 
-    private sealed record BucketMetadata(string Label, string Type, int Unit, int? Number, ModelDetail[] Models);
+    private sealed record BucketMetadata(string Label, string Type, int Unit, JsonElement? SourceNumber, ModelDetail[] Models);
     private sealed record ModelDetail(string? DisplayName, string? ModelCode);
 }

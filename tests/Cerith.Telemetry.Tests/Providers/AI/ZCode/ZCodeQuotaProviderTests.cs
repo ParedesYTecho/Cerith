@@ -8,7 +8,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -57,6 +56,10 @@ public sealed class ZCodeQuotaProviderTests
         Assert.AreEqual(50d, snapshots[7].Value!.Value.AsDouble(), 0.001);
         Assert.IsTrue(snapshots[3].Value!.Value.AsString().Contains("glm-5", StringComparison.Ordinal));
         Assert.IsTrue(snapshots[3].Value!.Value.AsString().Contains("5h", StringComparison.Ordinal));
+        using var weeklyMetadata = JsonDocument.Parse(snapshots[6].Value!.Value.AsString());
+        Assert.AreEqual(6, weeklyMetadata.RootElement.GetProperty("Unit").GetInt32());
+        Assert.AreEqual(JsonValueKind.Number, weeklyMetadata.RootElement.GetProperty("SourceNumber").ValueKind);
+        Assert.AreEqual(7, weeklyMetadata.RootElement.GetProperty("SourceNumber").GetInt32());
         Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Fresh));
         Assert.IsTrue(snapshots.All(snapshot => snapshot.ObservedAt == InitialUtc));
     }
@@ -92,16 +95,16 @@ public sealed class ZCodeQuotaProviderTests
 
 
     [TestMethod]
-    public void EncryptedPerAccountCredentialIsReadOnlyAndBoundToTheSelectedFamily()
+    public async Task SingleCredentialCandidateDoesNotProveTheSelectedAccount()
     {
         using var harness = new Harness(writeConfig: false);
         harness.WriteCredential("zai", "synthetic-account-A", "synthetic-account-key");
+        await harness.Provider.PollOnceAsync();
         var read = harness.AuthReader.Read();
 
-        Assert.AreEqual(ZCodeAuthStatus.Ready, read.Status);
-        Assert.AreEqual("zai", read.Identity!.Family);
-        Assert.AreEqual("synthetic-account-key", read.Identity.ApiKey);
-        Assert.AreEqual("synthetic-account-A", read.Identity.AccountKey);
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        Assert.AreEqual(ZCodeAuthStatus.Unsupported, read.Status);
+        Assert.AreEqual("account_selection_unproven", read.ErrorCode);
     }
 
     [TestMethod]
@@ -114,7 +117,46 @@ public sealed class ZCodeQuotaProviderTests
 
         Assert.AreEqual(0, harness.Handler.Requests.Length);
         Assert.AreEqual(ZCodeAuthStatus.Unsupported, harness.AuthReader.Read().Status);
-        Assert.AreEqual("auth_selection_ambiguous", harness.AuthReader.Read().ErrorCode);
+        Assert.AreEqual("account_selection_unproven", harness.AuthReader.Read().ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task ConflictingCurrentAndLegacySelectorsFailClosed()
+    {
+        using var harness = new Harness();
+        harness.WriteConflictingSettings();
+        await harness.Provider.PollOnceAsync();
+        var read = harness.AuthReader.Read();
+
+        Assert.AreEqual(0, harness.Handler.Requests.Length);
+        Assert.AreEqual(ZCodeAuthStatus.Unsupported, read.Status);
+        Assert.AreEqual("provider_selection_ambiguous", read.ErrorCode);
+    }
+
+    [TestMethod]
+    public void AuthIdentityAndReadToStringRedactCredentialAndPrivateIds()
+    {
+        string[] privateValues =
+        [
+            "synthetic-secret-api-key",
+            "synthetic-credential-private",
+            "synthetic-product-private",
+            "synthetic-organization-private",
+            "synthetic-project-private",
+            "synthetic-stable-private"
+        ];
+        var identity = new ZCodeQuotaAuthIdentity(privateValues[0], "zai", privateValues[1], privateValues[2],
+            privateValues[3], privateValues[4], privateValues[5]);
+        var identityText = identity.ToString();
+        var readText = ZCodeAuthRead.Ready(identity).ToString();
+
+        foreach (var value in privateValues)
+        {
+            Assert.IsFalse(identityText.Contains(value, StringComparison.Ordinal));
+            Assert.IsFalse(readText.Contains(value, StringComparison.Ordinal));
+        }
+        Assert.IsTrue(identityText.Contains("<redacted>", StringComparison.Ordinal));
+        Assert.IsTrue(readText.Contains("<redacted>", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -144,6 +186,26 @@ public sealed class ZCodeQuotaProviderTests
             "{\"code\":0,\"data\":{\"limits\":[{\"type\":\"TOKENS_LIMIT\",\"unit\":3,\"number\":5,\"percentage\":50},{\"type\":\"TOKENS_LIMIT\",\"unit\":3,\"number\":5,\"percentage\":60}]}}").AsMemory());
         Assert.AreEqual(MetricState.Error, duplicate.Points[ZCodeQuotaParser.FiveHourRemaining].State);
         Assert.AreEqual("bucket_ambiguous", duplicate.Points[ZCodeQuotaParser.FiveHourRemaining].ErrorCode);
+
+        var duplicateWeeklyScopes = ZCodeQuotaParser.Parse(Encoding.UTF8.GetBytes(
+            "{\"code\":0,\"data\":{\"limits\":[{\"type\":\"TOKENS_LIMIT\",\"unit\":6,\"number\":7,\"percentage\":50},{\"type\":\"TOKENS_LIMIT\",\"unit\":6,\"number\":8,\"percentage\":60}]}}").AsMemory());
+        Assert.AreEqual(MetricState.Error, duplicateWeeklyScopes.Points[ZCodeQuotaParser.WeeklyRemaining].State);
+        Assert.AreEqual("bucket_ambiguous", duplicateWeeklyScopes.Points[ZCodeQuotaParser.WeeklyRemaining].ErrorCode);
+    }
+
+    [TestMethod]
+    public void NumericResetTimestampsRemainUnavailableWithoutVerifiedWireUnit()
+    {
+        foreach (var numericReset in new[] { "1790000000", "1790000000000" })
+        {
+            var parsed = ZCodeQuotaParser.Parse(Encoding.UTF8.GetBytes(
+                $"{{\"code\":0,\"data\":{{\"limits\":[{{\"type\":\"TOKENS_LIMIT\",\"unit\":3,\"number\":5,\"percentage\":50,\"nextResetTime\":{numericReset}}}]}}}}").AsMemory());
+            var reset = parsed.Points[ZCodeQuotaParser.FiveHourReset];
+
+            Assert.AreEqual(MetricState.Unavailable, reset.State);
+            Assert.IsNull(reset.Value);
+            Assert.AreEqual("reset_unit_unverified", reset.ErrorCode);
+        }
     }
 
     [TestMethod]
@@ -334,6 +396,19 @@ public sealed class ZCodeQuotaProviderTests
             }));
         }
 
+        public void WriteConflictingSettings()
+        {
+            File.WriteAllText(Path.Combine(VersionDirectory, "setting.json"), JsonSerializer.Serialize(new
+            {
+                providerFamilyDomain = "zai",
+                providerFamilyConnectionSelections = new { zai = new { kind = "individual-coding-plan" } },
+                modelProviderFamilySelectedKeys = new Dictionary<string, string>
+                {
+                    ["zai"] = "team-plan:builtin:zai-coding-plan:synthetic-product:synthetic-org:synthetic-project"
+                }
+            }));
+        }
+
         public void WriteConfig(string apiKey, string family, string? baseUrl = null)
         {
             var selectedProvider = $"builtin:{family}-coding-plan";
@@ -353,7 +428,7 @@ public sealed class ZCodeQuotaProviderTests
             var name = family == "zai"
                 ? $"account-provider:coding-plan:account:zai-individual-coding-plan:account:{account}:api-key"
                 : $"account-provider:coding-plan:account:bigmodel-individual-coding-plan:account:{account}:api-key";
-            AddCredential(name, EncryptCredential(apiKey));
+            AddCredential(name, apiKey);
         }
 
         public void AddCredential(string family, string account, string apiKey)
@@ -361,34 +436,8 @@ public sealed class ZCodeQuotaProviderTests
             var name = family == "zai"
                 ? $"account-provider:coding-plan:account:zai-individual-coding-plan:account:{account}:api-key"
                 : $"account-provider:coding-plan:account:bigmodel-individual-coding-plan:account:{account}:api-key";
-            AddCredential(name, EncryptCredential(apiKey));
+            AddCredential(name, apiKey);
         }
-
-        private string EncryptCredential(string apiKey)
-        {
-            var material = Encoding.UTF8.GetBytes($"zcode-credential-fallback:win32:{Home}:{Environment.UserName}");
-            var key = SHA256.HashData(material);
-            var nonce = RandomNumberGenerator.GetBytes(12);
-            var tag = new byte[16];
-            var plaintext = Encoding.UTF8.GetBytes(apiKey);
-            var ciphertext = new byte[plaintext.Length];
-            try
-            {
-                using var aes = new AesGcm(key, tag.Length);
-                aes.Encrypt(nonce, plaintext, ciphertext, tag);
-                return "enc:v1:" + Base64Url(nonce) + "." + Base64Url(tag) + "." + Base64Url(ciphertext);
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(material);
-                CryptographicOperations.ZeroMemory(key);
-                CryptographicOperations.ZeroMemory(plaintext);
-                CryptographicOperations.ZeroMemory(ciphertext);
-            }
-        }
-
-        private static string Base64Url(byte[] value) =>
-            Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
         private void AddCredential(string name, string value)
         {
@@ -402,7 +451,7 @@ public sealed class ZCodeQuotaProviderTests
 
         private string BuildFixture()
         {
-            var reset = InitialUtc.AddHours(1).ToUnixTimeSeconds();
+            var reset = InitialUtc.AddHours(1).ToString("O");
             return JsonSerializer.Serialize(new { code = 0, success = true, data = new { level = "zcode-coding-plan-pro", limits = new object[] { new { type = "TOKENS_LIMIT", unit = 3, number = 5, usage = 50, percentage = 25, remaining = 150, nextResetTime = reset, usageDetails = new[] { new { displayName = "Coding", modelCode = "glm-5" } } }, new { type = "TOKENS_LIMIT", unit = 6, number = 7, usage = 20, percentage = 20, nextResetTime = reset, usageDetails = new[] { new { displayName = "Weekly", modelCode = "glm-5" } } }, new { type = "TIME_LIMIT", unit = 5, number = 1, usage = 100, percentage = 50, nextResetTime = reset, usageDetails = new[] { new { displayName = "Tools", modelCode = "mcp-tool" } } } } } });
         }
 
