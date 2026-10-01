@@ -509,3 +509,13 @@ Correction: changed only those two accepted Kiro test fixtures to use the existi
 Validation: Release solution rebuild passed with 0 warnings/errors; the two tests passed 2/2, and the full Telemetry MTP DLL suite passed 295/295 under a minimum-count guard. Core 39/39, Integration 10/10, coexistence 1/1 and supervisor isolation 8/8 had already passed at the preceding source/test checkpoint; they are unaffected by the test-only bound adjustment. New-head hosted Build and Test remains pending after push. No main merge; PR #47 stays draft and the mission remains active.
 
 Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Kiro ACP fixture stream encoding
+
+Hosted Build and Test at `c6c7390262030453898ecfb2fd66ccb603be697b` reproduced the same two Kiro ACP test timeouts at the aligned ten-second bound; build/Core and Repository Quality passed, CodeQL was skipped, and IPC was skipped after Telemetry failed 2/295. Increasing the deadline alone was insufficient.
+
+The fake ACP server now reads the redirected client request stream through an explicit UTF-8 `StreamReader`, matching `KiroAcpUsageClient.WriteRequestAsync`. Its ten-second test bound remains. This is confined to the two Kiro subprocess tests; production code and runtime timeout are unchanged.
+
+Verification: Release solution build 0 warnings/errors; the two targeted cases 2/2 and full direct MTP Telemetry 295/295 passed. The corrected hosted Build and Test and repository hygiene runs are pending after the next push. No provider acceptance history changed; no main merge or mission-completion claim.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.

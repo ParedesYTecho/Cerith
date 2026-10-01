@@ -235,10 +235,11 @@ public sealed class KiroQuotaProviderTests
     public async Task AcpClientSuppressesRetriesOnV3RateLimitNotificationWithoutParsingTiming()
     {
         const string script = """
-            $initialize = [Console]::In.ReadLine() | ConvertFrom-Json
+            $reader = [System.IO.StreamReader]::new([Console]::OpenStandardInput(), [System.Text.Encoding]::UTF8)
+            $initialize = $reader.ReadLine() | ConvertFrom-Json
             if ($initialize.method -ne 'initialize') { exit 21 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":1,"result":{"agentCapabilities":{"_meta":{"kiro":{"extensionMethods":["_kiro/account/getUsage"]}}}}}')
-            $usage = [Console]::In.ReadLine() | ConvertFrom-Json
+            $usage = $reader.ReadLine() | ConvertFrom-Json
             if ($usage.method -ne '_kiro/account/getUsage') { exit 22 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","method":"_kiro/error/rate_limit","params":{"opaque":true}}')
             """;
@@ -255,10 +256,11 @@ public sealed class KiroQuotaProviderTests
     public async Task AcpClientSendsInitializeAndUsageOnlyWithoutPrompting()
     {
         const string script = """
-            $initialize = [Console]::In.ReadLine() | ConvertFrom-Json
+            $reader = [System.IO.StreamReader]::new([Console]::OpenStandardInput(), [System.Text.Encoding]::UTF8)
+            $initialize = $reader.ReadLine() | ConvertFrom-Json
             if ($initialize.method -ne 'initialize') { exit 21 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":1,"result":{"agentCapabilities":{"_meta":{"kiro":{"extensionMethods":["_kiro/account/getUsage"]}}}}}')
-            $usage = [Console]::In.ReadLine() | ConvertFrom-Json
+            $usage = $reader.ReadLine() | ConvertFrom-Json
             if ($usage.method -ne '_kiro/account/getUsage') { exit 22 }
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":2,"result":{"synthetic":true}}')
             """;
