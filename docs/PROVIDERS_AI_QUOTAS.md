@@ -250,6 +250,48 @@ Automated conformance and live validation for CER-M3-002 are complete. The same-
 
 The current Gengchou, TokenTracker and AI Limits public Codex implementations were inspected as separate codebases. Each, and the official app-server path, ultimately reads the same `/wham/usage` upstream; none is an independent upstream oracle. No third-party quota-monitor software needs to be installed or run merely to repeat that same upstream read when an already-installed official terminal surface can safely provide equivalent implementation-level corroboration. This approach and exception are specific to CER-M3-002 and do not change future Claude or Antigravity acceptance gates. Keep all disagreements and their provenance explicit. Record only sanitized timestamps/version and comparison evidence. Source or identity mismatch blocks acceptance until explained. Never generate paid workload, consume reset credits or refresh credentials on Cerith's behalf. A screenshot containing private data is not a fixture. The M3-001 HTTP 200 probe establishes access/shape on one Windows host only; it does not satisfy this live cross-validation gate or validate all plans/auth modes.
 
+## CER-M3-004 — Cursor first integration wave
+
+Cursor FINAL PASS commit `24ca7027e204fb1361cb79f573ddf132c9490994` is included in staging integration HEAD `19c58209abf3fa1e1c826a278ee2edd4008af6de`; this is not a canonical-main merge. The provider uses fixed HTTPS routes observed in Cursor client behavior, without a public API stability guarantee: `https://cursor.com/api/usage-summary`, `https://api2.cursor.sh/aiserver.v1.DashboardService/GetSandAccessStatus`, and `https://api2.cursor.sh/aiserver.v1.DashboardService/GetSandUsageStatus`.
+
+The read-only auth path reads the current user's Cursor `state.vscdb` `cursorAuth/accessToken` and optional `.cursor/cli-config.json` `authInfo.authId`, verifies their normalized subject, and holds the session material only in memory. It does not refresh, write, or copy credentials. Plan quota comes only from the individual plan's direct used percentages; team usage, on-demand usage, and currency amounts are excluded. Grok Bot quota is a separate period and is read only when its access/grant status permits it; a zero included limit does not create a quota value.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.cursor.quota.plan.total.used_percent` | double / % / quota_used | Direct `individualUsage.plan.totalPercentUsed`. |
+| `ai.cursor.quota.plan.auto.used_percent` | double / % / quota_used | Direct `individualUsage.plan.autoPercentUsed`. |
+| `ai.cursor.quota.plan.api.used_percent` | double / % / quota_used | Direct `individualUsage.plan.apiPercentUsed`. |
+| `ai.cursor.quota.plan.reset` | DateTimeOffset / timestamp | Explicit `billingCycleEnd`. |
+| `ai.cursor.quota.plan.duration` | TimeSpan / duration | Explicit billing-cycle end minus start. |
+| `ai.cursor.quota.grok_bot.period.used_percent` | double / % / quota_used | Reported Sand usage percentage. |
+| `ai.cursor.quota.grok_bot.period.reset` | DateTimeOffset / timestamp | Reported Sand period reset. |
+| `ai.cursor.quota.grok_bot.period.duration` | TimeSpan / duration | Reported Sand period end minus start. |
+
+Percentages remain used percentages in the finite 0–100 range; they are never inverted into remaining capacity. Missing values publish valueless `Unavailable`, malformed values publish sanitized `Error`, and an elapsed reset invalidates that quota family. The provider bounds polling to 60 seconds, requests to 10 seconds, response bodies to 64 KiB, and cached values to 15 minutes.
+
+Deterministic tests cover parser and descriptor semantics, synthetic local auth, identity changes, missing auth without network access, HTTP/auth failures, cancellation, timeouts, cache expiry, and bounded publication/shutdown. A signed-in Cursor UI comparison or live quota request was NOT RUN: no current Cursor desktop session was available for this integration wave. The offline tests and provider FINAL PASS do not establish live-account agreement.
+
+## CER-M3-004 — Antigravity first integration wave
+
+The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. No live RPC was run in this wave because the current-user official language server was absent.
+
+| MetricId | Kind / unit / semantic type | Exact source field |
+| --- | --- | --- |
+| `ai.antigravity.quota.3p-weekly.remaining` | double / % / quota_remaining | `response.groups[].buckets[]` where `bucketId` is `3p-weekly`; `remainingFraction × 100`. |
+| `ai.antigravity.quota.3p-5h.remaining` | double / % / quota_remaining | Same `remainingFraction` mapping for `3p-5h`. |
+| `ai.antigravity.quota.gemini-weekly.remaining` | double / % / quota_remaining | Same mapping for `gemini-weekly`. |
+| `ai.antigravity.quota.gemini-5h.remaining` | double / % / quota_remaining | Same mapping for `gemini-5h`. |
+| `ai.antigravity.quota.3p-weekly.reset` | DateTimeOffset / timestamp | `resetTime` for `3p-weekly`. |
+| `ai.antigravity.quota.3p-5h.reset` | DateTimeOffset / timestamp | `resetTime` for `3p-5h`. |
+| `ai.antigravity.quota.gemini-weekly.reset` | DateTimeOffset / timestamp | `resetTime` for `gemini-weekly`. |
+| `ai.antigravity.quota.gemini-5h.reset` | DateTimeOffset / timestamp | `resetTime` for `gemini-5h`. |
+
+`remainingFraction` must be finite and in 0–1; conversion to percent is exact. Missing fractions/resets are Unavailable; malformed values are valueless Error. `resetTime` must include an explicit UTC or numeric offset. An elapsed reset invalidates both remaining and reset values for that bucket. Each bucket is keyed independently; do not clone a shared group value into per-model quotas. Valid returned quota values are Stale/Measured because the local RPC exposes no authoritative backend observation time and may serve backend-cached data. Do not relabel them Fresh.
+
+The provider checks ownership every five seconds, polls every five minutes, bounds each source request to eight seconds and the response to 1 MiB, and expires cache after 15 minutes or at reset. Profile-verification uncertainty remains distinct from a positively observed account/session change. During positive Retry-After when ownership cannot be reverified, cached and pending quota publications are cleared; an immutable MetricBus sample already buffered before the transition cannot be retracted.
+
+Live validation remains NOT RUN. Before claiming it, verify the actual installed Antigravity version, current response schema, and backend-cache freshness behavior against the official local language server.
+
 ## UI contract
 
 Prefer:

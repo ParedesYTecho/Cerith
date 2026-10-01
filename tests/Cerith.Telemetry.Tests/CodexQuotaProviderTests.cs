@@ -13,7 +13,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Cerith.Telemetry.Tests.Providers.AI.Antigravity;
 using Cerith.TelemetryService;
+using Cerith.TelemetryService.Providers.AI.Antigravity;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cerith.Telemetry.Tests;
@@ -658,8 +660,109 @@ public sealed class CodexQuotaProviderTests
         var runner = Program.KeepServiceAliveAfterProviderExitAsync(
             static () => throw new InvalidOperationException("Synthetic start failure."), "codex", stop.Token);
 
+        Assert.IsFalse(runner.IsCompleted);
         stop.Cancel();
         await runner.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    [DataRow("codex")]
+    [DataRow("cursor")]
+    [DataRow("antigravity")]
+    public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
+    {
+        using var stop = new CancellationTokenSource();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            static () => Task.FromException(new InvalidOperationException("Synthetic provider failure.")),
+            providerId, stop.Token);
+
+        Assert.IsFalse(runner.IsCompleted);
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    [DataRow("success")]
+    [DataRow("missing")]
+    [DataRow("auth-failed")]
+    [DataRow("slow")]
+    public async Task HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus(
+        string cursorOutcome)
+    {
+        using var codexHarness = new Harness();
+        var registry = codexHarness.Registry;
+        var bus = codexHarness.Bus;
+        using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
+
+        await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
+        await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
+        await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
+        await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        await using var cursorReader = bus.Subscribe(new MetricId("ai.cursor.quota.plan.total.used_percent"))
+            .GetAsyncEnumerator();
+        await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
+            .GetAsyncEnumerator();
+        var cpuRead = cpuReader.MoveNextAsync().AsTask();
+        var memoryRead = memoryReader.MoveNextAsync().AsTask();
+        var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
+        var codexRead = codexReader.MoveNextAsync().AsTask();
+        var cursorRead = cursorReader.MoveNextAsync().AsTask();
+        var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
+
+        codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
+        await hardwareProvider.PublishNextAsync();
+        await PresentMonTelemetryProviderTests.PublishSyntheticReadingAsync(registry, bus);
+        await codexHarness.Provider.PollOnceAsync();
+        await codexHarness.Provider.PublishCurrentAsync();
+        await CursorQuotaProviderTests.PublishSyntheticOutcomeAsync(registry, bus, cursorOutcome);
+        await AntigravityQuotaProviderTests.PublishSyntheticQuotaAsync(registry, bus);
+
+        var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, cursorRead, antigravityRead)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsTrue(received.All(result => result), "Every provider should deliver through the subscribed shared bus.");
+
+        var cpu = cpuReader.Current;
+        var cpuMeasured = cpu.State == MetricState.Fresh && cpu.Value.HasValue &&
+            cpu.Confidence == MetricConfidence.Measured;
+        var cpuUnavailable = cpu.State == MetricState.Unavailable && !cpu.Value.HasValue &&
+            cpu.Confidence == MetricConfidence.Unknown;
+        Assert.IsTrue(cpuMeasured || cpuUnavailable,
+            $"Real CPU telemetry must be measured or truthfully unavailable; received {cpu.State}/{cpu.Confidence}.");
+
+        Assert.AreEqual(MetricState.Fresh, memoryReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, memoryReader.Current.Confidence);
+        Assert.IsTrue(memoryReader.Current.Value.HasValue);
+        Assert.AreEqual("GlobalMemoryStatusEx", memoryReader.Current.Source);
+
+        Assert.AreEqual(MetricState.Fresh, presentMonReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, presentMonReader.Current.Confidence);
+        Assert.IsTrue(presentMonReader.Current.Value.HasValue);
+        Assert.AreEqual(MetricState.Fresh, codexReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
+        switch (cursorOutcome)
+        {
+            case "success":
+                Assert.AreEqual(MetricState.Fresh, cursorReader.Current.State);
+                Assert.AreEqual(MetricConfidence.Measured, cursorReader.Current.Confidence);
+                Assert.IsTrue(cursorReader.Current.Value.HasValue);
+                break;
+            case "missing":
+                Assert.AreEqual(MetricState.Unavailable, cursorReader.Current.State);
+                Assert.AreEqual(MetricConfidence.Unknown, cursorReader.Current.Confidence);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+            case "auth-failed":
+                Assert.AreEqual(MetricState.Error, cursorReader.Current.State);
+                Assert.AreEqual("auth_rejected", cursorReader.Current.ErrorCode);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+            case "slow":
+                Assert.AreEqual(MetricState.Error, cursorReader.Current.State);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+        }
+        Assert.AreEqual(MetricState.Stale, antigravityReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, antigravityReader.Current.Confidence);
     }
 
     [TestMethod]

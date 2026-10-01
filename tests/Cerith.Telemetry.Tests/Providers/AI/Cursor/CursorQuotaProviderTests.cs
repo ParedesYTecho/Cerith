@@ -766,13 +766,46 @@ public sealed class CursorQuotaProviderTests
         stream.WriteByte((byte)value);
     }
 
+    internal static async Task PublishSyntheticOutcomeAsync(MetricRegistry registry, MetricBus bus, string outcome)
+    {
+        var hasAuth = outcome != "missing";
+        var timeout = outcome == "slow" ? TimeSpan.FromMilliseconds(100) : (TimeSpan?)null;
+        using var harness = new Harness(registry, bus, withAuth: hasAuth, requestTimeout: timeout);
+        switch (outcome)
+        {
+            case "success":
+                harness.SetSuccessfulAccountResponse();
+                break;
+            case "missing":
+                break;
+            case "auth-failed":
+                harness.Handler.Responder = (request, _) => Task.FromResult(
+                    request.RequestUri == CursorQuotaProvider.UsageSummaryEndpoint
+                        ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                        : ProtoResponse(MakeSandAccess(0)));
+                break;
+            case "slow":
+                harness.Handler.Responder = async (_, cancellationToken) =>
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                };
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(outcome));
+        }
+        await harness.Provider.PollOnceAsync();
+        await harness.Provider.PublishCurrentAsync();
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "cerith-cursor-test-" + Guid.NewGuid().ToString("N"));
+        private readonly bool _ownsBus;
         public string StateDatabasePath => Path.Combine(_root, "appdata", "Cursor", "User", "globalStorage", "state.vscdb");
         private string ProfilePath => Path.Combine(_root, "profile");
-        public MetricRegistry Registry { get; } = new();
-        public MetricBus Bus { get; } = new(1);
+        public MetricRegistry Registry { get; }
+        public MetricBus Bus { get; }
         public TestTimeProvider Time { get; } = new(InitialUtc);
         public RecordingHandler Handler { get; } = new();
         public HttpClient Client { get; }
@@ -780,7 +813,15 @@ public sealed class CursorQuotaProviderTests
         public CursorQuotaProvider Provider { get; }
 
         public Harness(bool withAuth = true, TimeSpan? requestTimeout = null)
+            : this(null, null, withAuth, requestTimeout)
         {
+        }
+
+        public Harness(MetricRegistry? registry, MetricBus? bus, bool withAuth, TimeSpan? requestTimeout)
+        {
+            Registry = registry ?? new MetricRegistry();
+            Bus = bus ?? new MetricBus(1);
+            _ownsBus = bus is null;
             Directory.CreateDirectory(Path.GetDirectoryName(StateDatabasePath)!);
             Directory.CreateDirectory(ProfilePath);
             if (withAuth) WriteAuth("auth0|user_syntheticA", "auth0|user_syntheticA");
@@ -843,7 +884,7 @@ public sealed class CursorQuotaProviderTests
         {
             Provider.Dispose();
             Client.Dispose();
-            Bus.Dispose();
+            if (_ownsBus) Bus.Dispose();
             if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
         }
     }

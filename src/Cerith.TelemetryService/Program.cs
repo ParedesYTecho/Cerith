@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Cerith.TelemetryService.Providers.AI.Antigravity;
 
 namespace Cerith.TelemetryService;
 
@@ -51,14 +52,26 @@ internal static class Program
             using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
             await codexQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "codex", stop.Token);
+        var cursorQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var cursorQuotaProvider = new CursorQuotaProvider(registry, bus);
+            await cursorQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "cursor", stop.Token);
+        var antigravityQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var antigravityQuotaProvider = new AntigravityQuotaProvider(registry, bus);
+            await antigravityQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "antigravity", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
-            "; Codex quota polling enabled for standard file auth");
+            "; Codex file-auth, Cursor desktop-auth, and Antigravity local-service quota providers active");
 
-        try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner); }
+        try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
+            antigravityQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
-        try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner); }
+        try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
+            antigravityQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
     }

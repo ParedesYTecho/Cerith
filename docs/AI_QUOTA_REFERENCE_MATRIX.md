@@ -1,6 +1,6 @@
 # AI Quota Reference Matrix
 
-Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance, live validation and Advisor review DONE. PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated tree match. M3 remains ACTIVE / INCOMPLETE. D-024 governs future broad expansion; Claude and Antigravity remain targets but no longer have a mandatory sequential order. Source research checked 2026-09-29; Codex live status updated 2026-09-30. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); D-023 remains historical evidence for the Codex-first decision and D-024 governs subsequent expansion.
+Status: CER-M3-001 research DONE; CER-M3-002 Codex implementation, automated conformance, live validation and Advisor review DONE. PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`; approved head `89091db4e0fe90415ef059c1d29a5d0e7488ff42` and integrated tree match. Cursor FINAL PASS `24ca7027e204fb1361cb79f573ddf132c9490994` and Antigravity FINAL PASS `8889e4b34da1445c2bafe08093c11dc8c63fd1e3` are accepted for staging integration; neither has live-account validation. M3 remains ACTIVE / INCOMPLETE. D-024 governs future broad expansion; Claude and Antigravity remain targets but no longer have a mandatory sequential order. Source research checked 2026-09-29; Codex live status updated 2026-09-30; Cursor and Antigravity integration status updated 2026-10-01. This file owns source reconnaissance, provenance, disagreements and uncertainty. Normalization/MetricIds/cache/tests belong to [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md); D-023 remains historical evidence for the Codex-first decision and D-024 governs subsequent expansion.
 
 ## Purpose
 
@@ -10,10 +10,14 @@ Evidence classes: **D** = official documented behavior; **O** = official client/
 |---|---|---|---|
 | Claude | Official account/OAuth/CLI behavior | CodexBar, OpenUsage, others | Not implemented |
 | Codex | Official authenticated usage source / CLI | Gengchou, TokenTracker, AI Limits, CodexBar, OpenUsage | DONE via PR #43; implementation, conformance, live validation and Advisor review complete |
-| Antigravity | Official local app/language server quota source | CodexBar, OpenUsage, TokenTracker | Not implemented |
+| Antigravity | Official local app/language server quota source | CodexBar, OpenUsage, TokenTracker | Staging implementation accepted at FINAL PASS; live local RPC NOT RUN |
 | Copilot | Official GitHub/Copilot usage surfaces | CodexBar, TokenTracker | Future |
-| Cursor | Official usage/billing surfaces | CodexBar, TokenTracker | Future |
+| Cursor | Official usage/billing surfaces | CodexBar, TokenTracker | Staging implementation accepted at FINAL PASS; live-account validation NOT RUN |
 | Grok | Official xAI/Grok usage/billing surfaces | CodexBar, TokenTracker | Future |
+
+## Cursor — implementation evidence and validation boundary
+
+The accepted staging implementation uses the fixed Cursor usage-summary and Sand DashboardService routes recorded in [PROVIDERS_AI_QUOTAS.md](PROVIDERS_AI_QUOTAS.md). The provider and synthetic-auth tests establish its current field mapping and lifecycle behavior; they do not establish a supported public API contract or live-account agreement. No signed-in Cursor session or live quota request was available for this wave, so UI comparison remains NOT RUN. No canonical-main merge is implied by the staging acceptance.
 
 ## Codex — evidence and source selection
 
@@ -110,6 +114,8 @@ Pinned R evidence and unresolved disagreements:
 Resolution for ordering: modern shared-group/window summary outranks legacy per-model availability. Do not accept fetchAvailableModels.quotaInfo (on internal cloudcode/daily-cloudcode hosts) as complete quota just because it returns 1.0; distinguish “model available” from allowance remaining. Preserve missing fraction even where an external client treats missing-with-reset as exhausted. Code Assist project necessity, stable group IDs, exact JSON schema, scope/identity and internal error/reset mechanics remain explicit later-provider research/validation gates.
 
 The documented CLI >=1.1.11 print-mode quota output is the **preferred source candidate for Antigravity**, not a proven zero-auth-mutation runtime guarantee. Before adopting it, verify installed version and documented slash dispatch, validate the actual quota schema, bounded output/deadline, active account binding and whether startup/invocation renews credentials. Installation docs also describe automatic browser login if no saved session exists. Do not run it against the user's auth to discover side effects. If these gates fail, investigate an already-running loopback summary with verified process ownership and ephemeral CSRF; only then consider minimal cloud credential reuse. None of these fallbacks is implemented or silently selected now. An unavailable automation source is recorded as a limitation, not replaced by inferred activity.
+
+CER-M3-004 accepted the exact reviewed local-language-server implementation, but it does not make the internal RPC a supported public contract. The current-user language server was absent during integration, so live verification of the installed version, response schema, and backend-cache freshness remains NOT RUN.
 
 ## Independent references — pinned comparisons
 
