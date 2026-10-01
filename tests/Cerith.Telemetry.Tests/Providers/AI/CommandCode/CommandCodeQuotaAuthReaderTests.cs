@@ -103,4 +103,26 @@ public sealed class CommandCodeQuotaAuthReaderTests
         Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
         Assert.AreEqual(0, fileReads);
     }
+
+    [TestMethod]
+    public void OversizedCliAuthFileIsRejectedBeforeParsing()
+    {
+        const int authFileLimitBytes = 16 * 1024;
+        var fileReads = 0;
+        var reader = new CommandCodeQuotaAuthReader(
+            () => null,
+            () => "C:\\Users\\test",
+            () => null,
+            _ =>
+            {
+                fileReads++;
+                return new string('x', authFileLimitBytes + 1);
+            });
+
+        var result = reader.Read();
+
+        Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
+        Assert.AreEqual("auth_invalid", result.ErrorCode);
+        Assert.AreEqual(1, fileReads);
+    }
 }

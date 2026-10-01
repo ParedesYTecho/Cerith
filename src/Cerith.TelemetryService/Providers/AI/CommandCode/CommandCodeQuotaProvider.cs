@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -131,6 +132,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
         Task[] workers = [];
+        ExceptionDispatchInfo? unexpectedFault = null;
         try
         {
             workers =
@@ -147,9 +149,11 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         {
             return;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            SetProviderFailure();
+            unexpectedFault = ExceptionDispatchInfo.Capture(exception);
+            try { SetProviderFailure(); }
+            catch (Exception stateException) { unexpectedFault ??= ExceptionDispatchInfo.Capture(stateException); }
         }
         finally
         {
@@ -157,14 +161,27 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             InvalidateActiveWork();
             if (workers.Length > 0)
             {
-                try { await Task.WhenAll(workers).WaitAsync(ShutdownDrainTimeout).ConfigureAwait(false); }
+                var drain = Task.WhenAll(workers);
+                try { await drain.WaitAsync(ShutdownDrainTimeout).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested) { InvalidateActiveWork(); }
-                catch (TimeoutException) { InvalidateActiveWork(); }
-                catch (Exception) { SetProviderFailure(); }
+                catch (TimeoutException)
+                {
+                    InvalidateActiveWork();
+                    ObserveLateFault(drain);
+                }
+                catch (Exception exception)
+                {
+                    unexpectedFault ??= ExceptionDispatchInfo.Capture(exception);
+                    try { SetProviderFailure(); }
+                    catch (Exception stateException) { unexpectedFault ??= ExceptionDispatchInfo.Capture(stateException); }
+                }
             }
 
-            await PublishStoppedAsync().ConfigureAwait(false);
+            try { await PublishStoppedAsync().ConfigureAwait(false); }
+            catch (Exception exception) { unexpectedFault ??= ExceptionDispatchInfo.Capture(exception); }
         }
+
+        unexpectedFault?.Throw();
     }
 
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)
@@ -254,11 +271,6 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         catch (JsonException)
         {
             ApplyRequestFailure(new CommandCodeRequestException("invalid_json"),
-                requestGeneration >= 0 ? requestGeneration : CurrentOwnerGeneration());
-        }
-        catch (Exception)
-        {
-            ApplyRequestFailure(new CommandCodeRequestException("provider_failure"),
                 requestGeneration >= 0 ? requestGeneration : CurrentOwnerGeneration());
         }
         finally
@@ -384,6 +396,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         lock (_stateLock)
         {
             _shutdown.Cancel();
+            _ownerGeneration++;
             InvalidateActiveRequestLocked();
             InvalidatePublicationLocked();
             _hasCredentialScope = false;
@@ -414,20 +427,14 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5), _timeProvider);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
-        {
-            try { await ObserveAuthOnceAsync().ConfigureAwait(false); }
-            catch (Exception) { ApplyRequestFailure(new CommandCodeRequestException("auth_unavailable"), CurrentOwnerGeneration()); }
-        }
+            await ObserveAuthOnceAsync().ConfigureAwait(false);
     }
 
     private async Task ValidityMonitorLoopAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), _timeProvider);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
-        {
-            try { await ExpireValidityOnceAsync().ConfigureAwait(false); }
-            catch (Exception) { ApplyRequestFailure(new CommandCodeRequestException("provider_failure"), CurrentOwnerGeneration()); }
-        }
+            await ExpireValidityOnceAsync().ConfigureAwait(false);
     }
 
     private async Task PublishLoopAsync(CancellationToken cancellationToken)
@@ -436,7 +443,6 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         {
             try { await PublishCurrentAsync(cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return; }
-            catch (Exception) { SetProviderFailure(); }
         }
     }
 
@@ -474,6 +480,11 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
         using (response)
         {
+            if (cancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException(cancellationToken);
+            if (timeout.IsCancellationRequested)
+                throw new CommandCodeRequestException("request_timeout");
+
             if (response.RequestMessage?.RequestUri is { } finalUri && finalUri != endpoint)
                 throw new CommandCodeRequestException("redirect_rejected");
 
@@ -710,6 +721,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             }
             else
             {
+                var failureState = failure.ErrorCode == "offline" ? MetricState.Unavailable : MetricState.Error;
                 for (var index = 0; index < _points.Length; index++)
                 {
                     var point = _points[index];
@@ -720,7 +732,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
                     }
                     else
                     {
-                        SetUnavailableLocked(index, now, failure.ErrorCode, MetricState.Error);
+                        SetUnavailableLocked(index, now, failure.ErrorCode, failureState);
                     }
                 }
             }
@@ -806,6 +818,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     {
         lock (_stateLock)
         {
+            _ownerGeneration++;
             InvalidateActiveRequestLocked();
             InvalidatePublicationLocked();
         }
@@ -839,11 +852,16 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             InvalidatePublicationLocked();
         }
 
-        using var deadline = new CancellationTokenSource(ShutdownDrainTimeout);
-        try { await PublishCurrentAsync(deadline.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException) { return; }
+        using var deadline = new CancellationTokenSource();
+        var publication = PublishCurrentAsync(deadline.Token);
+        try { await publication.WaitAsync(ShutdownDrainTimeout).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested || _shutdown.IsCancellationRequested) { return; }
         catch (ObjectDisposedException) { return; }
-        catch (Exception) { return; }
+        catch (TimeoutException)
+        {
+            deadline.Cancel();
+            ObserveLateFault(publication);
+        }
     }
 
     private static MetricDescriptor Descriptor(int index, string displayName, MetricValueKind kind,
@@ -852,16 +870,29 @@ public sealed class CommandCodeQuotaProvider : IDisposable
 
     private static HttpClient CreateHttpClient()
     {
-        var handler = new SocketsHttpHandler
+        return new HttpClient(CreateHttpHandler(), disposeHandler: true)
         {
-            AllowAutoRedirect = false,
-            UseCookies = false,
-            UseProxy = false,
-            Proxy = null,
-            Credentials = null,
-            ConnectTimeout = RequestTimeout
+            Timeout = Timeout.InfiniteTimeSpan
         };
-        return new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
+    }
+
+    internal static SocketsHttpHandler CreateHttpHandler() => new()
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false,
+        UseProxy = false,
+        Proxy = null,
+        Credentials = null,
+        ConnectTimeout = RequestTimeout
+    };
+
+    private static void ObserveLateFault(Task task)
+    {
+        _ = task.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private static Uri BuildOrgUri(string route, string? orgId)

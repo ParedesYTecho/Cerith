@@ -2,8 +2,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -73,8 +77,128 @@ public sealed class CommandCodeQuotaProviderTests
         Assert.IsTrue(handler.AuthorizationHeaders.TrueForAll(value => value == "Bearer " + ApiKey));
         Assert.IsTrue(handler.UserAgentHeaders.TrueForAll(value => value == "Cerith"),
             "Each request must expose only the Cerith product token.");
+        Assert.IsTrue(handler.Methods.TrueForAll(method => method == HttpMethod.Get),
+            "Quota acquisition must use GET only.");
+        Assert.IsTrue(handler.CookieHeaders.TrueForAll(value => value is null),
+            "Requests must not forward cookies.");
+        Assert.IsTrue(handler.AcceptHeaders.TrueForAll(value => value == "application/json"));
         Assert.IsTrue(handler.RequestUris.TrueForAll(uri => uri.Scheme == Uri.UriSchemeHttps &&
             uri.Host == "api.commandcode.ai"));
+    }
+
+    [TestMethod]
+    public void ProductionHandlerDisablesAmbientProxyCookiesAndRedirects()
+    {
+        using var handler = CommandCodeQuotaProvider.CreateHttpHandler();
+
+        Assert.IsFalse(handler.UseProxy);
+        Assert.IsNull(handler.Proxy);
+        Assert.IsFalse(handler.UseCookies);
+        Assert.IsFalse(handler.AllowAutoRedirect);
+        Assert.IsNull(handler.Credentials);
+        Assert.AreEqual(CommandCodeQuotaProvider.RequestTimeout, handler.ConnectTimeout);
+    }
+
+    [TestMethod]
+    public async Task OversizedChunkedResponseIsRejectedWithoutRetainingItsBody()
+    {
+        using var handler = new RecordingHandler(request =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                RequestMessage = request,
+                Content = new StreamContent(new OversizedStream(CommandCodeQuotaProvider.MaxResponseBytes + 1))
+            };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            Assert.IsNull(response.Content.Headers.ContentLength,
+                "The test must exercise the streamed bound rather than the Content-Length fast path.");
+            return response;
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var read = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+
+        Assert.IsTrue(await read.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Error, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("response_too_large", reader.Current.ErrorCode);
+        Assert.AreEqual(1, handler.RequestUris.Count);
+        Assert.IsFalse(reader.Current.ErrorCode!.Contains(ApiKey, StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task OfflineWithoutCacheIsUnavailableAndTimeoutIsAnError()
+    {
+        var offline = true;
+        var resetAt = DateTimeOffset.UtcNow.AddDays(30).ToUnixTimeMilliseconds();
+        using var offlineHandler = new RecordingHandler(request =>
+        {
+            if (offline) throw new HttpRequestException(ApiKey);
+            return request.RequestUri!.AbsolutePath switch
+            {
+                "/alpha/whoami" => WhoAmIResponse(request, null),
+                "/alpha/billing/credits" => QuotaResponse(request, 25, resetAt),
+                "/alpha/billing/subscriptions" => SubscriptionResponse(request),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+            };
+        });
+        using var offlineClient = Client(offlineHandler);
+        using var offlineBus = new MetricBus(4);
+        using var offlineProvider = Provider(new MetricRegistry(), offlineBus, offlineClient,
+            FixedCredentialReader(ApiKey), TimeProvider.System);
+        var offlineReader = offlineBus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var offlineRead = offlineReader.MoveNextAsync().AsTask();
+
+        await offlineProvider.PollOnceAsync();
+        await offlineProvider.PublishCurrentAsync();
+
+        Assert.IsTrue(await offlineRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, offlineReader.Current.State);
+        Assert.IsNull(offlineReader.Current.Value);
+        Assert.AreEqual("offline", offlineReader.Current.ErrorCode);
+        Assert.IsFalse(offlineReader.Current.ErrorCode!.Contains(ApiKey, StringComparison.Ordinal));
+
+        offline = false;
+        var freshRead = offlineReader.MoveNextAsync().AsTask();
+        await offlineProvider.PollOnceAsync();
+        await offlineProvider.PublishCurrentAsync();
+        Assert.IsTrue(await freshRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, offlineReader.Current.State);
+        var sourceObservedAt = offlineReader.Current.ObservedAt;
+
+        offline = true;
+        var staleRead = offlineReader.MoveNextAsync().AsTask();
+        await offlineProvider.PollOnceAsync();
+        await offlineProvider.PublishCurrentAsync();
+        Assert.IsTrue(await staleRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Stale, offlineReader.Current.State);
+        Assert.AreEqual("offline", offlineReader.Current.ErrorCode);
+        Assert.AreEqual(sourceObservedAt, offlineReader.Current.ObservedAt);
+
+        using var timeoutHandler = new RecordingHandler(async (request, cancellationToken) =>
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = request };
+        });
+        using var timeoutClient = Client(timeoutHandler);
+        using var timeoutBus = new MetricBus(4);
+        using var timeoutProvider = Provider(new MetricRegistry(), timeoutBus, timeoutClient,
+            FixedCredentialReader(ApiKey), TimeProvider.System, TimeSpan.FromMilliseconds(30));
+        var timeoutReader = timeoutBus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var timeoutRead = timeoutReader.MoveNextAsync().AsTask();
+
+        await timeoutProvider.PollOnceAsync();
+        await timeoutProvider.PublishCurrentAsync();
+
+        Assert.IsTrue(await timeoutRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Error, timeoutReader.Current.State);
+        Assert.IsNull(timeoutReader.Current.Value);
+        Assert.AreEqual("request_timeout", timeoutReader.Current.ErrorCode);
     }
 
     [TestMethod]
@@ -118,7 +242,7 @@ public sealed class CommandCodeQuotaProviderTests
             new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
                 RequestMessage = request,
-                Content = new StringContent("synthetic unauthorized response")
+                Content = new StringContent(ApiKey)
             });
         using var client = Client(handler);
         using var bus = new MetricBus(4);
@@ -138,11 +262,40 @@ public sealed class CommandCodeQuotaProviderTests
         Assert.AreEqual(MetricState.Error, reader.Current.State);
         Assert.IsNull(reader.Current.Value);
         Assert.AreEqual("auth_expired", reader.Current.ErrorCode);
+        Assert.IsFalse(reader.Current.ErrorCode!.Contains(ApiKey, StringComparison.Ordinal));
         Assert.AreEqual(1, handler.RequestUris.Count);
+        Assert.IsTrue(handler.Methods.TrueForAll(method => method == HttpMethod.Get));
         Assert.AreEqual(0, fileReads);
 
         await provider.PollOnceAsync();
         Assert.AreEqual(1, handler.RequestUris.Count, "A rejected selected credential is not retried or replaced silently.");
+    }
+
+    [TestMethod]
+    public async Task ForbiddenAuthResponseIsValuelessAndSuppressesTheRejectedCredential()
+    {
+        using var handler = new RecordingHandler(request => new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            RequestMessage = request,
+            Content = new StringContent(ApiKey)
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var read = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await read.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Error, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("auth_expired", reader.Current.ErrorCode);
+
+        await provider.PollOnceAsync();
+        Assert.AreEqual(1, handler.RequestUris.Count,
+            "Forbidden credentials remain suspended until the selected credential changes.");
+        Assert.IsTrue(handler.Methods.TrueForAll(method => method == HttpMethod.Get));
     }
 
     [TestMethod]
@@ -186,6 +339,54 @@ public sealed class CommandCodeQuotaProviderTests
         Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
         Assert.IsNull(reader.Current.Value);
         Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
+    public async Task MonotonicAgeMarksCacheStaleWithoutChangingSourceObservedAtThenExpiresIt()
+    {
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(start);
+        var resetAt = start.AddDays(30).ToUnixTimeMilliseconds();
+        using var handler = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/alpha/whoami" => WhoAmIResponse(request, null),
+            "/alpha/billing/credits" => QuotaResponse(request, 25, resetAt),
+            "/alpha/billing/subscriptions" => SubscriptionResponse(request),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        await provider.PollOnceAsync();
+        var freshRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await freshRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(start, reader.Current.ObservedAt);
+
+        time.SetUtcNow(start.AddDays(-10));
+        time.AdvanceMonotonic(CommandCodeQuotaProvider.StaleAfter);
+        await provider.ExpireValidityOnceAsync();
+        var staleRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await staleRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Stale, reader.Current.State);
+        Assert.AreEqual(25d, reader.Current.Value!.Value.AsDouble());
+        Assert.AreEqual(start, reader.Current.ObservedAt,
+            "Age uses monotonic elapsed time and Stale retains the source observation time.");
+
+        time.AdvanceMonotonic(CommandCodeQuotaProvider.MaximumCacheAge - CommandCodeQuotaProvider.StaleAfter);
+        await provider.ExpireValidityOnceAsync();
+        var expiredRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await expiredRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("cache_expired", reader.Current.ErrorCode);
+        Assert.AreEqual(3, handler.RequestUris.Count,
+            "Freshness aging and expiry must not require another acquisition.");
     }
 
     [TestMethod]
@@ -283,6 +484,178 @@ public sealed class CommandCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task AuthSourceAndSelectedFilePathChangesClearSameKeyCache()
+    {
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
+        var resetAt = time.GetUtcNow().AddDays(30).ToUnixTimeMilliseconds();
+        var useFile = false;
+        var selectedHome = @"C:\synthetic\command-code-home-a";
+        using var handler = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/alpha/whoami" => Json(request, "{}"),
+            "/alpha/billing/credits" => QuotaResponse(request, 25, resetAt),
+            "/alpha/billing/subscriptions" => SubscriptionResponse(request),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request }
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(8);
+        var authReader = new CommandCodeQuotaAuthReader(
+            () => useFile ? null : ApiKey,
+            () => useFile ? selectedHome : null,
+            () => null,
+            _ => "{\"apiKey\":\"" + ApiKey + "\"}");
+        using var provider = Provider(new MetricRegistry(), bus, client, authReader, time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        await provider.PollOnceAsync();
+        var initialRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        useFile = true;
+        await provider.ObserveAuthOnceAsync();
+        var sourceChangedRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await sourceChangedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("account_changed", reader.Current.ErrorCode);
+        Assert.IsNull(reader.Current.Value);
+
+        selectedHome = @"C:\synthetic\command-code-home-b";
+        await provider.ObserveAuthOnceAsync();
+        var pathChangedRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await pathChangedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("account_changed", reader.Current.ErrorCode);
+        Assert.IsNull(reader.Current.Value);
+    }
+
+    [TestMethod]
+    public async Task OrgChangeClearsOldCacheBeforeNewOrgResponseCompletes()
+    {
+        var selectedOrg = "org-a";
+        var creditsRequestCount = 0;
+        HttpRequestMessage? pendingCreditsRequest = null;
+        var secondCreditsEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondCreditsResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resetAt = DateTimeOffset.UtcNow.AddDays(30).ToUnixTimeMilliseconds();
+        using var handler = new RecordingHandler((request, _) =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/alpha/whoami") return Task.FromResult(WhoAmIResponse(request, selectedOrg));
+            if (path == "/alpha/billing/credits")
+            {
+                if (Interlocked.Increment(ref creditsRequestCount) == 2)
+                {
+                    pendingCreditsRequest = request;
+                    secondCreditsEntered.TrySetResult(true);
+                    return secondCreditsResponse.Task;
+                }
+                return Task.FromResult(QuotaResponse(request, 25, resetAt));
+            }
+            if (path == "/alpha/billing/subscriptions") return Task.FromResult(SubscriptionResponse(request));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request });
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(2);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+
+        await provider.PollOnceAsync();
+        var initialRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(25d, reader.Current.Value!.Value.AsDouble());
+
+        selectedOrg = "org-b";
+        var secondPoll = provider.PollOnceAsync();
+        await secondCreditsEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var changedRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await changedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("account_changed", reader.Current.ErrorCode);
+        Assert.IsNull(reader.Current.Value);
+
+        secondCreditsResponse.SetResult(QuotaResponse(pendingCreditsRequest!, 75, resetAt));
+        await secondPoll.WaitAsync(TimeSpan.FromSeconds(2));
+        var newOrgRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await newOrgRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(75d, reader.Current.Value!.Value.AsDouble());
+        Assert.IsTrue(handler.RequestUris.Exists(uri => uri.AbsolutePath == "/alpha/billing/credits" &&
+            uri.Query.Contains("orgId=org-b", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task CredentialChangeCancelsBlockedPublicationAndDiscardsLateWhoAmIResponse()
+    {
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
+        var resetAt = time.GetUtcNow().AddDays(30).ToUnixTimeMilliseconds();
+        var selectedKey = "first-commandcode-key";
+        var whoAmICount = 0;
+        HttpRequestMessage? pendingWhoAmIRequest = null;
+        var secondWhoAmIEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondWhoAmIResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = new RecordingHandler((request, _) =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/alpha/whoami")
+            {
+                if (Interlocked.Increment(ref whoAmICount) == 2)
+                {
+                    pendingWhoAmIRequest = request;
+                    secondWhoAmIEntered.TrySetResult(true);
+                    return secondWhoAmIResponse.Task;
+                }
+                return Task.FromResult(WhoAmIResponse(request, "org-a"));
+            }
+            if (path == "/alpha/billing/credits") return Task.FromResult(QuotaResponse(request, 25, resetAt));
+            if (path == "/alpha/billing/subscriptions") return Task.FromResult(SubscriptionResponse(request));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request });
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(1);
+        var authReader = new CommandCodeQuotaAuthReader(() => selectedKey, () => null, () => null, _ => null);
+        using var provider = Provider(new MetricRegistry(), bus, client, authReader, time);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+
+        await provider.PollOnceAsync();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+
+        await provider.PublishCurrentAsync();
+        var blockedPublication = provider.PublishCurrentAsync();
+        Assert.IsFalse(blockedPublication.IsCompleted,
+            "The capacity-one subscription must keep the second publication blocked.");
+
+        var latePoll = provider.PollOnceAsync();
+        await secondWhoAmIEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        selectedKey = "second-commandcode-key";
+        await provider.ObserveAuthOnceAsync();
+        await blockedPublication.WaitAsync(TimeSpan.FromSeconds(2));
+        secondWhoAmIResponse.SetResult(WhoAmIResponse(pendingWhoAmIRequest!, "org-a"));
+        await latePoll.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.AreEqual(4, handler.RequestUris.Count,
+            "The canceled old-owner whoami response must not start billing requests.");
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State,
+            "A snapshot buffered before the observed owner transition cannot be retracted.");
+        var changedRead = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await changedRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("account_changed", reader.Current.ErrorCode);
+    }
+
+    [TestMethod]
     public async Task RetryAfterLongerThanCacheLifetimeIsNotShortened()
     {
         var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
@@ -332,6 +705,132 @@ public sealed class CommandCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task RetryAfterHttpDateUsesMonotonicDeadlineAfterWallClockJump()
+    {
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(start);
+        var retryAt = start.AddMinutes(20);
+        var resetAt = start.AddDays(30).ToUnixTimeMilliseconds();
+        var pollNumber = 0;
+        using var handler = new RecordingHandler(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/alpha/whoami")
+            {
+                Interlocked.Increment(ref pollNumber);
+                return WhoAmIResponse(request, null);
+            }
+            if (path == "/alpha/billing/credits" && Volatile.Read(ref pollNumber) == 2)
+            {
+                var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { RequestMessage = request };
+                limited.Headers.RetryAfter = new RetryConditionHeaderValue(retryAt);
+                return limited;
+            }
+            if (path == "/alpha/billing/credits") return QuotaResponse(request, 25, resetAt);
+            if (path == "/alpha/billing/subscriptions") return SubscriptionResponse(request);
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request };
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(4);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), time);
+
+        await provider.PollOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.RequestUris.Count);
+
+        time.SetUtcNow(start.AddDays(2));
+        time.AdvanceMonotonic(TimeSpan.FromMinutes(20) - TimeSpan.FromSeconds(1));
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.RequestUris.Count,
+            "A later wall-clock correction must not shorten the parsed Retry-After deadline.");
+
+        time.AdvanceMonotonic(TimeSpan.FromSeconds(1));
+        await provider.PollOnceAsync();
+        Assert.AreEqual(9, handler.RequestUris.Count);
+    }
+
+    [TestMethod]
+    public async Task RunShutdownIsBoundedWhenRequestHandlerIgnoresCancellation()
+    {
+        var requestEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var responseReleased = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        HttpRequestMessage? pendingRequest = null;
+        using var handler = new RecordingHandler(async (request, _) =>
+        {
+            pendingRequest = request;
+            requestEntered.TrySetResult(true);
+            var response = await pendingResponse.Task.ConfigureAwait(false);
+            responseReleased.TrySetResult(true);
+            return response;
+        });
+        using var client = Client(handler);
+        using var bus = new MetricBus(8);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+        using var stop = new CancellationTokenSource();
+        var run = provider.RunAsync(stop.Token);
+        await requestEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var timer = Stopwatch.StartNew();
+        stop.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsTrue(timer.Elapsed < TimeSpan.FromSeconds(5),
+            "A noncooperative request must not hold provider shutdown open indefinitely.");
+
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        var sawStopped = reader.Current.State == MetricState.Stopped;
+        for (var attempt = 0; attempt < 4 && !sawStopped; attempt++)
+        {
+            Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+            sawStopped = reader.Current.State == MetricState.Stopped;
+        }
+        Assert.IsTrue(sawStopped, "Shutdown must attempt the Stopped publication before returning.");
+
+        provider.Dispose();
+        pendingResponse.SetResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            RequestMessage = pendingRequest,
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        });
+        await responseReleased.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [TestMethod]
+    public async Task RunRethrowsUnexpectedWorkerFaultAfterStoppedPublicationAttempt()
+    {
+        using var handler = new RecordingHandler(_ => throw new InvalidOperationException("synthetic unexpected transport fault"));
+        using var client = Client(handler);
+        using var bus = new MetricBus(8);
+        using var provider = Provider(new MetricRegistry(), bus, client, FixedCredentialReader(ApiKey), TimeProvider.System);
+        var reader = bus.Subscribe(new MetricId(UsedMetricId)).GetAsyncEnumerator();
+        var initialRead = reader.MoveNextAsync().AsTask();
+
+        InvalidOperationException? observedFault = null;
+        try
+        {
+            await provider.RunAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        catch (InvalidOperationException exception)
+        {
+            observedFault = exception;
+        }
+
+        Assert.IsNotNull(observedFault);
+        Assert.AreEqual("synthetic unexpected transport fault", observedFault.Message);
+        Assert.IsTrue(await initialRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        var sawStopped = reader.Current.State == MetricState.Stopped;
+        for (var attempt = 0; attempt < 4 && !sawStopped; attempt++)
+        {
+            Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+            sawStopped = reader.Current.State == MetricState.Stopped;
+        }
+        Assert.IsTrue(sawStopped,
+            "RunAsync must make its bounded Stopped publication attempt before rethrowing an unexpected worker fault.");
+    }
+
+    [TestMethod]
     public async Task RunCancellationPublishesStoppedWithoutBlockingShutdown()
     {
         using var handler = new RecordingHandler(request =>
@@ -359,7 +858,8 @@ public sealed class CommandCodeQuotaProviderTests
         MetricBus bus,
         HttpClient client,
         CommandCodeQuotaAuthReader authReader,
-        TimeProvider time) => new(registry, bus, authReader, client, time);
+        TimeProvider time,
+        TimeSpan? requestTimeout = null) => new(registry, bus, authReader, client, time, requestTimeout);
 
     private static CommandCodeQuotaAuthReader FixedCredentialReader(string? apiKey) =>
         new(() => apiKey, () => null, () => null, _ => null);
@@ -374,21 +874,58 @@ public sealed class CommandCodeQuotaProviderTests
             Content = new StringContent(body, Encoding.UTF8, "application/json")
         };
 
-    private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    private static HttpResponseMessage WhoAmIResponse(HttpRequestMessage request, string? orgId) =>
+        Json(request, string.IsNullOrEmpty(orgId)
+            ? "{}"
+            : $"{{\"data\":{{\"org\":{{\"id\":\"{orgId}\"}}}}}}");
+
+    private static HttpResponseMessage QuotaResponse(HttpRequestMessage request, int fiveHourUsed, long resetAt)
     {
+        var body = string.Concat(
+            "{\"windowLimits\":{\"fiveHour\":{\"used\":",
+            fiveHourUsed.ToString(CultureInfo.InvariantCulture),
+            ",\"cap\":100,\"resetAt\":",
+            resetAt.ToString(CultureInfo.InvariantCulture),
+            "},\"weekly\":{\"used\":5,\"cap\":20,\"resetAt\":",
+            resetAt.ToString(CultureInfo.InvariantCulture),
+            "}}}");
+        return Json(request, body);
+    }
+
+    private static HttpResponseMessage SubscriptionResponse(HttpRequestMessage request) =>
+        Json(request, "{\"data\":{\"planId\":\"individual-pro\",\"status\":\"active\"}}");
+
+    private sealed class RecordingHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _respond;
+
+        internal RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> respond)
+            : this((request, _) => Task.FromResult(respond(request)))
+        {
+        }
+
+        internal RecordingHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) =>
+            _respond = respond;
+
         internal List<Uri> RequestUris { get; } = [];
+        internal List<HttpMethod> Methods { get; } = [];
         internal List<string?> AuthorizationHeaders { get; } = [];
         internal List<string> UserAgentHeaders { get; } = [];
+        internal List<string?> CookieHeaders { get; } = [];
+        internal List<string> AcceptHeaders { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             lock (RequestUris)
             {
                 RequestUris.Add(request.RequestUri!);
+                Methods.Add(request.Method);
                 AuthorizationHeaders.Add(request.Headers.Authorization?.ToString());
                 UserAgentHeaders.Add(request.Headers.UserAgent.ToString());
+                CookieHeaders.Add(request.Headers.Contains("Cookie") ? string.Join(";", request.Headers.GetValues("Cookie")) : null);
+                AcceptHeaders.Add(request.Headers.Accept.ToString());
             }
-            return Task.FromResult(respond(request));
+            return await _respond(request, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -406,5 +943,53 @@ public sealed class CommandCodeQuotaProviderTests
             _utcNow += elapsed;
             _timestamp += elapsed.Ticks;
         }
+
+        internal void AdvanceMonotonic(TimeSpan elapsed) => _timestamp += elapsed.Ticks;
+
+        internal void SetUtcNow(DateTimeOffset utcNow) => _utcNow = utcNow;
+    }
+
+    private sealed class OversizedStream(long length) : Stream
+    {
+        private long _remaining = length;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() { }
+
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_remaining == 0 || buffer.Length == 0) return 0;
+            var read = (int)Math.Min(buffer.Length, _remaining);
+            buffer[..read].Fill((byte)'x');
+            _remaining -= read;
+            return read;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(Read(buffer.Span));
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Read(buffer.AsSpan(offset, count)));
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }
