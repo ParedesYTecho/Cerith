@@ -136,7 +136,7 @@ public sealed class AntigravityQuotaProviderTests
     }
 
     [TestMethod]
-    public async Task RetryAfterBeyondCacheLifetimeDoesNotRetryEarlyAndFailureIsImmediatelyStale()
+    public async Task RetryAfterBeyondCacheLifetimeInvalidatesCacheAndDoesNotRetryEarly()
     {
         var time = new ManualTimeProvider(InitialUtc);
         using var bus = new MetricBus(1);
@@ -157,10 +157,10 @@ public sealed class AntigravityQuotaProviderTests
         await sequencedProvider.PollOnceAsync();
         time.Advance(AntigravityQuotaProvider.PollInterval);
         await sequencedProvider.PollOnceAsync();
-        var stale = await PublishOneAsync(sequencedProvider, bus, MetricId);
-        Assert.AreEqual(MetricState.Stale, stale.State);
-        Assert.AreEqual(60d, stale.Value!.Value.AsDouble(), 0.000001);
-        Assert.AreEqual(InitialUtc, stale.ObservedAt);
+        var unavailable = await PublishOneAsync(sequencedProvider, bus, MetricId);
+        Assert.AreEqual(MetricState.Unavailable, unavailable.State);
+        Assert.IsNull(unavailable.Value);
+        Assert.AreEqual("rate_limited", unavailable.ErrorCode);
 
         time.Advance(TimeSpan.FromMinutes(15));
         await sequencedProvider.ExpireValidityOnceAsync();
@@ -212,6 +212,69 @@ public sealed class AntigravityQuotaProviderTests
         time.Advance(TimeSpan.FromSeconds(1));
         await provider.PollOnceAsync();
         Assert.AreEqual(9, handler.Requests.Count);
+    }
+
+    [TestMethod]
+    public async Task SummaryRetryAfterDoesNotPublishCachedQuotaAfterSessionChanges()
+    {
+        var time = new ManualTimeProvider(InitialUtc);
+        var sessionChanged = false;
+        var sourceOwner = ProcessOwner();
+        using var handler = new ScriptedHandler((index, request) =>
+        {
+            if (request.RequestUri!.Segments.Last() == "GetUserStatus")
+                return JsonResponse(sessionChanged ? StatusB : StatusA);
+            return index == 5
+                ? RateLimited(TimeSpan.FromMinutes(20))
+                : JsonResponse(SummaryPayload);
+        });
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System, _ =>
+            Task.FromResult(new[]
+            {
+                sessionChanged ? sourceOwner with { CsrfToken = "synthetic-session-B" } : sourceOwner
+            }));
+        using var bus = new MetricBus(1);
+        await using var reader = bus.Subscribe(new MetricId(MetricId)).GetAsyncEnumerator();
+        using var provider = new AntigravityQuotaProvider(new MetricRegistry(), bus,
+            acquirer.AcquireOnceAsync, acquirer.VerifyOwnerAsync, time);
+
+        await provider.PollOnceAsync();
+        Assert.AreEqual(3, handler.Requests.Count);
+        var initial = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await initial.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(12.3456, reader.Current.Value!.Value.AsDouble(), 0.0000001);
+        await provider.PublishCurrentAsync();
+        var pendingOldPublication = provider.PublishCurrentAsync();
+        Assert.IsFalse(pendingOldPublication.IsCompleted);
+
+        Assert.IsTrue(AntigravityQuotaProvider.PollInterval < AntigravityQuotaProvider.MaximumCacheAge);
+        time.Advance(AntigravityQuotaProvider.PollInterval);
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count);
+        await pendingOldPublication.WaitAsync(TimeSpan.FromSeconds(1));
+
+        sessionChanged = true;
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count);
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(12.3456, reader.Current.Value!.Value.AsDouble(), 0.0000001,
+            "This value was buffered before the rate limit and cannot be retracted.");
+        var afterBackoffStart = reader.MoveNextAsync().AsTask();
+        await provider.PublishCurrentAsync();
+        Assert.IsTrue(await afterBackoffStart.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.AreEqual("rate_limited", reader.Current.ErrorCode);
+        Assert.AreEqual(6, handler.Requests.Count);
+
+        time.Advance(TimeSpan.FromMinutes(20) - TimeSpan.FromSeconds(1));
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count);
     }
 
     [TestMethod]

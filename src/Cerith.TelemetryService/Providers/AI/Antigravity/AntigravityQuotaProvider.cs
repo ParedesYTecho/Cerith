@@ -413,7 +413,9 @@ internal sealed class AntigravityQuotaProvider : IDisposable
             _failureCode = acquisition.ErrorCode;
             _failureObservedAt = now;
             _lastReadingPoints = acquisition.Reading?.Points;
-            if (acquisition.Reading is null && acquisition.FailureState == MetricState.Error)
+            var hasRetryBackoff = acquisition.RetryAfter is TimeSpan retryDelay && retryDelay > TimeSpan.Zero;
+            if (acquisition.Reading is null &&
+                (acquisition.FailureState == MetricState.Error || hasRetryBackoff))
                 Array.Clear(_cache);
             if (acquisition.Reading is not null)
             {
