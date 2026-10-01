@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
 using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.CommandCode;
 using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
+using Cerith.TelemetryService.Providers.AI.Kiro;
 
 namespace Cerith.TelemetryService;
 
@@ -78,17 +80,29 @@ internal static class Program
             using var openCodeGoQuotaProvider = new OpenCodeGoQuotaProvider(registry, bus);
             await openCodeGoQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "opencode-go", stop.Token);
+        var kiroQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var kiroQuotaProvider = new KiroQuotaProvider(registry, bus);
+            await kiroQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "kiro", stop.Token);
+        var commandCodeQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var commandCodeQuotaProvider = new CommandCodeQuotaProvider(registry, bus);
+            await commandCodeQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "command-code", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
             "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
-            "GitHub Copilot CLI, and OpenCode Go quota providers active");
+            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, and Command Code quota providers active");
 
         try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner); }
+            antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            kiroQuotaRunner, commandCodeQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner); }
+            antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            kiroQuotaRunner, commandCodeQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
     }

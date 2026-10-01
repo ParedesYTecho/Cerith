@@ -36,9 +36,6 @@ public sealed class ZCodeQuotaProviderTests
         "ai.zcode.coding_plan.tools.bucket_metadata"
     ];
 
-    internal static SyntheticProvider CreateSyntheticProvider(MetricRegistry registry, MetricBus bus) =>
-        new(new Harness(registry, bus));
-
     [TestMethod]
     public async Task SelectedFamilyAcquiresCodingPlanAndPreservesWindowModelMetadata()
     {
@@ -534,23 +531,6 @@ public sealed class ZCodeQuotaProviderTests
     {
         Content = new StringContent(json, Encoding.UTF8, "application/json")
     };
-
-    internal sealed class SyntheticProvider : IDisposable
-    {
-        private readonly Harness _harness;
-
-        internal SyntheticProvider(Harness harness) => _harness = harness;
-
-        public Task PrimeAsync()
-        {
-            _harness.Handler.EnqueueJson(_harness.Fixture);
-            return _harness.Provider.PollOnceAsync();
-        }
-
-        public ValueTask PublishCurrentAsync() => _harness.Provider.PublishCurrentAsync();
-
-        public void Dispose() => _harness.Dispose();
-    }
 
     internal sealed class Harness : IDisposable
     {

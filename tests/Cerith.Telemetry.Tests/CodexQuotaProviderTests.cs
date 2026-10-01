@@ -16,7 +16,9 @@ using Cerith.Core;
 using Cerith.Telemetry.Tests.Providers.AI.Antigravity;
 using Cerith.TelemetryService;
 using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.CommandCode;
 using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
+using Cerith.TelemetryService.Providers.AI.Kiro;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cerith.Telemetry.Tests;
@@ -673,6 +675,8 @@ public sealed class CodexQuotaProviderTests
     [DataRow("zcode")]
     [DataRow("github-copilot")]
     [DataRow("opencode-go")]
+    [DataRow("kiro")]
+    [DataRow("command-code")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -778,7 +782,7 @@ public sealed class CodexQuotaProviderTests
         using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
         using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
-        using var zcodeProvider = ZCodeQuotaProviderTests.CreateSyntheticProvider(registry, bus);
+        using var zcodeHarness = new ZCodeQuotaProviderTests.Harness(registry, bus);
         var copilotResponses = new Queue<string>();
         const string accountId = "24680";
         const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
@@ -803,6 +807,28 @@ public sealed class CodexQuotaProviderTests
         });
         using var copilotProvider = new CopilotQuotaProvider(registry, bus, copilotAcquirer, copilotTime);
 
+        const string kiroUsage = """
+            {"userInfo":{"userId":"synthetic-user","accountId":"synthetic-account"},
+             "subscriptionInfo":{"nextDateReset":1893456000},
+             "usageBreakdownList":[{"resourceType":"CREDIT","currentUsageWithPrecision":"12.75","usageLimitWithPrecision":"100"}]}
+            """;
+        using var kiroProvider = new KiroQuotaProvider(registry, bus,
+            _ => Task.FromResult(KiroAcquisition.Ready(Encoding.UTF8.GetBytes(kiroUsage))), TimeProvider.System,
+            _ => Task.FromResult(KiroIdentityObservation.Ready(new byte[32])));
+
+        using var commandHandler = new RecordingHandler();
+        commandHandler.EnqueueJson("{\"data\":{\"org\":{\"id\":\"synthetic-org\"}}}");
+        commandHandler.EnqueueJson("""
+            {"windowLimits":{"fiveHour":{"used":25,"cap":100,"resetAt":4102444800000},
+              "weekly":{"used":5,"cap":20,"resetAt":4103049600000}}}
+            """);
+        commandHandler.EnqueueJson("{\"data\":{\"planId\":\"individual-pro-v1\",\"status\":\"active\"}}");
+        using var commandClient = new HttpClient(commandHandler) { Timeout = Timeout.InfiniteTimeSpan };
+        var commandAuthReader = new CommandCodeQuotaAuthReader(
+            () => "synthetic-command-code-key", () => null, () => null, _ => null);
+        using var commandCodeProvider = new CommandCodeQuotaProvider(
+            registry, bus, commandAuthReader, commandClient, TimeProvider.System);
+
         const string authContent = "{\"opencode-go\":{\"type\":\"api\",\"key\":\"synthetic-opencode-go-key\"}}";
         var authReader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
             StringComparer.Ordinal.Equals(name, "OPENCODE_AUTH_CONTENT") ? authContent : null);
@@ -816,7 +842,10 @@ public sealed class CodexQuotaProviderTests
             """);
         using var openCodeProvider = new OpenCodeGoQuotaProvider(registry, bus, authReader,
             openCodeHandler, TimeProvider.System, _ => 0);
-        await zcodeProvider.PrimeAsync();
+        zcodeHarness.Handler.EnqueueJson(zcodeHarness.Fixture);
+        await zcodeHarness.Provider.PollOnceAsync();
+        await kiroProvider.PollOnceAsync();
+        await commandCodeProvider.PollOnceAsync();
         await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
         await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
         await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
@@ -829,6 +858,10 @@ public sealed class CodexQuotaProviderTests
             "ai.opencode-go.quota.rolling.used")).GetAsyncEnumerator();
         await using var zcodeReader = bus.Subscribe(new MetricId(
             "ai.zcode.coding_plan.five_hour.remaining_percent")).GetAsyncEnumerator();
+        await using var kiroReader = bus.Subscribe(new MetricId(
+            "ai.kiro.credits.included.remaining")).GetAsyncEnumerator();
+        await using var commandCodeReader = bus.Subscribe(new MetricId(
+            "ai.commandcode.quota.5h.used_percent")).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
@@ -845,6 +878,8 @@ public sealed class CodexQuotaProviderTests
             var copilotRead = copilotReader.MoveNextAsync().AsTask();
             var openCodeRead = openCodeReader.MoveNextAsync().AsTask();
             var zcodeRead = zcodeReader.MoveNextAsync().AsTask();
+            var kiroRead = kiroReader.MoveNextAsync().AsTask();
+            var commandCodeRead = commandCodeReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
@@ -852,10 +887,12 @@ public sealed class CodexQuotaProviderTests
             await antigravityProvider.PublishCurrentAsync();
             await copilotProvider.PollOnceAsync();
             await openCodeProvider.PublishCurrentAsync();
-            await zcodeProvider.PublishCurrentAsync();
+            await zcodeHarness.Provider.PublishCurrentAsync();
+            await kiroProvider.PublishOnceAsync();
+            await commandCodeProvider.PublishCurrentAsync();
 
             var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
-                    copilotRead, openCodeRead, zcodeRead)
+                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -887,6 +924,14 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(MetricState.Fresh, zcodeReader.Current.State);
             Assert.AreEqual(MetricConfidence.Measured, zcodeReader.Current.Confidence);
             Assert.AreEqual(75d, zcodeReader.Current.Value!.Value.AsDouble(), 0.001);
+            Assert.AreEqual(MetricState.Fresh, kiroReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, kiroReader.Current.Confidence);
+            Assert.AreEqual(87.25m, kiroReader.Current.Value!.Value.AsDecimal());
+            Assert.AreEqual("Kiro.Usage.ACP.v3", kiroReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, commandCodeReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, commandCodeReader.Current.Confidence);
+            Assert.AreEqual(25d, commandCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("CommandCode.ObservedBillingApi.v1", commandCodeReader.Current.Source);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>
