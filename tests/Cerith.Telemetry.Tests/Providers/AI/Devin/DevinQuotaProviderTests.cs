@@ -32,7 +32,7 @@ public sealed class DevinQuotaProviderTests
         [DailyRemainingId, DailyResetId, WeeklyRemainingId, WeeklyResetId];
 
     [TestMethod]
-    public async Task FixedRequestPublishesOnlyExplicitQuotaAndResetFields()
+    public async Task FixedRequestPublishesQuotaAndWithholdsUnverifiedResetFields()
     {
         using var harness = new Harness();
         harness.WriteCredential(SyntheticApiKeyA);
@@ -45,11 +45,17 @@ public sealed class DevinQuotaProviderTests
         Assert.AreEqual(4, snapshots.Length);
         Assert.AreEqual(MetricState.Fresh, snapshots[0].State);
         Assert.AreEqual(40d, snapshots[0].Value!.Value.AsDouble());
-        Assert.AreEqual(MetricState.Fresh, snapshots[1].State);
-        Assert.AreEqual(InitialUtc.AddHours(2), snapshots[1].Value!.Value.AsDateTimeOffset());
+        Assert.AreEqual(MetricState.Unavailable, snapshots[1].State);
+        Assert.AreEqual("reset_semantics_unverified", snapshots[1].ErrorCode);
+        Assert.IsNull(snapshots[1].Value);
         Assert.AreEqual(75d, snapshots[2].Value!.Value.AsDouble());
-        Assert.AreEqual(InitialUtc.AddHours(4), snapshots[3].Value!.Value.AsDateTimeOffset());
-        Assert.IsTrue(snapshots.All(snapshot => snapshot.Confidence == MetricConfidence.Measured));
+        Assert.AreEqual(MetricState.Unavailable, snapshots[3].State);
+        Assert.AreEqual("reset_semantics_unverified", snapshots[3].ErrorCode);
+        Assert.IsNull(snapshots[3].Value);
+        Assert.AreEqual(MetricConfidence.Measured, snapshots[0].Confidence);
+        Assert.AreEqual(MetricConfidence.Measured, snapshots[2].Confidence);
+        Assert.AreEqual(MetricConfidence.Unknown, snapshots[1].Confidence);
+        Assert.AreEqual(MetricConfidence.Unknown, snapshots[3].Confidence);
         Assert.IsTrue(snapshots.All(snapshot => snapshot.Source == "DevinCLI.GetPlanStatus.ReadOnly.v1"));
         Assert.IsFalse(harness.Registry.TryGet(new MetricId("ai.devin.plan.name"), out _));
 
@@ -74,7 +80,9 @@ public sealed class DevinQuotaProviderTests
         Assert.AreEqual(MetricState.Unavailable, points[DevinQuotaParser.DailyRemaining].State);
         Assert.IsNull(points[DevinQuotaParser.DailyRemaining].Value);
         Assert.AreEqual("remaining_missing", points[DevinQuotaParser.DailyRemaining].ErrorCode);
-        Assert.AreEqual(MetricState.Fresh, points[DevinQuotaParser.DailyReset].State);
+        Assert.AreEqual(MetricState.Unavailable, points[DevinQuotaParser.DailyReset].State);
+        Assert.AreEqual("reset_semantics_unverified", points[DevinQuotaParser.DailyReset].ErrorCode);
+        Assert.IsNull(points[DevinQuotaParser.DailyReset].Value);
         Assert.AreEqual(60d, points[DevinQuotaParser.WeeklyRemaining].Value!.Value.AsDouble());
     }
 
@@ -107,6 +115,11 @@ public sealed class DevinQuotaProviderTests
         Assert.AreEqual(MetricState.Error, outOfRange[DevinQuotaParser.DailyRemaining].State);
         Assert.AreEqual("remaining_out_of_range", outOfRange[DevinQuotaParser.DailyRemaining].ErrorCode);
         Assert.IsNull(outOfRange[DevinQuotaParser.DailyRemaining].Value);
+
+        var malformedReset = DevinQuotaParser.Parse(Encoding.UTF8.GetBytes(Response(dailyReset: "not-a-time")));
+        Assert.AreEqual(MetricState.Unavailable, malformedReset[DevinQuotaParser.DailyReset].State);
+        Assert.AreEqual("reset_semantics_unverified", malformedReset[DevinQuotaParser.DailyReset].ErrorCode);
+        Assert.IsNull(malformedReset[DevinQuotaParser.DailyReset].Value);
     }
 
     [TestMethod]
@@ -133,6 +146,97 @@ public sealed class DevinQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task EnvironmentAuthOverrideFailsClosedRatherThanUsingStoredCredential()
+    {
+        foreach (var environmentKey in new[] { SyntheticApiKeyB, string.Empty })
+        {
+            using var harness = new Harness(() => environmentKey);
+            harness.WriteCredential(SyntheticApiKeyA);
+
+            await harness.Provider.PollOnceAsync();
+            var snapshots = await ReadCurrentAsync(harness);
+
+            Assert.AreEqual(0, harness.Handler.Requests.Length);
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error));
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "environment_auth_unsupported"));
+        }
+    }
+
+    [TestMethod]
+    public async Task SourceSwitchToEnvironmentOverrideClearsStoredQuotaAndDoesNotFallback()
+    {
+        string? environmentKey = null;
+        using var harness = new Harness(() => environmentKey);
+        harness.WriteCredential(SyntheticApiKeyA);
+        harness.Handler.EnqueueJson(Response(dailyRemaining: 40, weeklyRemaining: 60));
+
+        await harness.Provider.PollOnceAsync();
+        var original = await ReadCurrentAsync(harness);
+        Assert.AreEqual(MetricState.Fresh, original[0].State);
+        Assert.AreEqual(1, harness.Handler.Requests.Length);
+
+        environmentKey = SyntheticApiKeyB;
+        await harness.Provider.ObserveLocalStateAsync();
+        var overridden = await ReadCurrentAsync(harness);
+        await harness.Provider.PollOnceAsync();
+
+        Assert.IsTrue(overridden.All(snapshot => snapshot.State == MetricState.Error));
+        Assert.IsTrue(overridden.All(snapshot => snapshot.ErrorCode == "environment_auth_unsupported"));
+        Assert.IsTrue(overridden.All(snapshot => snapshot.Value is null));
+        Assert.AreEqual(1, harness.Handler.Requests.Length);
+
+        environmentKey = null;
+        harness.Handler.EnqueueJson(Response(dailyRemaining: 25, weeklyRemaining: 50));
+        await harness.Provider.ObserveLocalStateAsync();
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+        Assert.AreEqual(SyntheticApiKeyA, harness.Handler.Requests[1].ApiKey);
+        var restored = await ReadCurrentAsync(harness);
+        Assert.AreEqual(MetricState.Fresh, restored[0].State);
+        Assert.AreEqual(25d, restored[0].Value!.Value.AsDouble());
+    }
+
+    [TestMethod]
+    public async Task MalformedCredentialAndManagedEnterprisePolicyFailClosed()
+    {
+        using (var malformed = new Harness())
+        {
+            malformed.WriteCredentialText("windsurf_api_key = [invalid]\r\n");
+            await malformed.Provider.PollOnceAsync();
+            var snapshots = await ReadCurrentAsync(malformed);
+
+            Assert.AreEqual(0, malformed.Handler.Requests.Length);
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error));
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "credential_file_invalid"));
+        }
+
+        using (var managed = new Harness())
+        {
+            managed.WriteCredential(SyntheticApiKeyA);
+            managed.WriteSystemPolicy("{\"enterprise_host\":\"enterprise.example\",\"account_id\":\"acct-synthetic\"}");
+            await managed.Provider.PollOnceAsync();
+            var snapshots = await ReadCurrentAsync(managed);
+
+            Assert.AreEqual(0, managed.Handler.Requests.Length);
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error));
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.ErrorCode == "managed_auth_policy_unsupported"));
+        }
+    }
+
+    [TestMethod]
+    public void RelativeCredentialRootIsRejected()
+    {
+        var reader = new DevinQuotaAuthReader("relative-app-data", () => null, Path.GetTempPath());
+
+        var result = reader.Read();
+
+        Assert.AreEqual(DevinAuthStatus.Error, result.Status);
+        Assert.AreEqual("auth_path_unavailable", result.ErrorCode);
+        Assert.IsNull(result.Credential);
+    }
+
+    [TestMethod]
     public async Task StaleValuesKeepTheirOriginalObservationTimeAndExpireAtMonotonicHardLimit()
     {
         using var harness = new Harness();
@@ -144,14 +248,30 @@ public sealed class DevinQuotaProviderTests
         harness.Time.Advance(DevinQuotaProvider.StaleAfter);
         await harness.Provider.ObserveLocalStateAsync();
         var stale = await ReadCurrentAsync(harness);
-        Assert.IsTrue(stale.All(snapshot => snapshot.State == MetricState.Stale));
-        Assert.IsTrue(stale.All(snapshot => snapshot.ObservedAt == fresh[0].ObservedAt));
+        foreach (var index in new[] { DevinQuotaParser.DailyRemaining, DevinQuotaParser.WeeklyRemaining })
+        {
+            Assert.AreEqual(MetricState.Stale, stale[index].State);
+            Assert.AreEqual(fresh[index].ObservedAt, stale[index].ObservedAt);
+        }
+        foreach (var index in new[] { DevinQuotaParser.DailyReset, DevinQuotaParser.WeeklyReset })
+        {
+            Assert.AreEqual(MetricState.Unavailable, stale[index].State);
+            Assert.AreEqual("reset_semantics_unverified", stale[index].ErrorCode);
+        }
 
         harness.Time.Advance(DevinQuotaProvider.MaximumCacheAge - DevinQuotaProvider.StaleAfter);
         await harness.Provider.ObserveLocalStateAsync();
         var expired = await ReadCurrentAsync(harness);
-        Assert.IsTrue(expired.All(snapshot => snapshot.State == MetricState.Unavailable));
-        Assert.IsTrue(expired.All(snapshot => snapshot.ErrorCode == "cache_expired"));
+        foreach (var index in new[] { DevinQuotaParser.DailyRemaining, DevinQuotaParser.WeeklyRemaining })
+        {
+            Assert.AreEqual(MetricState.Unavailable, expired[index].State);
+            Assert.AreEqual("cache_expired", expired[index].ErrorCode);
+        }
+        foreach (var index in new[] { DevinQuotaParser.DailyReset, DevinQuotaParser.WeeklyReset })
+        {
+            Assert.AreEqual(MetricState.Unavailable, expired[index].State);
+            Assert.AreEqual("reset_semantics_unverified", expired[index].ErrorCode);
+        }
         Assert.IsTrue(expired.All(snapshot => snapshot.Value is null));
     }
 
@@ -219,13 +339,14 @@ public sealed class DevinQuotaProviderTests
     public async Task RunAsyncWorkerFaultStillPublishesStopped()
     {
         using var harness = new Harness();
-        harness.WriteCredential(SyntheticApiKeyA);
-        harness.Time.ThrowOnTimerCreation = true;
         await using var reader = harness.Bus.Subscribe(new MetricId(DailyRemainingId)).GetAsyncEnumerator();
         var firstRead = reader.MoveNextAsync().AsTask();
         var run = harness.Provider.RunAsync(CancellationToken.None);
 
         Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
+        await WaitForTimerCountAsync(harness.Time, 2);
+        harness.Time.FailNextTimestampRead();
+        harness.Time.Advance(DevinQuotaProvider.CredentialCheckInterval);
         var stoppedRead = reader.MoveNextAsync().AsTask();
         Exception? failure = null;
         try { await run.WaitAsync(TimeSpan.FromSeconds(3)); }
@@ -260,6 +381,13 @@ public sealed class DevinQuotaProviderTests
         Assert.IsTrue(handler.Requests.Length >= expected, $"Expected {expected} request(s).");
     }
 
+    private static async Task WaitForTimerCountAsync(ManualTimeProvider time, int expected)
+    {
+        for (var i = 0; i < 600 && time.TimerCount < expected; i++)
+            await Task.Delay(TimeSpan.FromMilliseconds(5));
+        Assert.IsTrue(time.TimerCount >= expected, $"Expected {expected} initialized timer(s).");
+    }
+
     private static string Response(object? dailyRemaining = null, object? weeklyRemaining = null,
         object? dailyReset = null, object? weeklyReset = null,
         string? billingStrategy = "BILLING_STRATEGY_QUOTA", bool? hideDaily = false,
@@ -287,6 +415,7 @@ public sealed class DevinQuotaProviderTests
     private sealed class Harness : IDisposable
     {
         public string ApplicationData { get; } = Path.Combine(Path.GetTempPath(), "cerith-devin-test-" + Guid.NewGuid().ToString("N"));
+        public string CommonApplicationData { get; } = Path.Combine(Path.GetTempPath(), "cerith-devin-policy-test-" + Guid.NewGuid().ToString("N"));
         public MetricRegistry Registry { get; } = new();
         public MetricBus Bus { get; } = new(1);
         public ManualTimeProvider Time { get; } = new(InitialUtc);
@@ -294,20 +423,32 @@ public sealed class DevinQuotaProviderTests
         public HttpClient Client { get; }
         public DevinQuotaProvider Provider { get; }
 
-        public Harness()
+        public Harness(Func<string?>? windsurfApiKeyReader = null)
         {
             Client = new HttpClient(Handler) { Timeout = Timeout.InfiniteTimeSpan };
             Provider = new DevinQuotaProvider(Registry, Bus,
-                new DevinQuotaAuthReader(ApplicationData), Client, Time);
+                new DevinQuotaAuthReader(ApplicationData, windsurfApiKeyReader, CommonApplicationData), Client, Time);
         }
 
         public void WriteCredential(string apiKey, string? apiServerUrl = "https://server.codeium.com")
         {
-            var directory = Path.Combine(ApplicationData, "devin");
-            Directory.CreateDirectory(directory);
             var text = $"windsurf_api_key = \"{apiKey}\"\r\n";
             if (apiServerUrl is not null) text += $"api_server_url = \"{apiServerUrl}\"\r\n";
+            WriteCredentialText(text);
+        }
+
+        public void WriteCredentialText(string text)
+        {
+            var directory = Path.Combine(ApplicationData, "devin");
+            Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "credentials.toml"), text, Encoding.UTF8);
+        }
+
+        public void WriteSystemPolicy(string json)
+        {
+            var directory = Path.Combine(CommonApplicationData, "Devin");
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "system.json"), json, new UTF8Encoding(false));
         }
 
         public void Dispose()
@@ -316,6 +457,7 @@ public sealed class DevinQuotaProviderTests
             Client.Dispose();
             Bus.Dispose();
             if (Directory.Exists(ApplicationData)) Directory.Delete(ApplicationData, recursive: true);
+            if (Directory.Exists(CommonApplicationData)) Directory.Delete(CommonApplicationData, recursive: true);
         }
     }
 
@@ -364,14 +506,27 @@ public sealed class DevinQuotaProviderTests
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
 
-        public bool ThrowOnTimerCreation { get; set; }
+        private bool _throwOnNextTimestampRead;
+        public int TimerCount { get { lock (_gate) return _timers.Count; } }
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
-        public override long GetTimestamp() { lock (_gate) return _timestamp; }
+        public override long GetTimestamp()
+        {
+            lock (_gate)
+            {
+                if (_throwOnNextTimestampRead)
+                {
+                    _throwOnNextTimestampRead = false;
+                    throw new InvalidOperationException("synthetic timestamp failure");
+                }
+                return _timestamp;
+            }
+        }
+
+        public void FailNextTimestampRead() { lock (_gate) _throwOnNextTimestampRead = true; }
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            if (ThrowOnTimerCreation) throw new InvalidOperationException("synthetic timer failure");
             var timer = new ManualTimer(this, callback, state);
             timer.Change(dueTime, period);
             lock (_gate) _timers.Add(timer);

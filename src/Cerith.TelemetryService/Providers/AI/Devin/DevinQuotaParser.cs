@@ -89,7 +89,9 @@ internal static class DevinQuotaParser
         }
 
         points[remainingIndex] = ReadRemaining(planStatus, remainingProperty);
-        points[resetIndex] = ReadReset(planStatus, resetProperty);
+        points[resetIndex] = planStatus.TryGetProperty(resetProperty, out _)
+            ? DevinQuotaPoint.Unavailable("reset_semantics_unverified")
+            : DevinQuotaPoint.Unavailable("reset_missing");
     }
 
     private static DevinQuotaPoint ReadRemaining(JsonElement planStatus, string property)
@@ -114,35 +116,6 @@ internal static class DevinQuotaParser
         return remaining is >= 0 and <= 100
             ? DevinQuotaPoint.Fresh(MetricValue.From((double)remaining))
             : DevinQuotaPoint.Error("remaining_out_of_range");
-    }
-
-    private static DevinQuotaPoint ReadReset(JsonElement planStatus, string property)
-    {
-        if (!planStatus.TryGetProperty(property, out var value))
-            return DevinQuotaPoint.Unavailable("reset_missing");
-
-        long unixSeconds;
-        if (value.ValueKind == JsonValueKind.Number)
-        {
-            if (!value.TryGetInt64(out unixSeconds)) return DevinQuotaPoint.Error("reset_invalid");
-        }
-        else if (value.ValueKind == JsonValueKind.String &&
-            long.TryParse(value.GetString(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out unixSeconds))
-        {
-        }
-        else
-        {
-            return DevinQuotaPoint.Error("reset_invalid");
-        }
-
-        try
-        {
-            return DevinQuotaPoint.Fresh(MetricValue.From(DateTimeOffset.FromUnixTimeSeconds(unixSeconds)));
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return DevinQuotaPoint.Error("reset_invalid");
-        }
     }
 
     private static DevinQuotaPoint[] AllUnavailable(string code)

@@ -401,37 +401,16 @@ internal sealed class DevinQuotaProvider : IDisposable
     {
         InvalidatePublicationLocked();
         var accepted = (DevinQuotaPoint[])points.Clone();
-        InvalidateElapsedWindow(accepted, DevinQuotaParser.DailyRemaining, DevinQuotaParser.DailyReset, observedAt);
-        InvalidateElapsedWindow(accepted, DevinQuotaParser.WeeklyRemaining, DevinQuotaParser.WeeklyReset, observedAt);
-
-        var dailyReset = ReadResetAt(accepted[DevinQuotaParser.DailyReset]);
-        var weeklyReset = ReadResetAt(accepted[DevinQuotaParser.WeeklyReset]);
         for (var i = 0; i < accepted.Length; i++)
         {
             var point = accepted[i];
             _points[i] = point;
             _observedAt[i] = observedAt;
-            var resetAt = i < DevinQuotaParser.WeeklyRemaining ? dailyReset : weeklyReset;
             _cache[i] = point.State == MetricState.Fresh && point.Value is MetricValue value
-                ? new CachedPoint(value, observedAt, timestamp, resetAt, false, null)
+                ? new CachedPoint(value, observedAt, timestamp, false, null)
                 : null;
         }
     }
-
-    private static void InvalidateElapsedWindow(DevinQuotaPoint[] points, int remainingIndex, int resetIndex,
-        DateTimeOffset observedAt)
-    {
-        var resetAt = ReadResetAt(points[resetIndex]);
-        if (resetAt is not DateTimeOffset reset || reset > observedAt) return;
-        points[remainingIndex] = DevinQuotaPoint.Unavailable("reset_elapsed");
-        points[resetIndex] = DevinQuotaPoint.Unavailable("reset_elapsed");
-    }
-
-    private static DateTimeOffset? ReadResetAt(DevinQuotaPoint point) =>
-        point.State == MetricState.Fresh && point.Value is MetricValue value &&
-        value.Kind == MetricValueKind.DateTimeOffset
-            ? value.AsDateTimeOffset()
-            : null;
 
     private void ApplyFailureLocked(TransportResult result, string credentialGenerationTag,
         DateTimeOffset observedAt, long timestamp)
@@ -506,9 +485,7 @@ internal sealed class DevinQuotaProvider : IDisposable
             var age = _timeProvider.GetElapsedTime(cached.Timestamp, timestamp);
             var expiryCode = now < cached.ObservedAt || age < TimeSpan.Zero
                 ? "clock_discontinuity"
-                : cached.ResetAt is DateTimeOffset reset && reset <= now
-                    ? "reset_elapsed"
-                    : age >= MaximumCacheAge ? "cache_expired" : null;
+                : age >= MaximumCacheAge ? "cache_expired" : null;
             if (expiryCode is not null)
             {
                 _cache[i] = null;
@@ -538,8 +515,7 @@ internal sealed class DevinQuotaProvider : IDisposable
         if (candidate is not null)
         {
             var age = _timeProvider.GetElapsedTime(candidate.Timestamp, timestamp);
-            if (now >= candidate.ObservedAt && age >= TimeSpan.Zero && age < MaximumCacheAge &&
-                (candidate.ResetAt is null || candidate.ResetAt > now))
+            if (now >= candidate.ObservedAt && age >= TimeSpan.Zero && age < MaximumCacheAge)
             {
                 cached = candidate;
                 return true;
@@ -885,7 +861,7 @@ internal sealed class DevinQuotaProvider : IDisposable
     }
 
     private sealed record CachedPoint(MetricValue Value, DateTimeOffset ObservedAt, long Timestamp,
-        DateTimeOffset? ResetAt, bool ForceStale, string? ErrorCode);
+        bool ForceStale, string? ErrorCode);
 
     private sealed record TransportResult(byte[]? Body, string? ErrorCode, TimeSpan? RetryAfter, bool Cancelled)
     {
