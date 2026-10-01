@@ -24,27 +24,30 @@ internal sealed class AntigravityOwnerKey : IEquatable<AntigravityOwnerKey>
     public int ProcessId { get; }
     public string ProcessStartIdentity { get; }
     public string? SessionGeneration { get; }
+    public int ListenerPort { get; }
 
     public AntigravityOwnerKey(string email, int processId, string processStartIdentity,
-        string? sessionGeneration = null)
+        string? sessionGeneration, int listenerPort)
     {
         Email = email;
         ProcessId = processId;
         ProcessStartIdentity = processStartIdentity;
         SessionGeneration = sessionGeneration;
+        ListenerPort = listenerPort;
     }
 
     public bool Equals(AntigravityOwnerKey? other) => other is not null &&
         ProcessId == other.ProcessId &&
         StringComparer.Ordinal.Equals(ProcessStartIdentity, other.ProcessStartIdentity) &&
         StringComparer.Ordinal.Equals(SessionGeneration, other.SessionGeneration) &&
+        ListenerPort == other.ListenerPort &&
         StringComparer.Ordinal.Equals(Email, other.Email);
 
     public override bool Equals(object? obj) => obj is AntigravityOwnerKey other && Equals(other);
     public override int GetHashCode() => HashCode.Combine(ProcessId,
         StringComparer.Ordinal.GetHashCode(ProcessStartIdentity),
         SessionGeneration is null ? 0 : StringComparer.Ordinal.GetHashCode(SessionGeneration),
-        StringComparer.Ordinal.GetHashCode(Email));
+        StringComparer.Ordinal.GetHashCode(Email), ListenerPort);
 }
 
 internal sealed record AntigravityProcessOwner(int ProcessId, string ProcessStartIdentity, string CsrfToken,
@@ -60,11 +63,13 @@ internal sealed record AntigravityQuotaAcquisition(AntigravityOwnerKey? Owner, A
 internal enum AntigravityOwnerVerificationState
 {
     Verified,
-    Changed
+    Changed,
+    Unverifiable
 }
 
 internal sealed record AntigravityOwnerVerification(AntigravityOwnerVerificationState State,
-    AntigravityOwnerKey? Owner);
+    AntigravityOwnerKey? Owner, string? ErrorCode = null,
+    MetricState FailureState = MetricState.Unavailable, TimeSpan? RetryAfter = null);
 
 internal sealed class AntigravityQuotaAcquirer : IDisposable
 {
@@ -165,7 +170,7 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
                 if (!IsValidEmail(email))
                     return AntigravityQuotaAcquisition.Failure("identity_unavailable", MetricState.Error);
 
-                var key = CreateOwnerKey(email, owner);
+                var key = CreateOwnerKey(email, owner, port);
                 AntigravityQuotaReading? reading = null;
                 string? failureCode = null;
                 TimeSpan? retryAfter = null;
@@ -245,21 +250,33 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
         try
         {
             var candidates = await _ownerReader(linked.Token).ConfigureAwait(false);
-            if (candidates.Length != 1 || !IsValidOwner(candidates[0]))
-                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
+            if (candidates.Length != 1)
+                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                    "identity_unavailable");
 
             var current = candidates[0];
-            var email = await ReadAccountEmailAsync(current, current.ListenerPorts[0], linked.Token)
+            if (!IsValidOwner(current))
+                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                    "identity_unavailable");
+            if (!SameSource(current, expected) || !current.ListenerPorts.Contains(expected.ListenerPort))
+                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
+
+            var email = await ReadAccountEmailAsync(current, expected.ListenerPort, linked.Token)
                 .ConfigureAwait(false);
             if (!IsValidEmail(email))
+                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                    "identity_unavailable", MetricState.Error);
+
+            var finalCandidates = await _ownerReader(linked.Token).ConfigureAwait(false);
+            if (finalCandidates.Length != 1 || !IsValidOwner(finalCandidates[0]))
+                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                    "identity_unavailable");
+
+            var finalOwner = finalCandidates[0];
+            if (!SameSource(current, finalOwner) || !finalOwner.ListenerPorts.Contains(expected.ListenerPort))
                 return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
 
-            var finalOwner = await ReadSingleOwnerAsync(linked.Token).ConfigureAwait(false);
-            if (finalOwner is null || !SameSource(current, finalOwner) ||
-                !finalOwner.ListenerPorts.Contains(current.ListenerPorts[0]))
-                return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
-
-            var owner = CreateOwnerKey(email, current);
+            var owner = CreateOwnerKey(email, current, expected.ListenerPort);
             return new AntigravityOwnerVerification(expected.Equals(owner)
                 ? AntigravityOwnerVerificationState.Verified
                 : AntigravityOwnerVerificationState.Changed, owner);
@@ -268,9 +285,34 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
         {
             throw;
         }
-        catch (Exception)
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                "timeout");
+        }
+        catch (SourceException exception) when (exception.ErrorCode == "identity_mismatch")
         {
             return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
+        }
+        catch (SourceException exception)
+        {
+            return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                exception.ErrorCode, exception.State, exception.RetryAfter);
+        }
+        catch (HttpRequestException)
+        {
+            return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                "offline");
+        }
+        catch (IOException)
+        {
+            return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                "offline");
+        }
+        catch (Exception)
+        {
+            return new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                "identity_unavailable");
         }
     }
 
@@ -300,8 +342,9 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
     {
         // Recheck the listener owner immediately before sending its process-scoped CSRF token.
         var owners = await _ownerReader(cancellationToken).ConfigureAwait(false);
-        if (owners.Length != 1 || !SameSource(expectedOwner, owners[0]) || !IsValidOwner(owners[0]) ||
-            !owners[0].ListenerPorts.Contains(port))
+        if (owners.Length != 1 || !IsValidOwner(owners[0]))
+            throw new SourceException("identity_unavailable", MetricState.Unavailable);
+        if (!SameSource(expectedOwner, owners[0]) || !owners[0].ListenerPorts.Contains(port))
             throw new SourceException("identity_mismatch", MetricState.Error);
 
         var uri = new UriBuilder(Uri.UriSchemeHttps, "127.0.0.1", port, path).Uri;
@@ -404,13 +447,15 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
     private static bool IsValidEmail(string email) => email.Length is > 0 and <= 320 &&
         StringComparer.Ordinal.Equals(email, email.Trim()) && !email.Any(char.IsControl);
 
-    private static AntigravityOwnerKey CreateOwnerKey(string email, AntigravityProcessOwner owner)
+    private static AntigravityOwnerKey CreateOwnerKey(string email, AntigravityProcessOwner owner, int listenerPort) =>
+        new(email, owner.ProcessId, owner.ProcessStartIdentity, CreateSessionGeneration(owner.CsrfToken), listenerPort);
+
+    private static string CreateSessionGeneration(string csrfToken)
     {
-        var token = Encoding.UTF8.GetBytes(owner.CsrfToken);
+        var token = Encoding.UTF8.GetBytes(csrfToken);
         try
         {
-            var generation = Convert.ToHexString(SHA256.HashData(token));
-            return new AntigravityOwnerKey(email, owner.ProcessId, owner.ProcessStartIdentity, generation);
+            return Convert.ToHexString(SHA256.HashData(token));
         }
         finally
         {
@@ -433,6 +478,11 @@ internal sealed class AntigravityQuotaAcquirer : IDisposable
         left.ProcessId == right.ProcessId &&
         StringComparer.Ordinal.Equals(left.ProcessStartIdentity, right.ProcessStartIdentity) &&
         StringComparer.Ordinal.Equals(left.CsrfToken, right.CsrfToken);
+
+    private static bool SameSource(AntigravityProcessOwner source, AntigravityOwnerKey expected) =>
+        source.ProcessId == expected.ProcessId &&
+        StringComparer.Ordinal.Equals(source.ProcessStartIdentity, expected.ProcessStartIdentity) &&
+        StringComparer.Ordinal.Equals(CreateSessionGeneration(source.CsrfToken), expected.SessionGeneration);
 
     private static HttpClient CreateHttpClient()
     {

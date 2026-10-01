@@ -205,7 +205,9 @@ internal sealed class AntigravityQuotaProvider : IDisposable
             {
                 if (_ownerGeneration != generation)
                 {
-                    _nextPollTimestamp = _timeProvider.GetTimestamp();
+                    var currentTimestamp = _timeProvider.GetTimestamp();
+                    if (currentTimestamp >= _retryNotBeforeTimestamp)
+                        _nextPollTimestamp = currentTimestamp;
                     return;
                 }
                 ApplyAcquisition(acquisition!);
@@ -297,10 +299,13 @@ internal sealed class AntigravityQuotaProvider : IDisposable
     {
         AntigravityOwnerKey? expected;
         await _stateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { expected = _activeOwner; }
+        try
+        {
+            expected = _activeOwner;
+            if (expected is null || _timeProvider.GetTimestamp() < _retryNotBeforeTimestamp)
+                return;
+        }
         finally { _stateLock.Release(); }
-        if (expected is null)
-            return;
 
         AntigravityOwnerVerification verification;
         try
@@ -313,7 +318,8 @@ internal sealed class AntigravityQuotaProvider : IDisposable
         }
         catch (Exception)
         {
-            verification = new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Changed, null);
+            verification = new AntigravityOwnerVerification(AntigravityOwnerVerificationState.Unverifiable, null,
+                "identity_unavailable");
         }
 
         await _stateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -326,10 +332,21 @@ internal sealed class AntigravityQuotaProvider : IDisposable
             InvalidateOwnerWorkLocked();
             Array.Clear(_cache);
             _lastReadingPoints = null;
+            _failureObservedAt = _timeProvider.GetUtcNow();
+
+            if (verification.State == AntigravityOwnerVerificationState.Unverifiable)
+            {
+                _failureState = verification.FailureState;
+                _failureCode = verification.ErrorCode ?? "identity_unavailable";
+                var retryAt = AddTimestamp(_timeProvider.GetTimestamp(), verification.RetryAfter ?? PollInterval);
+                _retryNotBeforeTimestamp = Math.Max(_retryNotBeforeTimestamp, retryAt);
+                _nextPollTimestamp = Math.Max(_nextPollTimestamp, _retryNotBeforeTimestamp);
+                return;
+            }
+
             _activeOwner = verification.Owner;
             _failureState = MetricState.Unavailable;
             _failureCode = verification.Owner is null ? "identity_unavailable" : null;
-            _failureObservedAt = _timeProvider.GetUtcNow();
             _retryNotBeforeTimestamp = 0;
             _nextPollTimestamp = _timeProvider.GetTimestamp();
         }

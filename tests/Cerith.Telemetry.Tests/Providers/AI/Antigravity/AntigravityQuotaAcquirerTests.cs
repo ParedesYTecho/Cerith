@@ -54,6 +54,43 @@ public sealed class AntigravityQuotaAcquirerTests
     }
 
     [TestMethod]
+    public async Task AcquisitionAndVerificationStayOnTheOwnedPortThatResolvedTheRoute()
+    {
+        const int firstPort = 43123;
+        const int resolvedPort = 43124;
+        var multiPortOwner = Owner with { ListenerPorts = [firstPort, resolvedPort] };
+        using var handler = new Handler();
+        handler.Respond = (request, _) =>
+        {
+            if (request.RequestUri!.Port == firstPort)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+            var response = request.RequestUri.Segments.Last() == "RetrieveUserQuotaSummary"
+                ? Json(Summary)
+                : Json(Status);
+            return Task.FromResult(response);
+        };
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System,
+            _ => Task.FromResult(new[] { multiPortOwner }));
+
+        var acquisition = await acquirer.AcquireOnceAsync();
+        Assert.IsNotNull(acquisition.Owner);
+        Assert.IsNotNull(acquisition.Reading);
+        Assert.AreEqual(resolvedPort, acquisition.Owner.ListenerPort);
+
+        var verification = await acquirer.VerifyOwnerAsync(acquisition.Owner);
+        Assert.AreEqual(AntigravityOwnerVerificationState.Verified, verification.State);
+        Assert.IsTrue(verification.Owner!.Equals(acquisition.Owner));
+        CollectionAssert.AreEqual(new[] { firstPort, resolvedPort, resolvedPort, resolvedPort, resolvedPort },
+            handler.Requests.Select(request => request.Uri.Port).ToArray());
+        CollectionAssert.AreEqual(new[]
+        {
+            "GetUserStatus", "GetUserStatus", "RetrieveUserQuotaSummary", "GetUserStatus", "GetUserStatus"
+        }, handler.Requests.Select(request => request.Uri.Segments.Last()).ToArray());
+    }
+
+    [TestMethod]
     public async Task OwnerChangeBeforeCredentialPostSendsNothing()
     {
         using var handler = new Handler();
@@ -65,6 +102,25 @@ public sealed class AntigravityQuotaAcquirerTests
         Assert.AreEqual("identity_mismatch", result.ErrorCode);
         Assert.IsNull(result.Owner);
         Assert.AreEqual(0, handler.Requests.Count);
+    }
+
+    [TestMethod]
+    public async Task OwnerDisappearanceDuringVerificationIsUnverifiableNotConfirmedChanged()
+    {
+        var ownerUnavailable = false;
+        using var handler = new Handler(Json(Status), Json(Summary), Json(Status));
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System, _ =>
+            Task.FromResult(ownerUnavailable ? Array.Empty<AntigravityProcessOwner>() : new[] { Owner }));
+
+        var acquisition = await acquirer.AcquireOnceAsync();
+        Assert.IsNotNull(acquisition.Owner);
+        ownerUnavailable = true;
+
+        var verification = await acquirer.VerifyOwnerAsync(acquisition.Owner);
+        Assert.AreEqual(AntigravityOwnerVerificationState.Unverifiable, verification.State);
+        Assert.AreEqual("identity_unavailable", verification.ErrorCode);
+        Assert.AreEqual(3, handler.Requests.Count, "No profile request is sent without a verified process owner.");
     }
 
     [TestMethod]
@@ -83,16 +139,33 @@ public sealed class AntigravityQuotaAcquirerTests
     [TestMethod]
     public async Task MissingOrAmbiguousOfficialOwnerDoesNotSendAuth()
     {
-        foreach (var owners in new[] { Array.Empty<AntigravityProcessOwner>(), new[] { Owner, Owner } })
+        foreach (var missingAtPreflight in new[] { false, true })
         {
-            using var handler = new Handler();
-            using var client = new HttpClient(handler);
-            using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System,
-                _ => Task.FromResult(owners));
-            var result = await acquirer.AcquireOnceAsync();
-            Assert.IsNull(result.Owner);
-            Assert.IsNull(result.Reading);
-            Assert.AreEqual(0, handler.Requests.Count);
+            foreach (var ambiguousAtPreflight in new[] { false, true })
+            {
+                var ownerReads = 0;
+                using var handler = new Handler();
+                using var client = new HttpClient(handler);
+                using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System, _ =>
+                {
+                    ownerReads++;
+                    if (missingAtPreflight && ownerReads == 1)
+                        return Task.FromResult(new[] { Owner });
+                    return Task.FromResult(ambiguousAtPreflight
+                        ? new[] { Owner, Owner }
+                        : Array.Empty<AntigravityProcessOwner>());
+                });
+
+                var result = await acquirer.AcquireOnceAsync();
+
+                Assert.IsNull(result.Owner);
+                Assert.IsNull(result.Reading);
+                Assert.AreEqual(missingAtPreflight ? "identity_unavailable" :
+                    ambiguousAtPreflight ? "source_ambiguous" : "source_unavailable", result.ErrorCode);
+                Assert.AreEqual(missingAtPreflight ? 2 : 1, ownerReads);
+                Assert.AreEqual(0, handler.Requests.Count,
+                    "No auth-bearing request may be sent without exactly one verified process owner.");
+            }
         }
     }
 

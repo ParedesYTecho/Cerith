@@ -4,6 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -19,6 +22,13 @@ public sealed class AntigravityQuotaProviderTests
 {
     private static readonly DateTimeOffset InitialUtc = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
     private const string MetricId = "ai.antigravity.quota.3p-weekly.remaining";
+    private const string StatusA = "{\"userStatus\":{\"email\":\"synthetic-A@example.invalid\"}}";
+    private const string StatusB = "{\"userStatus\":{\"email\":\"synthetic-B@example.invalid\"}}";
+    private const string SummaryPayload = """
+        {"response":{"groups":[{"buckets":[
+          {"bucketId":"3p-weekly","remainingFraction":0.123456,"resetTime":"2030-01-01T00:00:00Z"}
+        ]}]}}
+        """;
 
     [TestMethod]
     [DataRow("account")]
@@ -166,6 +176,137 @@ public sealed class AntigravityQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task SummaryRetryAfterSuppressesOwnerVerificationAndPollingUntilItExpires()
+    {
+        var time = new ManualTimeProvider(InitialUtc);
+        using var handler = new ScriptedHandler((index, _) => index switch
+        {
+            1 or 3 or 4 or 6 or 7 or 9 => JsonResponse(StatusA),
+            2 or 8 => JsonResponse(SummaryPayload),
+            5 => RateLimited(TimeSpan.FromMinutes(20)),
+            _ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        });
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System,
+            _ => Task.FromResult(new[] { ProcessOwner() }));
+        using var bus = new MetricBus(1);
+        using var provider = new AntigravityQuotaProvider(new MetricRegistry(), bus,
+            acquirer.AcquireOnceAsync, acquirer.VerifyOwnerAsync, time);
+
+        await provider.PollOnceAsync();
+        Assert.AreEqual(3, handler.Requests.Count);
+        time.Advance(AntigravityQuotaProvider.PollInterval);
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count);
+
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count,
+            "A summary Retry-After must suppress both profile verification and quota acquisition.");
+
+        time.Advance(TimeSpan.FromMinutes(20) - TimeSpan.FromSeconds(1));
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(6, handler.Requests.Count);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        await provider.PollOnceAsync();
+        Assert.AreEqual(9, handler.Requests.Count);
+    }
+
+    [TestMethod]
+    [DataRow(429, 20, "rate_limited")]
+    [DataRow(503, 5, "upstream_unavailable")]
+    public async Task UnverifiableProfileClearsValueAndHonorsRetryDelay(int statusCode, int retryMinutes,
+        string expectedError)
+    {
+        var time = new ManualTimeProvider(InitialUtc);
+        using var handler = new ScriptedHandler((index, _) => index switch
+        {
+            1 or 3 or 5 or 7 => JsonResponse(StatusA),
+            2 or 6 => JsonResponse(SummaryPayload),
+            4 => HttpFailure(statusCode, retryMinutes),
+            _ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        });
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System,
+            _ => Task.FromResult(new[] { ProcessOwner() }));
+        using var bus = new MetricBus(1);
+        using var provider = new AntigravityQuotaProvider(new MetricRegistry(), bus,
+            acquirer.AcquireOnceAsync, acquirer.VerifyOwnerAsync, time);
+
+        await provider.PollOnceAsync();
+        await provider.VerifyOwnerOnceAsync();
+        Assert.AreEqual(4, handler.Requests.Count);
+
+        var invalidated = await PublishOneAsync(provider, bus, MetricId);
+        Assert.IsNull(invalidated.Value);
+        Assert.AreEqual(MetricState.Unavailable, invalidated.State);
+        Assert.AreEqual(expectedError, invalidated.ErrorCode);
+
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(4, handler.Requests.Count);
+
+        var retryDelay = statusCode == 429
+            ? TimeSpan.FromMinutes(retryMinutes)
+            : AntigravityQuotaProvider.PollInterval;
+        time.Advance(retryDelay - TimeSpan.FromSeconds(1));
+        await provider.VerifyOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(4, handler.Requests.Count);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        await provider.PollOnceAsync();
+        Assert.AreEqual(7, handler.Requests.Count);
+        var recovered = await PublishOneAsync(provider, bus, MetricId);
+        Assert.AreEqual(12.3456, recovered.Value!.Value.AsDouble(), 0.0000001);
+    }
+
+    [TestMethod]
+    [DataRow("account")]
+    [DataRow("session")]
+    public async Task PositiveAccountOrSessionTransitionRemainsImmediatelyPollable(string transition)
+    {
+        var time = new ManualTimeProvider(InitialUtc);
+        var sessionChanged = false;
+        var sourceOwner = ProcessOwner();
+        using var handler = new ScriptedHandler((index, request) =>
+        {
+            if (request.RequestUri!.Segments.Last() == "GetUserStatus")
+                return JsonResponse(transition == "account" && index >= 4 ? StatusB : StatusA);
+            return request.RequestUri.Segments.Last() == "RetrieveUserQuotaSummary"
+                ? JsonResponse(SummaryPayload)
+                : new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        using var client = new HttpClient(handler);
+        using var acquirer = new AntigravityQuotaAcquirer(client, TimeProvider.System,
+            _ => Task.FromResult(new[]
+            {
+                sessionChanged ? sourceOwner with { CsrfToken = "synthetic-next-session" } : sourceOwner
+            }));
+        using var bus = new MetricBus(1);
+        using var provider = new AntigravityQuotaProvider(new MetricRegistry(), bus,
+            acquirer.AcquireOnceAsync, acquirer.VerifyOwnerAsync, time);
+
+        await provider.PollOnceAsync();
+        Assert.AreEqual(3, handler.Requests.Count);
+        if (transition == "session")
+            sessionChanged = true;
+
+        await provider.VerifyOwnerOnceAsync();
+        Assert.AreEqual(transition == "account" ? 4 : 3, handler.Requests.Count);
+        await provider.PollOnceAsync();
+        Assert.AreEqual(transition == "account" ? 7 : 6, handler.Requests.Count);
+        Assert.IsTrue(handler.Requests.Skip(transition == "account" ? 4 : 3)
+            .All(request => request.Csrf ==
+                (transition == "session" ? "synthetic-next-session" : "synthetic-csrf")));
+
+        var recovered = await PublishOneAsync(provider, bus, MetricId);
+        Assert.AreEqual(12.3456, recovered.Value!.Value.AsDouble(), 0.0000001);
+    }
+
+    [TestMethod]
     public async Task AuthRejectionAndMissingOwnershipClearPreviouslyValidCache()
     {
         foreach (var failure in new[] {
@@ -274,8 +415,32 @@ public sealed class AntigravityQuotaProviderTests
                 AntigravityOwnerVerificationState.Verified, owner)), time);
 
     private static AntigravityOwnerKey Owner(string email = "synthetic-account-A", int processId = 42,
-        string start = "synthetic-start-A", string sessionGeneration = "synthetic-session-generation-A") =>
-        new(email, processId, start, sessionGeneration);
+        string start = "synthetic-start-A", string sessionGeneration = "synthetic-session-generation-A",
+        int listenerPort = 43123) =>
+        new(email, processId, start, sessionGeneration, listenerPort);
+
+    private static AntigravityProcessOwner ProcessOwner(string csrfToken = "synthetic-csrf") =>
+        new(42, "synthetic-start-A", csrfToken, [43123]);
+
+    private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
+    {
+        Content = new StringContent(json, Encoding.UTF8, "application/json")
+    };
+
+    private static HttpResponseMessage RateLimited(TimeSpan retryAfter)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.RetryAfter = new RetryConditionHeaderValue(retryAfter);
+        return response;
+    }
+
+    private static HttpResponseMessage HttpFailure(int statusCode, int retryMinutes)
+    {
+        var response = new HttpResponseMessage((HttpStatusCode)statusCode);
+        if (statusCode == 429)
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromMinutes(retryMinutes));
+        return response;
+    }
 
     private static AntigravityQuotaAcquisition Acquisition(AntigravityOwnerKey owner, DateTimeOffset observedAt,
         double fraction, DateTimeOffset resetAt)
@@ -289,6 +454,25 @@ public sealed class AntigravityQuotaProviderTests
         return new AntigravityQuotaAcquisition(owner, AntigravityQuotaParser.Parse(payload, observedAt),
             MetricState.Error, null);
     }
+
+    private sealed class ScriptedHandler(Func<int, HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        public List<RequestObservation> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var index = Requests.Count + 1;
+            Requests.Add(new RequestObservation(request.RequestUri!,
+                request.Headers.GetValues("X-Codeium-Csrf-Token").Single()));
+            var response = respond(index, request);
+            response.RequestMessage = request;
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed record RequestObservation(Uri Uri, string Csrf);
 
     private sealed class ManualTimeProvider(DateTimeOffset initialUtc) : TimeProvider
     {
