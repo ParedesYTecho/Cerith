@@ -2,11 +2,13 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -114,6 +116,10 @@ internal sealed class ZCodeQuotaProvider : IDisposable
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposeStarted) != 0, this);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
         Task[] workers = [];
+        Exception? runFailure = null;
+        Exception? stopFailure = null;
+        Exception? drainFailure = null;
+        Exception? stoppedPublicationFailure = null;
         try
         {
             await PublishCurrentAsync(stop.Token).ConfigureAwait(false);
@@ -121,15 +127,66 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             var completed = await Task.WhenAny(workers).ConfigureAwait(false);
             await completed.ConfigureAwait(false);
         }
+        catch (Exception exception)
+        {
+            runFailure = exception;
+        }
         finally
         {
-            stop.Cancel();
-            if (workers.Length > 0)
+            try
             {
-                try { await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false); }
-                catch (Exception) { }
+                try { stop.Cancel(); }
+                catch (Exception exception) { stopFailure = exception; }
+                if (workers.Length > 0)
+                {
+                    try { await DrainWorkersAsync(workers, stop.Token).ConfigureAwait(false); }
+                    catch (Exception exception) { drainFailure = exception; }
+                }
             }
-            await PublishStoppedAsync().ConfigureAwait(false);
+            finally
+            {
+                try { await PublishStoppedAsync().ConfigureAwait(false); }
+                catch (Exception exception) { stoppedPublicationFailure = exception; }
+            }
+        }
+
+        var failures = new List<Exception>();
+        foreach (var failure in new[] { runFailure, stopFailure, drainFailure, stoppedPublicationFailure })
+        {
+            if (failure is null) continue;
+            IEnumerable<Exception> candidates = failure is AggregateException aggregate
+                ? aggregate.Flatten().InnerExceptions
+                : new[] { failure };
+            foreach (var candidate in candidates)
+                if (!failures.Any(existing => ReferenceEquals(existing, candidate))) failures.Add(candidate);
+        }
+
+        if (failures.Count == 1) ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1)
+            throw new AggregateException("ZCode quota run and shutdown encountered multiple failures.", failures);
+    }
+
+    private async Task DrainWorkersAsync(Task[] workers, CancellationToken stopToken)
+    {
+        var drain = Task.WhenAll(workers);
+        try
+        {
+            await drain.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        }
+        catch (TimeoutException) when (!drain.IsCompleted)
+        {
+            _ = drain.ContinueWith(static completed => completed.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+        catch (OperationCanceledException) when (stopToken.IsCancellationRequested && drain.IsCanceled)
+        {
+            return;
+        }
+        catch (ObjectDisposedException) when (_shutdown.IsCancellationRequested)
+        {
+            return;
         }
     }
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)
@@ -517,8 +574,14 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             await Task.WhenAll(snapshots.Select(snapshot => _bus.PublishAsync(snapshot, deadline.Token).AsTask()))
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested) { }
-        catch (Exception) { }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ObjectDisposedException) when (_shutdown.IsCancellationRequested)
+        {
+            return;
+        }
         finally
         {
             if (stateLockAcquired) _stateGate.Release();

@@ -138,9 +138,14 @@ internal static class ZCodeQuotaParser
             }
         }
         var distinct = details.Distinct().ToArray();
-        JsonElement? sourceNumber = limit.TryGetProperty("number", out var sourceNumberElement)
-            ? sourceNumberElement.Clone()
-            : null;
+        long? sourceNumber = null;
+        if (limit.TryGetProperty("number", out var sourceNumberElement))
+        {
+            if (sourceNumberElement.ValueKind != JsonValueKind.Number ||
+                !sourceNumberElement.TryGetInt64(out var parsedSourceNumber) || parsedSourceNumber < 0)
+                return ZCodeQuotaPoint.Error("invalid_bucket_number");
+            sourceNumber = parsedSourceNumber;
+        }
         var value = JsonSerializer.Serialize(new BucketMetadata(label, type, unit, sourceNumber, distinct));
         return value.Length <= 8192
             ? ZCodeQuotaPoint.Fresh(MetricValue.From(value))
@@ -196,6 +201,6 @@ internal static class ZCodeQuotaParser
     private static ZCodeQuotaReading AllError(string errorCode) =>
         new(Enumerable.Range(0, PointCount).Select(_ => ZCodeQuotaPoint.Error(errorCode)).ToArray());
 
-    private sealed record BucketMetadata(string Label, string Type, int Unit, JsonElement? SourceNumber, ModelDetail[] Models);
+    private sealed record BucketMetadata(string Label, string Type, int Unit, long? SourceNumber, ModelDetail[] Models);
     private sealed record ModelDetail(string? DisplayName, string? ModelCode);
 }

@@ -251,6 +251,39 @@ public sealed class ZCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public void SourceNumberMetadataPreservesOnlyBoundedIntegralScalars()
+    {
+        foreach (var sourceNumber in new[]
+        {
+            "\"synthetic-private-number\"",
+            "{\"private\":\"synthetic-private-marker\"}",
+            "1.5",
+            "9223372036854775808",
+            "-1"
+        })
+        {
+            var body = Encoding.UTF8.GetBytes(
+                $"{{\"code\":0,\"data\":{{\"limits\":[{{\"type\":\"TOKENS_LIMIT\",\"unit\":6,\"number\":{sourceNumber},\"percentage\":25}}]}}}}");
+            var parsed = ZCodeQuotaParser.Parse(body.AsMemory());
+            var metadata = parsed.Points[ZCodeQuotaParser.WeeklyMetadata];
+
+            Assert.AreEqual(MetricState.Error, metadata.State);
+            Assert.IsNull(metadata.Value);
+            Assert.AreEqual("invalid_bucket_number", metadata.ErrorCode);
+        }
+
+        var zero = ZCodeQuotaParser.Parse(Encoding.UTF8.GetBytes(
+            "{\"code\":0,\"data\":{\"limits\":[{\"type\":\"TOKENS_LIMIT\",\"unit\":6,\"number\":0}]}}").AsMemory());
+        using var zeroMetadata = JsonDocument.Parse(zero.Points[ZCodeQuotaParser.WeeklyMetadata].Value!.Value.AsString());
+        Assert.AreEqual(0, zeroMetadata.RootElement.GetProperty("SourceNumber").GetInt64());
+
+        var missing = ZCodeQuotaParser.Parse(Encoding.UTF8.GetBytes(
+            "{\"code\":0,\"data\":{\"limits\":[{\"type\":\"TOKENS_LIMIT\",\"unit\":6}]}}").AsMemory());
+        using var missingMetadata = JsonDocument.Parse(missing.Points[ZCodeQuotaParser.WeeklyMetadata].Value!.Value.AsString());
+        Assert.AreEqual(JsonValueKind.Null, missingMetadata.RootElement.GetProperty("SourceNumber").ValueKind);
+    }
+
+    [TestMethod]
     public async Task RequestDeadlineCancelsSlowAcquisitionAndPublishesTimeout()
     {
         using var harness = new Harness();
@@ -436,8 +469,7 @@ public sealed class ZCodeQuotaProviderTests
             await entered.Task;
             var stopped = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
             stop.Cancel();
-            try { await run; }
-            catch (OperationCanceledException) { }
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await run);
             Assert.IsTrue((await Task.WhenAll(stopped)).All(result => result));
             Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped && reader.Current.Value is null));
         }
@@ -460,10 +492,16 @@ public sealed class ZCodeQuotaProviderTests
             await Task.WhenAll(initial);
             var stopped = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
 
+            Exception? failure = null;
             try { await run; }
-            catch (InvalidOperationException) { }
+            catch (Exception exception) { failure = exception; }
 
-            Assert.IsTrue(run.IsFaulted);
+            Assert.IsNotNull(failure);
+            var propagated = failure! is AggregateException aggregate
+                ? aggregate.Flatten().InnerExceptions.Any(exception =>
+                    exception is InvalidOperationException && exception.Message == "synthetic timer failure")
+                : failure is InvalidOperationException && failure.Message == "synthetic timer failure";
+            Assert.IsTrue(propagated);
             Assert.IsTrue((await Task.WhenAll(stopped)).All(result => result));
             Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped && reader.Current.Value is null));
         }
@@ -603,8 +641,7 @@ public sealed class ZCodeQuotaProviderTests
             Provider.Dispose();
             Client.Dispose();
             Bus.Dispose();
-            try { Directory.Delete(Home, recursive: true); }
-            catch (DirectoryNotFoundException) { }
+            if (Directory.Exists(Home)) Directory.Delete(Home, recursive: true);
         }
     }
     private sealed class RecordingHandler : HttpMessageHandler
