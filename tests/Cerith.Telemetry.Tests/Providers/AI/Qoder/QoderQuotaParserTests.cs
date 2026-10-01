@@ -14,7 +14,7 @@ public sealed class QoderQuotaParserTests
     private static readonly DateTimeOffset ObservedAt = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
 
     [TestMethod]
-    public void ParseKeepsPersonalAndAddonCreditsAndWithholdsUnverifiedOrganizationScope()
+    public void PotentiallyAvailableOrganizationPoolWithholdsAggregateButKeepsPersonalAndAddon()
     {
         const string json = """
             {
@@ -47,12 +47,90 @@ public sealed class QoderQuotaParserTests
             Assert.AreEqual("scope_unverified", reading.Points[index].ErrorCode);
             Assert.IsNull(reading.Points[index].Value);
         }
-        AssertMeasured(reading.Points[13], 31.25d);
-        Assert.IsFalse(reading.Points[14].Value!.Value.AsBoolean());
+        AssertAggregateScopeUnverified(reading);
         Assert.AreEqual(DateTimeOffset.FromUnixTimeMilliseconds(1798761600000),
             reading.Points[15].Value!.Value.AsDateTimeOffset());
         Assert.AreEqual("synthetic-user-1", reading.AccountId);
         Assert.AreEqual("synthetic-org-1", reading.OrganizationId);
+    }
+
+    [TestMethod]
+    public void MissingOrganizationAvailabilityWithholdsAggregateButKeepsPersonalAndAddon()
+    {
+        const string json = """
+            {
+              "userId": "synthetic-user-1",
+              "totalUsagePercentage": 31.25,
+              "isQuotaExceeded": false,
+              "userQuota": { "used": 12.5, "total": 100, "remaining": 87.5, "percentage": 12.5, "unit": "credits" },
+              "addOnQuota": { "used": 3, "total": 20, "remaining": 17, "percentage": 15, "unit": "credits" },
+              "orgResourcePackage": { "used": 8, "cap": 40, "remaining": 32, "percentage": 20, "unit": "credits" }
+            }
+            """;
+
+        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", "synthetic-org-1"));
+
+        AssertMeasured(reading.Points[0], 12.5d);
+        AssertMeasured(reading.Points[5], 3d);
+        AssertAggregateScopeUnverified(reading);
+    }
+
+    [TestMethod]
+    public void ExplicitlyUnavailableOrganizationPoolPreservesAggregateFields()
+    {
+        const string json = """
+            {
+              "userId": "synthetic-user-1",
+              "totalUsagePercentage": 31.25,
+              "isQuotaExceeded": true,
+              "userQuota": { "used": 12.5, "total": 100, "remaining": 87.5, "percentage": 12.5, "unit": "credits" },
+              "addOnQuota": { "used": 3, "total": 20, "remaining": 17, "percentage": 15, "unit": "credits" },
+              "orgResourcePackage": { "used": 8, "cap": 40, "remaining": 32, "percentage": 20, "available": false, "unit": "credits" }
+            }
+            """;
+
+        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", "synthetic-org-1"));
+
+        AssertMeasured(reading.Points[0], 12.5d);
+        AssertMeasured(reading.Points[5], 3d);
+        AssertMeasured(reading.Points[13], 31.25d);
+        Assert.AreEqual(MetricState.Fresh, reading.Points[14].State);
+        Assert.IsTrue(reading.Points[14].Value!.Value.AsBoolean());
+    }
+
+    [TestMethod]
+    public void AbsentOrganizationPackagePreservesAggregateFields()
+    {
+        const string json = """
+            {
+              "userId": "synthetic-user-1",
+              "totalUsagePercentage": 31.25,
+              "isQuotaExceeded": false
+            }
+            """;
+
+        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", null));
+
+        AssertMeasured(reading.Points[13], 31.25d);
+        Assert.AreEqual(MetricState.Fresh, reading.Points[14].State);
+        Assert.IsFalse(reading.Points[14].Value!.Value.AsBoolean());
+    }
+
+    [TestMethod]
+    public void InvalidOrganizationAvailabilityWithholdsAggregate()
+    {
+        const string json = """
+            {
+              "userId": "synthetic-user-1",
+              "totalUsagePercentage": 31.25,
+              "isQuotaExceeded": false,
+              "orgResourcePackage": { "available": "true" }
+            }
+            """;
+
+        var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", "synthetic-org-1"));
+
+        AssertAggregateScopeUnverified(reading);
     }
 
     [TestMethod]
@@ -203,6 +281,16 @@ public sealed class QoderQuotaParserTests
 
     private static QoderQuotaReading Parse(string json, QoderSessionIdentity identity) =>
         QoderQuotaParser.Parse(Encoding.UTF8.GetBytes(json), identity, ObservedAt);
+
+    private static void AssertAggregateScopeUnverified(QoderQuotaReading reading)
+    {
+        for (var index = 13; index <= 14; index++)
+        {
+            Assert.AreEqual(MetricState.Unavailable, reading.Points[index].State);
+            Assert.AreEqual("scope_unverified", reading.Points[index].ErrorCode);
+            Assert.IsNull(reading.Points[index].Value);
+        }
+    }
 
     private static void AssertMeasured(QoderQuotaPoint point, double expected)
     {

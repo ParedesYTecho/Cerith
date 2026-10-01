@@ -16,6 +16,8 @@ public sealed class QoderQuotaProviderTests
     private static readonly DateTimeOffset ObservedAt = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
     private const string PersonalUsedId = "ai.qoder.credits.personal.used";
     private const string AddonUsedId = "ai.qoder.credits.addon.used";
+    private const string OverallUsedId = "ai.qoder.quota.overall.used_percent";
+    private const string QuotaExceededId = "ai.qoder.quota.exceeded";
     private const string OrganizationUsedId = "ai.qoder.credits.organization.used";
 
     [TestMethod]
@@ -120,7 +122,7 @@ public sealed class QoderQuotaProviderTests
     }
 
     [TestMethod]
-    public async Task PlanExpiryInvalidatesOnlyPersonalBucketAndPreservesObservedAt()
+    public async Task PlanExpiryInvalidatesPersonalAndAggregateButKeepsIndependentAddonAndObservedAt()
     {
         var time = new ManualTimeProvider(ObservedAt);
         var owner = Owner("synthetic-user-1", null);
@@ -129,6 +131,8 @@ public sealed class QoderQuotaProviderTests
             {
               "userId": "synthetic-user-1",
               "expiresAt": {{expiry}},
+              "totalUsagePercentage": 42,
+              "isQuotaExceeded": false,
               "userQuota": { "used": 5, "total": 10, "remaining": 5, "unit": "credits" },
               "addOnQuota": { "used": 2, "total": 20, "remaining": 18, "unit": "credits" }
             }
@@ -137,19 +141,29 @@ public sealed class QoderQuotaProviderTests
         using var bus = new MetricBus(1);
         await using var personalReader = bus.Subscribe(new MetricId(PersonalUsedId)).GetAsyncEnumerator();
         await using var addonReader = bus.Subscribe(new MetricId(AddonUsedId)).GetAsyncEnumerator();
+        await using var overallReader = bus.Subscribe(new MetricId(OverallUsedId)).GetAsyncEnumerator();
+        await using var exceededReader = bus.Subscribe(new MetricId(QuotaExceededId)).GetAsyncEnumerator();
         using var provider = new QoderQuotaProvider(registry, bus,
             _ => Task.FromResult(Acquisition(json, owner)),
             (_, _) => Task.FromResult(new QoderOwnerVerification(QoderOwnerVerificationState.Verified, owner)), time);
         var personalInitial = personalReader.MoveNextAsync().AsTask();
         var addonInitial = addonReader.MoveNextAsync().AsTask();
+        var overallInitial = overallReader.MoveNextAsync().AsTask();
+        var exceededInitial = exceededReader.MoveNextAsync().AsTask();
 
         await provider.PollOnceAsync();
         Assert.IsTrue(await personalInitial.WaitAsync(TimeSpan.FromSeconds(1)));
         Assert.IsTrue(await addonInitial.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.IsTrue(await overallInitial.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.IsTrue(await exceededInitial.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Fresh, overallReader.Current.State);
+        Assert.AreEqual(MetricState.Fresh, exceededReader.Current.State);
         time.Advance(TimeSpan.FromSeconds(11));
 
         var personalExpired = personalReader.MoveNextAsync().AsTask();
         var addonAfterExpiry = addonReader.MoveNextAsync().AsTask();
+        var overallExpired = overallReader.MoveNextAsync().AsTask();
+        var exceededExpired = exceededReader.MoveNextAsync().AsTask();
         await provider.ExpireValidityOnceAsync();
 
         Assert.IsTrue(await personalExpired.WaitAsync(TimeSpan.FromSeconds(1)));
@@ -161,6 +175,16 @@ public sealed class QoderQuotaProviderTests
         Assert.AreEqual(MetricState.Fresh, addonReader.Current.State);
         Assert.AreEqual(2d, addonReader.Current.Value!.Value.AsDouble(), 0.000001);
         Assert.AreEqual(ObservedAt, addonReader.Current.ObservedAt);
+        Assert.IsTrue(await overallExpired.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, overallReader.Current.State);
+        Assert.AreEqual("quota_expired", overallReader.Current.ErrorCode);
+        Assert.IsNull(overallReader.Current.Value);
+        Assert.AreEqual(ObservedAt, overallReader.Current.ObservedAt);
+        Assert.IsTrue(await exceededExpired.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, exceededReader.Current.State);
+        Assert.AreEqual("quota_expired", exceededReader.Current.ErrorCode);
+        Assert.IsNull(exceededReader.Current.Value);
+        Assert.AreEqual(ObservedAt, exceededReader.Current.ObservedAt);
     }
 
     [TestMethod]

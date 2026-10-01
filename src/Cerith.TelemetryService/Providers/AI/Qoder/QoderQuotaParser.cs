@@ -182,8 +182,20 @@ internal static class QoderQuotaParser
                     points[index] = QoderQuotaPoint.Unavailable("scope_unverified");
             }
 
-            points[13] = ReadPercent(root, "totalUsagePercentage");
-            points[14] = ReadBoolean(root, "isQuotaExceeded");
+            var organizationMayBeAvailable = root.TryGetProperty("orgResourcePackage", out var organizationPackage) &&
+                (organizationPackage.ValueKind != JsonValueKind.Object ||
+                 !organizationPackage.TryGetProperty("available", out var organizationAvailable) ||
+                 organizationAvailable.ValueKind != JsonValueKind.False);
+            if (organizationMayBeAvailable)
+            {
+                points[13] = QoderQuotaPoint.Unavailable("scope_unverified");
+                points[14] = QoderQuotaPoint.Unavailable("scope_unverified");
+            }
+            else
+            {
+                points[13] = ReadPercent(root, "totalUsagePercentage");
+                points[14] = ReadBoolean(root, "isQuotaExceeded");
+            }
             points[15] = ReadPlanExpiry(root, "expiresAt");
             return new QoderQuotaReading(points, observedAt, identity.AccountId, identity.OrganizationId);
         }

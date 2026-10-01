@@ -72,7 +72,7 @@ internal sealed class QoderQuotaProvider : IDisposable
     private long? _readingTimestamp;
     private TimeSpan? _planExpiryAfter;
     private bool _readingIsStale;
-    private bool _personalQuotaExpired;
+    private bool _planQuotaExpired;
     private CancellationTokenSource? _activeRequestStop;
     private CancellationTokenSource? _activePublishStop;
     private MetricState _failureState = MetricState.Unavailable;
@@ -379,7 +379,7 @@ internal sealed class QoderQuotaProvider : IDisposable
         _reading = acquisition.Reading;
         _readingTimestamp = _timeProvider.GetTimestamp();
         _readingIsStale = false;
-        _personalQuotaExpired = false;
+        _planQuotaExpired = false;
         _planExpiryAfter = null;
         if (acquisition.Reading.Points[15].Value is MetricValue expiryValue)
         {
@@ -389,7 +389,7 @@ internal sealed class QoderQuotaProvider : IDisposable
         _failureState = MetricState.Unavailable;
         _failureCode = null;
         _failureObservedAt = acquisition.Reading.ObservedAt;
-        _ = InvalidateExpiredPersonalQuotaLocked(_timeProvider.GetTimestamp());
+        _ = InvalidateExpiredPlanQuotaLocked(_timeProvider.GetTimestamp());
     }
 
     internal async Task ExpireValidityOnceAsync(CancellationToken cancellationToken = default)
@@ -429,7 +429,7 @@ internal sealed class QoderQuotaProvider : IDisposable
                     changed = true;
                 }
 
-                if (InvalidateExpiredPersonalQuotaLocked(timestamp))
+                if (InvalidateExpiredPlanQuotaLocked(timestamp))
                 {
                     InvalidatePublicationLocked();
                     changed = true;
@@ -453,9 +453,9 @@ internal sealed class QoderQuotaProvider : IDisposable
         }
     }
 
-    private bool InvalidateExpiredPersonalQuotaLocked(long timestamp)
+    private bool InvalidateExpiredPlanQuotaLocked(long timestamp)
     {
-        if (_reading is null || _readingTimestamp is not long readingTimestamp || _personalQuotaExpired ||
+        if (_reading is null || _readingTimestamp is not long readingTimestamp || _planQuotaExpired ||
             _planExpiryAfter is not TimeSpan expiryAfter ||
             _timeProvider.GetElapsedTime(readingTimestamp, timestamp) < expiryAfter)
             return false;
@@ -465,7 +465,9 @@ internal sealed class QoderQuotaProvider : IDisposable
             if (_reading.Points[index].Value.HasValue)
                 _reading.Points[index] = QoderQuotaPoint.Unavailable("quota_expired");
         }
-        _personalQuotaExpired = true;
+        for (var index = 13; index <= 14; index++)
+            _reading.Points[index] = QoderQuotaPoint.Unavailable("quota_expired");
+        _planQuotaExpired = true;
         return true;
     }
 
@@ -474,7 +476,7 @@ internal sealed class QoderQuotaProvider : IDisposable
         _readingTimestamp = null;
         _planExpiryAfter = null;
         _readingIsStale = false;
-        _personalQuotaExpired = false;
+        _planQuotaExpired = false;
     }
 
     private MetricSnapshot[] CreateSnapshotsLocked()
