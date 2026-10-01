@@ -36,6 +36,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     ];
 
     private const string Source = "CommandCode.ObservedBillingApi.v1";
+    private const string UserAgentProductToken = "Cerith";
 
     private readonly MetricBus _bus;
     private readonly MetricDescriptor[] _descriptors;
@@ -443,6 +444,7 @@ public sealed class CommandCodeQuotaProvider : IDisposable
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.UserAgent.ParseAdd(UserAgentProductToken);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_requestTimeout);

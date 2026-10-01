@@ -71,6 +71,8 @@ public sealed class CommandCodeQuotaProviderTests
         Assert.IsTrue(handler.RequestUris.Exists(uri => uri.AbsolutePath == "/alpha/billing/subscriptions" &&
             uri.Query.Contains("orgId=org%20%2F%20one", StringComparison.OrdinalIgnoreCase)));
         Assert.IsTrue(handler.AuthorizationHeaders.TrueForAll(value => value == "Bearer " + ApiKey));
+        Assert.IsTrue(handler.UserAgentHeaders.TrueForAll(value => value == "Cerith"),
+            "Each request must expose only the Cerith product token.");
         Assert.IsTrue(handler.RequestUris.TrueForAll(uri => uri.Scheme == Uri.UriSchemeHttps &&
             uri.Host == "api.commandcode.ai"));
     }
@@ -326,6 +328,7 @@ public sealed class CommandCodeQuotaProviderTests
     {
         internal List<Uri> RequestUris { get; } = [];
         internal List<string?> AuthorizationHeaders { get; } = [];
+        internal List<string> UserAgentHeaders { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -333,6 +336,7 @@ public sealed class CommandCodeQuotaProviderTests
             {
                 RequestUris.Add(request.RequestUri!);
                 AuthorizationHeaders.Add(request.Headers.Authorization?.ToString());
+                UserAgentHeaders.Add(request.Headers.UserAgent.ToString());
             }
             return Task.FromResult(respond(request));
         }
