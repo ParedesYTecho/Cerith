@@ -670,6 +670,9 @@ public sealed class CodexQuotaProviderTests
     [DataRow("codex")]
     [DataRow("cursor")]
     [DataRow("antigravity")]
+    [DataRow("zcode")]
+    [DataRow("github-copilot")]
+    [DataRow("opencode-go")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -767,7 +770,7 @@ public sealed class CodexQuotaProviderTests
     }
 
     [TestMethod]
-    public async Task HardwarePresentMonCodexAndAntigravityPublishTwiceWhileCursorRequestIsGated()
+    public async Task HardwareAndAcceptedProvidersPublishTwiceWhileCursorRequestIsGated()
     {
         using var codexHarness = new Harness();
         var registry = codexHarness.Registry;
@@ -775,6 +778,7 @@ public sealed class CodexQuotaProviderTests
         using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
         using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
+        using var zcodeProvider = ZCodeQuotaProviderTests.CreateSyntheticProvider(registry, bus);
         var copilotResponses = new Queue<string>();
         const string accountId = "24680";
         const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
@@ -812,6 +816,7 @@ public sealed class CodexQuotaProviderTests
             """);
         using var openCodeProvider = new OpenCodeGoQuotaProvider(registry, bus, authReader,
             openCodeHandler, TimeProvider.System, _ => 0);
+        await zcodeProvider.PrimeAsync();
         await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
         await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
         await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
@@ -822,6 +827,8 @@ public sealed class CodexQuotaProviderTests
             "ai.github_copilot.quota.chat.percent_remaining")).GetAsyncEnumerator();
         await using var openCodeReader = bus.Subscribe(new MetricId(
             "ai.opencode-go.quota.rolling.used")).GetAsyncEnumerator();
+        await using var zcodeReader = bus.Subscribe(new MetricId(
+            "ai.zcode.coding_plan.five_hour.remaining_percent")).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
@@ -837,6 +844,7 @@ public sealed class CodexQuotaProviderTests
             var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
             var copilotRead = copilotReader.MoveNextAsync().AsTask();
             var openCodeRead = openCodeReader.MoveNextAsync().AsTask();
+            var zcodeRead = zcodeReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
@@ -844,9 +852,10 @@ public sealed class CodexQuotaProviderTests
             await antigravityProvider.PublishCurrentAsync();
             await copilotProvider.PollOnceAsync();
             await openCodeProvider.PublishCurrentAsync();
+            await zcodeProvider.PublishCurrentAsync();
 
             var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
-                    copilotRead, openCodeRead)
+                    copilotRead, openCodeRead, zcodeRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -875,6 +884,9 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(80d, copilotReader.Current.Value!.Value.AsDouble(), 0.000001);
             Assert.AreEqual(MetricState.Fresh, openCodeReader.Current.State);
             Assert.AreEqual(37.5d, openCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual(MetricState.Fresh, zcodeReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, zcodeReader.Current.Confidence);
+            Assert.AreEqual(75d, zcodeReader.Current.Value!.Value.AsDouble(), 0.001);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>

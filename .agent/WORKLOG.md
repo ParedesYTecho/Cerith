@@ -453,3 +453,19 @@ Verification: serial Release solution build passed with 0 warnings/errors; Core 
 Current limits: Copilot credential renewal class is unknown; do not claim renewal. OpenCode Go setup/live validation is pending; no MFA was encountered. The sanitized Antigravity local-RPC probe is schema/identity evidence only; parser-to-snapshot, version, backend-cache and UI comparisons remain open. Cursor auth remains DEFERRED/UNRESOLVED and live UI comparison NOT RUN. Kiro awaits FINAL review; Command Code MID handoff awaits Sol; Grok Build remains BLOCKED at `auth_provenance_unavailable`. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains `72b43b268b4992d0b0ea45b6e29067d10450274f`. PR #47 remains draft; no canonical-main merge or M3/16-provider completion claim.
 
 Files: `src/Cerith.TelemetryService/Program.cs`, `tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/Antigravity/AntigravityQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, plus the imported Copilot/OpenCode Go provider source and tests.
+
+## 2026-10-01 — Dewey One — ZCode coexistence and shared QA checkpoint
+
+Runtime: integration writer GPT-6 Luna Max, max, verified from authoritative turn_context at 2026-10-01T19:18:17.505Z. The user-requested external reviewer route is GPT-5.6 Sol via Web; the actual reviewer runtime is not verified in this checkpoint.
+
+Change: closed the remaining gated same-bus integration gap with ZCode through its existing synthetic auth/HTTP/time seams. The registered ZCode provider publishes its accepted synthetic 75% remaining value in both rounds alongside real Hardware, synthetic PresentMon, Codex, Antigravity, Copilot and OpenCode Go while Cursor acquisition is held pending. Provider-failure isolation cases now cover all six accepted registered AI providers. No provider production code, cadence, dependency or shared primitive changed.
+
+Shared QA: recorded once in docs/TESTING_QA.md that worker-fault tests must let PeriodicTimer finish construction before injecting timestamp faults. The partial-construction/disposal failure on .NET 10.0.12 was independently reproduced without Cerith code and surfaced by both Antigravity and ZCode fixtures.
+
+Verification: serial Release solution build passed with 0 warnings/errors. Core 39/39, Telemetry 214/214, Integration 10/10; focused gated coexistence 1/1 and provider failure isolation 6/6. Configured obvious-private-artifact hygiene passed for 107 tracked files; targeted added-diff privacy patterns and git diff --check passed. These checks are scoped and are not a comprehensive secret scan. No Graphify refresh was needed because no product structure changed.
+
+Provider checkpoint: Command Code MID PASS at 939bd24; FINAL fixes are active Luna at 12bf7f0cf782c5724ba0be8b6f4a8172ae6a17e8. Kiro has an active bounded follow-up at 98a1a0d3fa5c50bc4a3ac6c8a3b82adca85159f2 for propagation of unexpected child/dependency cleanup faults. Devin is BLOCKED at MID tip 1a8e169e2bf73f7650ed22c630cb01a63739eafb for unresolved product/team scope/provenance. Qoder International is active at MID; Qoder CN and Ark Coding/Agent remain pending. Other accepted, deferred and blocked dispositions are unchanged; no new provider import is authorized without exact FINAL PASS.
+
+PR #47 remains draft. Local main remains 3f5ca74a26edf88a02e6bda05f759ee3c74032cd and origin/main remains 72b43b268b4992d0b0ea45b6e29067d10450274f. No canonical-main merge or M3/mission completion claim.
+
+Files: tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs, tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs, docs/TESTING_QA.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md.

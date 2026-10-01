@@ -56,6 +56,8 @@ Parsing tests are not enough.
 
 AI quota providers require live/independent validation where possible.
 
+When testing worker failures with `TimeProvider`, allow `PeriodicTimer` construction to finish before injecting a timestamp fault. Throwing from `CreateTimer` during construction can trigger a partial-construction disposal/finalizer crash on .NET 10.0.12; this was reproduced without Cerith code and independently surfaced by the Antigravity and ZCode test fixtures. Keep the correction test-only and preserve production cadence.
+
 ## Diagnostic validation sessions (future)
 
 A Test / Diagnostic Session is evidence-generation tooling, not a substitute for deterministic tests.

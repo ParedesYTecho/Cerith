@@ -36,6 +36,9 @@ public sealed class ZCodeQuotaProviderTests
         "ai.zcode.coding_plan.tools.bucket_metadata"
     ];
 
+    internal static SyntheticProvider CreateSyntheticProvider(MetricRegistry registry, MetricBus bus) =>
+        new(new Harness(registry, bus));
+
     [TestMethod]
     public async Task SelectedFamilyAcquiresCodingPlanAndPreservesWindowModelMetadata()
     {
@@ -532,21 +535,52 @@ public sealed class ZCodeQuotaProviderTests
         Content = new StringContent(json, Encoding.UTF8, "application/json")
     };
 
-    private sealed class Harness : IDisposable
+    internal sealed class SyntheticProvider : IDisposable
+    {
+        private readonly Harness _harness;
+
+        internal SyntheticProvider(Harness harness) => _harness = harness;
+
+        public Task PrimeAsync()
+        {
+            _harness.Handler.EnqueueJson(_harness.Fixture);
+            return _harness.Provider.PollOnceAsync();
+        }
+
+        public ValueTask PublishCurrentAsync() => _harness.Provider.PublishCurrentAsync();
+
+        public void Dispose() => _harness.Dispose();
+    }
+
+    internal sealed class Harness : IDisposable
     {
         public string Home { get; } = Path.Combine(Path.GetTempPath(), "cerith-zcode-test-" + Guid.NewGuid().ToString("N"));
         public string VersionDirectory => Path.Combine(Home, ".zcode", "v2");
-        public MetricRegistry Registry { get; } = new();
-        public MetricBus Bus { get; } = new(1);
+        public MetricRegistry Registry { get; }
+        public MetricBus Bus { get; }
         public TestTimeProvider Time { get; } = new(InitialUtc);
         public RecordingHandler Handler { get; } = new();
         public HttpClient Client { get; }
         public ZCodeQuotaAuthReader AuthReader { get; }
         public ZCodeQuotaProvider Provider { get; }
         public string Fixture => BuildFixture();
+        private readonly bool _ownsBus;
 
         public Harness(bool writeConfig = true)
+            : this(new MetricRegistry(), new MetricBus(1), writeConfig, ownsBus: true)
         {
+        }
+
+        internal Harness(MetricRegistry registry, MetricBus bus)
+            : this(registry, bus, writeConfig: true, ownsBus: false)
+        {
+        }
+
+        private Harness(MetricRegistry registry, MetricBus bus, bool writeConfig, bool ownsBus)
+        {
+            Registry = registry;
+            Bus = bus;
+            _ownsBus = ownsBus;
             Directory.CreateDirectory(VersionDirectory);
             WriteSettings("zai", "individual-coding-plan");
             if (writeConfig) WriteConfig("synthetic-zai-key", "zai");
@@ -640,11 +674,11 @@ public sealed class ZCodeQuotaProviderTests
         {
             Provider.Dispose();
             Client.Dispose();
-            Bus.Dispose();
+            if (_ownsBus) Bus.Dispose();
             if (Directory.Exists(Home)) Directory.Delete(Home, recursive: true);
         }
     }
-    private sealed class RecordingHandler : HttpMessageHandler
+    internal sealed class RecordingHandler : HttpMessageHandler
     {
         private readonly ConcurrentQueue<Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>> _responses = new();
         private readonly ConcurrentQueue<RequestObservation> _requests = new();
@@ -674,10 +708,10 @@ public sealed class ZCodeQuotaProviderTests
         }
     }
 
-    private sealed record RequestObservation(HttpMethod Method, Uri Uri, string? Authorization,
+    internal sealed record RequestObservation(HttpMethod Method, Uri Uri, string? Authorization,
         string? Organization, string? Project);
 
-    private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    internal sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
         private readonly object _gate = new();
         private readonly ConcurrentBag<ManualTimer> _timers = new();
