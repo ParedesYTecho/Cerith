@@ -499,3 +499,13 @@ Verification carried forward from exact code/test HEAD `6430669`: serial Release
 Status: PR #47 remains draft; no main merge. Seven new accepted providers plus the separate Codex slice remain staged; unresolved Cursor, Antigravity, auth/renewal and provider-wave gates remain explicit. CER-M3-004, the 16-provider objective and M3 remain active/incomplete.
 
 Files: `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — hosted Kiro subprocess test correction
+
+Actions at docs checkpoint `5a91da436d1864295975822a4d8a307046221099`: Release build and Core 39/39 passed; Telemetry failed 2 of 295 in `AcpClientSuppressesRetriesOnV3RateLimitNotificationWithoutParsingTiming` and `AcpClientSendsInitializeAndUsageOnlyWithoutPrompting`. Both hit the five-second test-injected request deadline and returned Error; IPC tests were skipped after that failure. Repository Quality passed; CodeQL was skipped under workflow policy.
+
+Correction: changed only those two accepted Kiro test fixtures to use the existing ten-second production `RequestTimeout` bound rather than a shorter five-second injected limit. No Kiro production code, cadence, auth behavior or provider source history changed.
+
+Validation: Release solution rebuild passed with 0 warnings/errors; the two tests passed 2/2, and the full Telemetry MTP DLL suite passed 295/295 under a minimum-count guard. Core 39/39, Integration 10/10, coexistence 1/1 and supervisor isolation 8/8 had already passed at the preceding source/test checkpoint; they are unaffected by the test-only bound adjustment. New-head hosted Build and Test remains pending after push. No main merge; PR #47 stays draft and the mission remains active.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.

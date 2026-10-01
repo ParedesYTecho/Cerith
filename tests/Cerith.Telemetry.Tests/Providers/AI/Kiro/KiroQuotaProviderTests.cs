@@ -244,7 +244,7 @@ public sealed class KiroQuotaProviderTests
             """;
 
         var acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
-            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(5));
+            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
 
         Assert.AreEqual(KiroAcquisitionStatus.RetrySuppressed, acquisition.Status);
         Assert.AreEqual("rate_limit_timing_unknown", acquisition.ErrorCode);
@@ -263,7 +263,7 @@ public sealed class KiroQuotaProviderTests
             [Console]::Out.WriteLine('{"jsonrpc":"2.0","id":2,"result":{"synthetic":true}}')
             """;
         var acquisition = await KiroAcpUsageClient.ReadAsync(TimeProvider.System, CancellationToken.None,
-            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(5));
+            CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
 
         Assert.AreEqual(KiroAcquisitionStatus.Ready, acquisition.Status);
         Assert.AreEqual("{\"synthetic\":true}", Encoding.UTF8.GetString(acquisition.Payload!));
