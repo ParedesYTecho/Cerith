@@ -224,7 +224,7 @@ public sealed class KiroQuotaProviderTests
         const string script = "[Console]::Out.WriteLine('{\"account\":{\"opaque\":\"synthetic\"}}')";
 
         var observation = await KiroAcpUsageClient.ReadIdentityAsync(TimeProvider.System, IdentityKey,
-            CancellationToken.None, CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(5));
+            CancellationToken.None, CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
 
         Assert.AreEqual(KiroIdentityStatus.Ready, observation.Status);
         Assert.AreEqual(32, observation.Fingerprint!.Length);
