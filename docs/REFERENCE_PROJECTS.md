@@ -226,3 +226,7 @@ Snapshot hashes (SHA-256) for repeatable follow-up:
 | reports/m7_scaling_results.txt | 13a229a330c128214e840197a246486436bed01e76f8bb5982f70c821a37f591 |
 
 Outcome: useful adversarial designs were separated from unsupported proof. No Shadow code/dependency/private payload was copied, no harness was executed and no production architecture decision changed. The quota-wave candidate remains gated by fresh independent review; this audit accelerates future evidence discovery without approving future implementation.
+
+## Additional quota-source comparisons — 2026-10-02
+
+Claude subscriber coverage and Grok shared-weekly acquisition were checked against the preserved TokenTracker, Gengchou and AI Limits clones plus usage-monitor, ai-quota-deck, usage, claudecounter, claude-usage-tracker and current CodexBar source. Exact repository/revision/path/license observations and accepted/rejected lessons are recorded once in [AI_QUOTA_REFERENCE_MATRIX.md](AI_QUOTA_REFERENCE_MATRIX.md#github-acquisition-comparison-follow-up--2026-10-02). The first-party Grok billing gate and passive logs change the acquisition candidates; they do not authorize architecture/code copying or replace owner/live validation. AGPL/GPL artifacts remain research-only; an unverified license is not permission to copy. No monitor was installed or executed.
