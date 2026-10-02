@@ -361,16 +361,16 @@ internal sealed class QoderCnCliClient
 
 internal static class QoderCnCliTrust
 {
-    internal const string ExpectedPublisherSubject =
-        "CN=BRIGHT ZENITH PRIVATE LIMITED, O=BRIGHT ZENITH PRIVATE LIMITED";
+    private const string ExpectedPublisherName = "BRIGHT ZENITH PRIVATE LIMITED";
+    internal const string ExpectedPublisherSubject = "CN=" + ExpectedPublisherName + ", O=" + ExpectedPublisherName;
 
     private const long MaximumExecutableBytes = 256L * 1024 * 1024;
     private const uint WinTrustUiNone = 2;
     private const uint WinTrustChoiceFile = 1;
     private const uint WinTrustStateVerify = 1;
     private const uint WinTrustStateClose = 2;
+    private const uint WinTrustRevocationCheckWholeChain = 1;
     private const uint WinTrustCacheOnlyUrlRetrieval = 0x1000;
-    private const uint WinTrustRevocationCheckNone = 0x10;
     private static readonly Guid GenericVerifyV2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
 
     internal static bool IsLocalFixedPath(string path)
@@ -400,11 +400,52 @@ internal static class QoderCnCliTrust
         }
     }
 
-    internal static bool IsExpectedPublisherSubject(string? subject) =>
-        StringComparer.OrdinalIgnoreCase.Equals(subject?.Trim(), ExpectedPublisherSubject);
-
-    internal static FileStream? OpenVerifiedExecutable(string path)
+    internal static bool IsExpectedPublisherSubject(string? subject)
     {
+        if (string.IsNullOrWhiteSpace(subject))
+            return false;
+
+        string? commonName = null;
+        string? organization = null;
+        foreach (var attribute in subject.Split(','))
+        {
+            var separator = attribute.IndexOf('=');
+            if (separator <= 0)
+                return false;
+
+            var key = attribute[..separator].Trim();
+            var value = attribute[(separator + 1)..].Trim();
+            if (key.Equals("CN", StringComparison.OrdinalIgnoreCase) || key.Equals("2.5.4.3", StringComparison.Ordinal))
+            {
+                if (commonName is not null)
+                    return false;
+                commonName = value;
+            }
+            else if (key.Equals("O", StringComparison.OrdinalIgnoreCase) || key.Equals("2.5.4.10", StringComparison.Ordinal))
+            {
+                if (organization is not null)
+                    return false;
+                organization = value;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return StringComparer.OrdinalIgnoreCase.Equals(commonName, ExpectedPublisherName) &&
+            StringComparer.OrdinalIgnoreCase.Equals(organization, ExpectedPublisherName);
+    }
+
+    internal static FileStream? OpenVerifiedExecutable(string path) =>
+        OpenVerifiedExecutable(path, VerifyAuthenticode, ReadSignerSubject);
+
+    internal static FileStream? OpenVerifiedExecutable(string path, Func<string, IntPtr, bool> verifySignature,
+        Func<string, string?> readSignerSubject)
+    {
+        ArgumentNullException.ThrowIfNull(verifySignature);
+        ArgumentNullException.ThrowIfNull(readSignerSubject);
+
         FileStream? stream = null;
         try
         {
@@ -418,16 +459,8 @@ internal static class QoderCnCliTrust
 
             stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (stream.Length <= 0 || stream.Length > MaximumExecutableBytes ||
-                !VerifyAuthenticode(fullPath, stream.SafeFileHandle.DangerousGetHandle()))
-            {
-                stream.Dispose();
-                return null;
-            }
-
-#pragma warning disable SYSLIB0057 // X509CertificateLoader accepts certificate files, not signer certificates embedded in PE files.
-            using var signer = X509Certificate.CreateFromSignedFile(fullPath);
-#pragma warning restore SYSLIB0057
-            if (!IsExpectedPublisherSubject(signer.Subject))
+                !verifySignature(fullPath, stream.SafeFileHandle.DangerousGetHandle()) ||
+                !IsExpectedPublisherSubject(readSignerSubject(fullPath)))
             {
                 stream.Dispose();
                 return null;
@@ -445,6 +478,14 @@ internal static class QoderCnCliTrust
         }
     }
 
+    private static string? ReadSignerSubject(string path)
+    {
+#pragma warning disable SYSLIB0057 // X509CertificateLoader accepts certificate files, not signer certificates embedded in PE files.
+        using var signer = X509Certificate.CreateFromSignedFile(path);
+#pragma warning restore SYSLIB0057
+        return signer.Subject;
+    }
+
     private static bool VerifyAuthenticode(string path, IntPtr fileHandle)
     {
         IntPtr pathPointer = IntPtr.Zero;
@@ -452,10 +493,10 @@ internal static class QoderCnCliTrust
         var data = new WinTrustData
         {
             UiChoice = WinTrustUiNone,
-            RevocationChecks = 0,
+            RevocationChecks = WinTrustRevocationCheckWholeChain,
             UnionChoice = WinTrustChoiceFile,
             StateAction = WinTrustStateVerify,
-            ProviderFlags = WinTrustCacheOnlyUrlRetrieval | WinTrustRevocationCheckNone
+            ProviderFlags = WinTrustCacheOnlyUrlRetrieval
         };
 
         try

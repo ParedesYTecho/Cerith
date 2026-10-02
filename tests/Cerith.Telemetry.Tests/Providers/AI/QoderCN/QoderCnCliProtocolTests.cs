@@ -145,6 +145,42 @@ public sealed class QoderCnCliProtocolTests
     }
 
     [TestMethod]
+    public void RejectsValidSignatureFromUnexpectedPublisherBeforeReturningExecutableHandle()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"qoder-cn-publisher-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var executablePath = Path.Combine(directory, QoderCnCliClient.ExecutableFileName);
+        var signatureChecked = false;
+        var subjectRead = false;
+        try
+        {
+            File.WriteAllText(executablePath, "synthetic signed candidate");
+
+            using var verifiedExecutable = QoderCnCliTrust.OpenVerifiedExecutable(executablePath,
+                (_, fileHandle) =>
+                {
+                    signatureChecked = fileHandle != IntPtr.Zero;
+                    return true;
+                },
+                _ =>
+                {
+                    subjectRead = true;
+                    return "CN=Qoder CN CLI, O=OTHER VENDOR LTD";
+                });
+
+            Assert.IsTrue(signatureChecked);
+            Assert.IsTrue(subjectRead);
+            Assert.IsNull(verifiedExecutable);
+        }
+        finally
+        {
+            if (File.Exists(executablePath))
+                File.Delete(executablePath);
+            Directory.Delete(directory);
+        }
+    }
+
+    [TestMethod]
     public void PrefersTheInstalledCLINameThenResolvesTheDocumentedAlias()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"qoder-cn-entrypoint-{Guid.NewGuid():N}");
@@ -168,7 +204,13 @@ public sealed class QoderCnCliProtocolTests
         }
 
         Assert.IsTrue(QoderCnCliTrust.IsExpectedPublisherSubject(QoderCnCliTrust.ExpectedPublisherSubject));
+        Assert.IsTrue(QoderCnCliTrust.IsExpectedPublisherSubject(
+            " O = bright zenith private limited , CN = Bright Zenith Private Limited "));
+        Assert.IsTrue(QoderCnCliTrust.IsExpectedPublisherSubject(
+            "2.5.4.10=BRIGHT ZENITH PRIVATE LIMITED, 2.5.4.3=BRIGHT ZENITH PRIVATE LIMITED"));
         Assert.IsFalse(QoderCnCliTrust.IsExpectedPublisherSubject("CN=Unknown Publisher, O=Unknown Publisher"));
+        Assert.IsFalse(QoderCnCliTrust.IsExpectedPublisherSubject(
+            "CN=BRIGHT ZENITH PRIVATE LIMITED, O=BRIGHT ZENITH PRIVATE LIMITED, OU=Unknown"));
         Assert.IsFalse(QoderCnCliTrust.IsLocalFixedPath(@"\\server\share\qoderclicn.exe"));
     }
 
