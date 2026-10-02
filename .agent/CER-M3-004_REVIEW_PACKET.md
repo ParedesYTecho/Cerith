@@ -95,7 +95,7 @@ Current first-party versions/pins, two investigated avenues and exact unblock co
 | Kimi | DEFERRED_AFTER_M3_QUOTA_WAVE; kimi / 25630291296c7b8721036dc8ff7dd48a98aebb7d | Official Windows OAuth writer/reader locking/rotation not proven; require safe client-owned bridge or approved independent grant. Existing tests/evidence preserved. |
 | Devin | DEFERRED_AFTER_M3_QUOTA_WAVE; devin / 1a8e169e2bf73f7650ed22c630cb01a63739eafb | Product/team and quota-source provenance unproven; GetPlanStatus alone does not establish Devin subscription quota. Existing work preserved. |
 
-No HUMAN_GATE_PENDING was newly encountered. These branches were not imported or reset. Locally preserved blocked/deferred tips may have commits absent from remotes; inspect Git rather than assuming an upstream tracking branch exists.
+No HUMAN_GATE_PENDING was newly encountered. These branches were not imported or reset. Previously local-only Claude, Gemini, Grok, Kimi and Devin tips were pushed unchanged after scoped privacy/filename checks; all preserved tips now have remote backups. Inspect current Git before reviewing.
 
 ## Lifecycle, cache and privacy boundaries to challenge
 
@@ -125,9 +125,13 @@ dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configu
 
 Coexistence 1/1; supervisor fault-isolation selection 11/11. The latter tests the shared runner with injected provider failures, not eleven live-client faults. Full suite includes provider cancellation/backpressure/owner/reset/cache tests; it is not long-duration/live/concurrency proof.
 
-At 96eefc5: [Build and Test](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658373) SUCCESS; [Repository Quality](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658310) SUCCESS; [CodeQL](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658376) SKIPPED under D-013, not a successful security scan. Require green build/quality on the exact final PR head as well.
+At 96eefc5: [Build and Test](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658373) SUCCESS; [Repository Quality](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658310) SUCCESS; [CodeQL](https://github.com/ParedesYTecho/Cerith/actions/runs/37005658376) SKIPPED under D-013, not a successful security scan. Packet head 991187e605657256f0cff8f8d14af3998fbd8989 also passed Build and Test (37006483453) and Repository Quality (37006483463); CodeQL SKIPPED (37006483519). Require green build/quality on the exact final documentary/audit PR head as well.
 
-Hygiene: git diff --check PASS, 135 tracked filenames checked, no forbidden artifact suffixes. Bounded added-diff patterns found zero known credential/bearer/private-key/personal-path matches; eight synthetic .invalid fixture emails and zero others. This is not a comprehensive secret scan. Dependency diff is empty; no new license/dependency decision was needed. Graph update preserved the prior corpus and replaced two changed AST files: 3,289 nodes, 8,793 edges, 160 communities; zero missing source files, dangling endpoints or self-loops; no external model. Shared namespace coalescing is a known extractor limitation; documentation semantic extraction was not refreshed. Graph structure is navigation evidence only.
+Hygiene: git diff --check PASS, 135 tracked filenames checked; the sole binary-suffix match is the already accepted, unchanged native PresentMonAPI2Loader.dll. No new generated binary/log/test receipt is tracked. Bounded added-diff patterns found zero known credential/bearer/private-key/personal-path matches; eight synthetic .invalid fixture emails and zero others. This is not a comprehensive secret scan. Dependency diff is empty; no new license/dependency decision was needed. Graph update preserved the prior corpus and replaced two changed AST files: 3,289 nodes, 8,793 edges, 160 communities; zero missing source files, dangling endpoints or self-loops; no external model. Shared namespace coalescing is a known extractor limitation; documentation semantic extraction was not refreshed. Graph structure is navigation evidence only.
+
+## Separate Shadow audit
+
+The static evidence matrix is in [REFERENCE_PROJECTS.md](../docs/REFERENCE_PROJECTS.md#shadow-evidence-audit--2026-10-02). It distinguishes artifact facts, useful test ideas, unsupported mutation/duration/privacy/provenance claims and producer retractions. Research harnesses were not rerun; no code or architecture was ported. Shadow source trees and dirty rehearsal were preserved. This audit is not production performance or activity-collector acceptance evidence.
 
 ## Important files and exact review questions
 
