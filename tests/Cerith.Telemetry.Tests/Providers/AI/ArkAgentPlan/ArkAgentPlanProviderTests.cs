@@ -196,11 +196,21 @@ public sealed class ArkAgentPlanProviderTests
         var originalBaseUrl = Environment.GetEnvironmentVariable("ARK_BASE_URL");
         var originalProfile = Environment.GetEnvironmentVariable("ARK_PROFILE");
         var originalApiKey = Environment.GetEnvironmentVariable("ARK_API_KEY");
+        var proxyVariables = new[]
+        {
+            "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+            "http_proxy", "https_proxy", "all_proxy",
+            "NO_PROXY", "no_proxy"
+        };
+        var originalProxyValues = proxyVariables.Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(variable => variable, Environment.GetEnvironmentVariable, StringComparer.OrdinalIgnoreCase);
         try
         {
             Environment.SetEnvironmentVariable("ARK_BASE_URL", "https://untrusted.invalid");
             Environment.SetEnvironmentVariable("ARK_PROFILE", "synthetic-profile");
             Environment.SetEnvironmentVariable("ARK_API_KEY", "synthetic-key");
+            foreach (var variable in proxyVariables)
+                Environment.SetEnvironmentVariable(variable, "http://proxy.invalid:8080");
             var startInfo = ArkAgentPlanCli.CreateStartInfo(executablePath);
             Assert.IsFalse(startInfo.UseShellExecute);
             Assert.IsTrue(startInfo.RedirectStandardInput);
@@ -210,6 +220,7 @@ public sealed class ArkAgentPlanProviderTests
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_BASE_URL"));
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_PROFILE"));
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_API_KEY"));
+            Assert.IsTrue(proxyVariables.All(variable => !startInfo.Environment.ContainsKey(variable)));
             Assert.AreEqual("1", startInfo.Environment["ARKCLI_NO_UPDATE_NOTIFIER"]);
             Assert.AreEqual(64, ArkAuthenticodeVerifier.ExpectedSha256.Length);
             var rejectedPath = false;
@@ -228,6 +239,8 @@ public sealed class ArkAgentPlanProviderTests
             Environment.SetEnvironmentVariable("ARK_BASE_URL", originalBaseUrl);
             Environment.SetEnvironmentVariable("ARK_PROFILE", originalProfile);
             Environment.SetEnvironmentVariable("ARK_API_KEY", originalApiKey);
+            foreach (var (variable, value) in originalProxyValues)
+                Environment.SetEnvironmentVariable(variable, value);
         }
     }
 
@@ -332,6 +345,64 @@ public sealed class ArkAgentPlanProviderTests
         Assert.AreEqual(3m, first[0].Value!.Value.AsDecimal());
         Assert.IsTrue(second.All(snapshot => snapshot.State == MetricState.Error &&
             snapshot.Value is null && snapshot.ErrorCode == "timeout"));
+    }
+
+    [TestMethod]
+    public async Task DoesNotReplayQuotaValuesAcrossSequentialViewerIdentityChange()
+    {
+        var firstPayload = Encoding.UTF8.GetBytes(
+            """
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A"},
+              "items":[{"product":"agent-plan","subscribed":true,"periods":[
+                {"label":"5h","used":3,"total":10,"percent":30,"reset_at":"2026-10-02T18:00:00+08:00"},
+                {"label":"weekly","used":8,"total":40,"percent":20,"reset_at":"2026-10-09T00:00:00+08:00"},
+                {"label":"monthly","used":18,"total":100,"percent":18,"reset_at":"2026-11-01T00:00:00+08:00"}
+              ]}]
+            }
+            """);
+        var secondPayload = Encoding.UTF8.GetBytes(
+            """
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-B","account_id":"account-A"},
+              "items":[{"product":"agent-plan","subscribed":true,"periods":[
+                {"label":"5h","used":0,"total":20,"percent":0}
+              ]}]
+            }
+            """);
+        var firstIdentity = ArkAgentPlanParser.Parse(firstPayload).Identity!;
+        var secondIdentity = ArkAgentPlanParser.Parse(secondPayload).Identity!;
+        Assert.AreNotEqual(firstIdentity.UserId, secondIdentity.UserId);
+
+        var acquisitions = 0;
+        using var harness = new Harness(_ => Task.FromResult(
+            ArkCliResult.Success(Interlocked.Increment(ref acquisitions) == 1 ? firstPayload : secondPayload)));
+
+        var first = await ReadAfterPollAsync(harness);
+        var second = await ReadAfterPollAsync(harness);
+
+        Assert.AreEqual(3m, first[0].Value!.Value.AsDecimal());
+        Assert.AreEqual(0m, second[0].Value!.Value.AsDecimal());
+        Assert.AreEqual(20m, second[1].Value!.Value.AsDecimal());
+        Assert.AreEqual(0m, second[2].Value!.Value.AsDecimal());
+        Assert.IsTrue(second.Skip(3).All(snapshot =>
+            snapshot.State == MetricState.Unavailable && snapshot.Value is null));
+    }
+
+    [TestMethod]
+    public async Task ShutdownCompletesWhenSubscriberQueueIsFull()
+    {
+        using var harness = new Harness(_ =>
+            Task.FromResult(ArkCliResult.Unavailable("not_subscribed")));
+        await using var reader = harness.Bus.Subscribe(new MetricId(MetricIds[0])).GetAsyncEnumerator();
+        var firstRead = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PollOnceAsync();
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(1)));
+        await harness.Provider.PollOnceAsync();
+
+        using var stop = new CancellationTokenSource();
+        stop.Cancel();
+        await harness.Provider.RunAsync(stop.Token).WaitAsync(TimeSpan.FromSeconds(3));
     }
 
     [TestMethod]

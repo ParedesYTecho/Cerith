@@ -11,6 +11,7 @@ namespace Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 internal sealed class ArkAgentPlanProvider : IDisposable
 {
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ShutdownPublicationTimeout = TimeSpan.FromSeconds(1);
 
     private static readonly (string Suffix, string Name, string SemanticType, MetricValueKind ValueKind, string? Unit)[]
         MetricDefinitions =
@@ -129,11 +130,19 @@ internal sealed class ArkAgentPlanProvider : IDisposable
 
     private async Task PublishStoppedAsync()
     {
+        using var deadline = new CancellationTokenSource(ShutdownPublicationTimeout);
         var stoppedAt = _timeProvider.GetUtcNow();
         foreach (var descriptor in _descriptors)
         {
-            await _bus.PublishAsync(new MetricSnapshot(descriptor.Id, null, stoppedAt, MetricState.Stopped,
-                MetricConfidence.Unknown, ArkAgentPlanCli.Source)).ConfigureAwait(false);
+            try
+            {
+                await _bus.PublishAsync(new MetricSnapshot(descriptor.Id, null, stoppedAt, MetricState.Stopped,
+                    MetricConfidence.Unknown, ArkAgentPlanCli.Source), deadline.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+            {
+                return;
+            }
         }
     }
 }

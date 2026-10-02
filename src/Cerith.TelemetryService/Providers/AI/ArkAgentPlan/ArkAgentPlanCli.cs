@@ -26,6 +26,12 @@ internal static class ArkAgentPlanCli
     internal const string Source = "ArkCli.AgentPlanUsage.v1";
     private const string ExecutableRelativePath =
         "npm/node_modules/@volcengine/ark-cli/bin/arkcli-windows-amd64.exe";
+    private static readonly string[] AmbientProxyVariables =
+    [
+        "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+        "http_proxy", "https_proxy", "all_proxy",
+        "NO_PROXY", "no_proxy"
+    ];
 
     public static async Task<ArkCliResult> ReadAsync(CancellationToken cancellationToken)
     {
@@ -81,6 +87,8 @@ internal static class ArkAgentPlanCli
         startInfo.Environment.Remove("ARK_PROFILE");
         startInfo.Environment.Remove("ARK_API_KEY");
         startInfo.Environment.Remove("ARK_BASE_URL");
+        foreach (var variable in AmbientProxyVariables)
+            startInfo.Environment.Remove(variable);
         return startInfo;
     }
 
