@@ -510,6 +510,22 @@ Validation: Release solution rebuild passed with 0 warnings/errors; the two test
 
 Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 
+## 2026-10-02 — Dewey One — Kiro ACP hosted-fixture correction
+
+Runtime: authoritative current-turn `turn_context` verifies GPT-6 Luna, max, at 2026-10-02T00:06:54.957Z (UTC). Sole shared integration owner; no provider worker resumed.
+
+Reconciliation: the user-supplied `6430669` checkpoint had advanced through preserved commits to local and remote integration tip `a87487c3c9240612a14352c75bf0bf5b3b050fbb`; the working tree had only the current Kiro test-fixture correction pending. Kiro and Command Code imports remain present; no re-import or reset. PR #47 remains open/draft. Local `main` is `3f5ca74a26edf88a02e6bda05f759ee3c74032cd` and `origin/main` is mission base `72b43b268b4992d0b0ea45b6e29067d10450274f`.
+
+Hosted finding: Build and Test run `36943386917` passed build and Core but failed two Kiro ACP subprocess tests. On the Windows runner, the PowerShell fake process started but did not consume its first redirected stdin line; both tests reached `request_timeout`. Repository Quality passed; CodeQL was skipped under workflow policy.
+
+Correction: replaced only those two test fake processes with temporary `cmd.exe` batch fixtures that read the initialize and usage requests, validate their expected method names, and return fixed synthetic ACP replies. The existing ten-second request limit remains; provider production code, cadence, auth and imported history are unchanged. Each temporary script is deleted in `finally`.
+
+Validation: serial Release solution build passed with 0 warnings/errors. Direct MTP applications passed Core 39/39, Telemetry 295/295 and Integration 10/10; `dotnet test` returned exit 5 / zero tests locally, so the built applications were invoked directly with minimum-count guards. The full Telemetry run includes the gated coexistence and supervisor isolation tests, previously focused at 1/1 and 8/8. Configured filename hygiene passed for 117 tracked paths; scoped added-diff privacy patterns and `git diff --check` passed. These checks are scoped, not a comprehensive secret scan. Graphify remains at the prior meaningful source refresh (2,734 nodes / 8,002 edges); this test/docs-only correction does not require a refresh. Hosted validation of the correction awaits push.
+
+No shared primitive is justified: these accepted providers do not yet demonstrate at least two implementations with identical semantics and harmful duplication. PR #47 stays draft. No canonical-main merge or 16-provider/M3 completion claim.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
 ## 2026-10-02 — Dewey One — Kiro ACP fixture stream encoding
 
 Hosted Build and Test at `c6c7390262030453898ecfb2fd66ccb603be697b` reproduced the same two Kiro ACP test timeouts at the aligned ten-second bound; build/Core and Repository Quality passed, CodeQL was skipped, and IPC was skipped after Telemetry failed 2/295. Increasing the deadline alone was insufficient.
