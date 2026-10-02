@@ -6,6 +6,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -15,6 +17,9 @@ namespace Cerith.TelemetryService;
 
 internal sealed class QoderCnCliClient
 {
+    internal const string ExecutableFileName = "qoderclicn.exe";
+    // The CN SDK declares qoderclicn first and qodercn as its command alias.
+    private static readonly string[] ExecutableFileNames = [ExecutableFileName, "qodercn.exe"];
     internal static readonly TimeSpan ProcessTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int InitializeTimeoutMilliseconds = 30_000;
@@ -38,8 +43,13 @@ internal sealed class QoderCnCliClient
 
     internal async Task<QoderCnQuotaReading> GetUsageAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_executablePath is null)
             return QoderCnQuotaReading.Missing("cli_not_found");
+
+        using var verifiedExecutable = QoderCnCliTrust.OpenVerifiedExecutable(_executablePath);
+        if (verifiedExecutable is null)
+            return QoderCnQuotaReading.Failure("cli_untrusted");
 
         Process? process = null;
         Task? stderrDrain = null;
@@ -106,33 +116,46 @@ internal sealed class QoderCnCliClient
         if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(path))
             return null;
 
-        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        var directories = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var executableName in ExecutableFileNames)
         {
-            if (!Path.IsPathFullyQualified(directory))
-                continue;
+            foreach (var directory in directories)
+            {
+                if (!Path.IsPathFullyQualified(directory))
+                    continue;
 
-            try
-            {
-                var candidate = Path.GetFullPath(Path.Combine(directory, "qodercn.exe"));
-                if (File.Exists(candidate) && (File.GetAttributes(candidate) & FileAttributes.Directory) == 0)
-                    return candidate;
-            }
-            catch (ArgumentException)
-            {
-                continue;
-            }
-            catch (IOException)
-            {
-                continue;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                continue;
+                try
+                {
+                    var candidate = Path.GetFullPath(Path.Combine(directory, executableName));
+                    if (!QoderCnCliTrust.IsLocalFixedPath(candidate))
+                        continue;
+                    if (File.Exists(candidate) && (File.GetAttributes(candidate) & FileAttributes.Directory) == 0)
+                        return candidate;
+                }
+                catch (ArgumentException)
+                {
+                    continue;
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    continue;
+                }
+                catch (System.Security.SecurityException)
+                {
+                    continue;
+                }
             }
         }
 
         return null;
     }
+
+    internal static bool IsSupportedExecutableName(string fileName) =>
+        ExecutableFileNames.Contains(fileName, StringComparer.OrdinalIgnoreCase);
 
     internal static ProcessStartInfo CreateStartInfo(string executablePath)
     {
@@ -333,6 +356,174 @@ internal sealed class QoderCnCliClient
         {
             return false;
         }
+    }
+}
+
+internal static class QoderCnCliTrust
+{
+    internal const string ExpectedPublisherSubject =
+        "CN=BRIGHT ZENITH PRIVATE LIMITED, O=BRIGHT ZENITH PRIVATE LIMITED";
+
+    private const long MaximumExecutableBytes = 256L * 1024 * 1024;
+    private const uint WinTrustUiNone = 2;
+    private const uint WinTrustChoiceFile = 1;
+    private const uint WinTrustStateVerify = 1;
+    private const uint WinTrustStateClose = 2;
+    private const uint WinTrustCacheOnlyUrlRetrieval = 0x1000;
+    private const uint WinTrustRevocationCheckNone = 0x10;
+    private static readonly Guid GenericVerifyV2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
+
+    internal static bool IsLocalFixedPath(string path)
+    {
+        if (!OperatingSystem.IsWindows() || !Path.IsPathFullyQualified(path))
+            return false;
+
+        var root = Path.GetPathRoot(path);
+        if (root is null || root.Length != 3 || root[1] != Path.VolumeSeparatorChar)
+            return false;
+
+        try
+        {
+            return new DriveInfo(root).DriveType == DriveType.Fixed;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
+    }
+
+    internal static bool IsExpectedPublisherSubject(string? subject) =>
+        StringComparer.OrdinalIgnoreCase.Equals(subject?.Trim(), ExpectedPublisherSubject);
+
+    internal static FileStream? OpenVerifiedExecutable(string path)
+    {
+        FileStream? stream = null;
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            if (!QoderCnCliClient.IsSupportedExecutableName(Path.GetFileName(fullPath)) || !IsLocalFixedPath(fullPath))
+                return null;
+
+            var file = new FileInfo(fullPath);
+            if (!file.Exists || file.Length <= 0 || file.Length > MaximumExecutableBytes)
+                return null;
+
+            stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (stream.Length <= 0 || stream.Length > MaximumExecutableBytes ||
+                !VerifyAuthenticode(fullPath, stream.SafeFileHandle.DangerousGetHandle()))
+            {
+                stream.Dispose();
+                return null;
+            }
+
+#pragma warning disable SYSLIB0057 // X509CertificateLoader accepts certificate files, not signer certificates embedded in PE files.
+            using var signer = X509Certificate.CreateFromSignedFile(fullPath);
+#pragma warning restore SYSLIB0057
+            if (!IsExpectedPublisherSubject(signer.Subject))
+            {
+                stream.Dispose();
+                return null;
+            }
+
+            return stream;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            System.Security.Cryptography.CryptographicException or ExternalException or ArgumentException or
+            System.Security.SecurityException or NotSupportedException or InvalidOperationException or
+            DllNotFoundException or EntryPointNotFoundException)
+        {
+            stream?.Dispose();
+            return null;
+        }
+    }
+
+    private static bool VerifyAuthenticode(string path, IntPtr fileHandle)
+    {
+        IntPtr pathPointer = IntPtr.Zero;
+        IntPtr fileInfoPointer = IntPtr.Zero;
+        var data = new WinTrustData
+        {
+            UiChoice = WinTrustUiNone,
+            RevocationChecks = 0,
+            UnionChoice = WinTrustChoiceFile,
+            StateAction = WinTrustStateVerify,
+            ProviderFlags = WinTrustCacheOnlyUrlRetrieval | WinTrustRevocationCheckNone
+        };
+
+        try
+        {
+            pathPointer = Marshal.StringToHGlobalUni(path);
+            fileInfoPointer = Marshal.AllocHGlobal(Marshal.SizeOf<WinTrustFileInfo>());
+            var fileInfo = new WinTrustFileInfo
+            {
+                Size = (uint)Marshal.SizeOf<WinTrustFileInfo>(),
+                FilePath = pathPointer,
+                FileHandle = fileHandle
+            };
+            Marshal.StructureToPtr(fileInfo, fileInfoPointer, false);
+            data.Size = (uint)Marshal.SizeOf<WinTrustData>();
+            data.FileInfo = fileInfoPointer;
+
+            var action = GenericVerifyV2;
+            return WinVerifyTrust(IntPtr.Zero, ref action, ref data) == 0;
+        }
+        finally
+        {
+            try
+            {
+                if (data.StateData != IntPtr.Zero)
+                {
+                    data.StateAction = WinTrustStateClose;
+                    var action = GenericVerifyV2;
+                    _ = WinVerifyTrust(IntPtr.Zero, ref action, ref data);
+                }
+            }
+            finally
+            {
+                if (fileInfoPointer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(fileInfoPointer);
+                if (pathPointer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(pathPointer);
+            }
+        }
+    }
+
+    [DllImport("wintrust.dll", ExactSpelling = true, PreserveSig = true)]
+    private static extern int WinVerifyTrust(IntPtr window, ref Guid actionId, ref WinTrustData trustData);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinTrustFileInfo
+    {
+        public uint Size;
+        public IntPtr FilePath;
+        public IntPtr FileHandle;
+        public IntPtr KnownSubject;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinTrustData
+    {
+        public uint Size;
+        public IntPtr PolicyCallbackData;
+        public IntPtr SipClientData;
+        public uint UiChoice;
+        public uint RevocationChecks;
+        public uint UnionChoice;
+        public IntPtr FileInfo;
+        public uint StateAction;
+        public IntPtr StateData;
+        public IntPtr UrlReference;
+        public uint ProviderFlags;
+        public uint UiContext;
+        public IntPtr SignatureSettings;
     }
 }
 

@@ -119,9 +119,63 @@ public sealed class QoderCnCliProtocolTests
     }
 
     [TestMethod]
+    public async Task RejectsUnsignedPathExecutableBeforeStartingAProcess()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"qoder-cn-trust-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var executablePath = Path.Combine(directory, QoderCnCliClient.ExecutableFileName);
+        try
+        {
+            await File.WriteAllTextAsync(executablePath, "unsigned candidate");
+            var discoveredPath = QoderCnCliClient.FindExecutableFromPath(directory);
+            Assert.AreEqual(Path.GetFullPath(executablePath), discoveredPath);
+            var client = new QoderCnCliClient(discoveredPath);
+
+            var reading = await client.GetUsageAsync(CancellationToken.None);
+
+            Assert.IsTrue(reading.Points.All(point => point.State == Cerith.Core.MetricState.Error &&
+                point.ErrorCode == "cli_untrusted" && point.Value is null));
+        }
+        finally
+        {
+            if (File.Exists(executablePath))
+                File.Delete(executablePath);
+            Directory.Delete(directory);
+        }
+    }
+
+    [TestMethod]
+    public void PrefersTheInstalledCLINameThenResolvesTheDocumentedAlias()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"qoder-cn-entrypoint-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var aliasCandidate = Path.Combine(directory, "qodercn.exe");
+            File.WriteAllText(aliasCandidate, "alias candidate");
+            Assert.AreEqual(Path.GetFullPath(aliasCandidate), QoderCnCliClient.FindExecutableFromPath(directory));
+
+            var officialNameCandidate = Path.Combine(directory, QoderCnCliClient.ExecutableFileName);
+            File.WriteAllText(officialNameCandidate, "test candidate");
+            Assert.AreEqual(Path.GetFullPath(officialNameCandidate),
+                QoderCnCliClient.FindExecutableFromPath(directory));
+        }
+        finally
+        {
+            foreach (var file in Directory.EnumerateFiles(directory))
+                File.Delete(file);
+            Directory.Delete(directory);
+        }
+
+        Assert.IsTrue(QoderCnCliTrust.IsExpectedPublisherSubject(QoderCnCliTrust.ExpectedPublisherSubject));
+        Assert.IsFalse(QoderCnCliTrust.IsExpectedPublisherSubject("CN=Unknown Publisher, O=Unknown Publisher"));
+        Assert.IsFalse(QoderCnCliTrust.IsLocalFixedPath(@"\\server\share\qoderclicn.exe"));
+    }
+
+    [TestMethod]
     public void UsesOnlyTheNativeCNCommandAndDisablesPersistenceAndAutomaticSideEffects()
     {
-        var startInfo = QoderCnCliClient.CreateStartInfo(Path.Combine(Path.GetTempPath(), "qodercn.exe"));
+        var startInfo = QoderCnCliClient.CreateStartInfo(Path.Combine(Path.GetTempPath(), QoderCnCliClient.ExecutableFileName));
         var args = startInfo.ArgumentList;
 
         Assert.AreEqual(13, args.Count);
@@ -137,7 +191,7 @@ public sealed class QoderCnCliProtocolTests
         Assert.AreEqual("--settings", args[9]);
         Assert.AreEqual("--config-dir", args[11]);
         Assert.IsTrue(args[12].EndsWith(".qoder-cn", StringComparison.Ordinal));
-        Assert.AreEqual(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "qodercn.exe")), startInfo.FileName);
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(Path.GetTempPath(), QoderCnCliClient.ExecutableFileName)), startInfo.FileName);
         Assert.IsFalse(startInfo.UseShellExecute);
         Assert.IsTrue(startInfo.RedirectStandardInput);
         Assert.IsTrue(startInfo.RedirectStandardOutput);
