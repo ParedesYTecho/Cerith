@@ -382,6 +382,29 @@ The bounded validation host had no compatible local CLI/session or official brow
 
 Missing CLI/source fields remain valueless `Unavailable`; invalid signatures or malformed fields remain sanitized errors. Organization-package values are deliberately not published as quota until their ownership, unit and semantics are verified. No reset instant or same-account live agreement is claimed.
 
+## CER-M3-004 — Volcengine Ark Agent Plan candidate (EVIDENCE_BLOCKED)
+
+The official personal [`GetAFPUsage` API](https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh) documents rolling 5-hour, one-day, one-week and one-month windows. `Quota` and `Used` are AFP; reset timestamps are epoch milliseconds. The official [Ark CLI v1.0.37 usage-plan contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md) maps personal `agent-plan` to this API but returns only `5h`, `weekly` and `monthly`, explicitly omitting backend `daily`. Its [`usage balance --type plan`](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-balance.md) route uses the same query/projection; `plan-details` reports usage history rather than the quota snapshot.
+
+The preserved candidate branch `codex/CER-M3-004-ark-agent` at `b06818ce6f21c25eb1c3f1424eea30965ca22af6` uses the official CLI for acquisition and compares the returned viewer with a post-query `auth whoami` identity across account, user, auth method, root status, region and project. It currently defines 12 proposed metrics for three windows. These are not registered or integrated. The host had no compatible local CLI/session; because the documented route omits a real quota bucket and no documented CLI-owned route exposes it, the candidate remains `EVIDENCE_BLOCKED`, not `LIVE_NOT_AVAILABLE_ON_THIS_HOST` and not FINAL PASS. No direct API call, credential inspection, auth command or live quota request was made for this finding.
+
+| Proposed MetricId | Kind / unit / semantic type | Exact CLI source meaning |
+| --- | --- | --- |
+| `ai.ark.agent_plan.5h.used` | decimal / AFP / quota_used | `periods[label=5h].used`. |
+| `ai.ark.agent_plan.5h.total` | decimal / AFP / quota_limit | `periods[label=5h].total`. |
+| `ai.ark.agent_plan.5h.used_percent` | decimal / % / quota_used_percent | `periods[label=5h].percent`, used percentage. |
+| `ai.ark.agent_plan.5h.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=5h].reset_at`. |
+| `ai.ark.agent_plan.weekly.used` | decimal / AFP / quota_used | `periods[label=weekly].used`. |
+| `ai.ark.agent_plan.weekly.total` | decimal / AFP / quota_limit | `periods[label=weekly].total`. |
+| `ai.ark.agent_plan.weekly.used_percent` | decimal / % / quota_used_percent | `periods[label=weekly].percent`, used percentage. |
+| `ai.ark.agent_plan.weekly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=weekly].reset_at`. |
+| `ai.ark.agent_plan.monthly.used` | decimal / AFP / quota_used | `periods[label=monthly].used`. |
+| `ai.ark.agent_plan.monthly.total` | decimal / AFP / quota_limit | `periods[label=monthly].total`. |
+| `ai.ark.agent_plan.monthly.used_percent` | decimal / % / quota_used_percent | `periods[label=monthly].percent`, used percentage. |
+| `ai.ark.agent_plan.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`. |
+
+No daily MetricIds are proposed because the official CLI does not expose those values. Do not substitute endpoint usage, plan-detail history, or a second independently authenticated API path for the missing personal quota. Reconsider only when a documented route can obtain the daily quota under an approved credential owner, or the product scope is explicitly narrowed.
+
 ## CER-M3-004 — Antigravity first integration wave
 
 The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. A sanitized bounded local-RPC observation recognized four quota buckets and a stable before/after status identity. This establishes source RPC shape and identity only; production parser-to-MetricSnapshot agreement, installed-version validation, backend-cache behavior, and UI comparison remain unverified, so full live validation remains NOT RUN.

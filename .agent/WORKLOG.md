@@ -599,3 +599,11 @@ Summary: Current first-party Ark docs recommend auth whoami for the ordinary ide
 Files: .agent/WORKLOG.md.
 Result: Luna checked usage-plan, profile, config and auth-mode references directly. A narrow external research request explicitly selected chatgpt-web/gpt-5.6-sol at high effort, but the dispatch/result exposed no execution receipt; WEB_SOL_ROUTE_UNVERIFIED. Its output is not counted as a provider review or gate. The preserved Ark Agent Plan worker is evaluating a bounded post-acquisition identity check. No local auth command, credential access, or refresh was performed.
 Sources: https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-profile/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-config/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md
+
+## 2026-10-02 — Ark Agent Plan coverage disposition
+
+Event: handoff
+Summary: Re-reviewed the preserved provider candidate after its post-query identity check and verified the personal daily-window contract against the official API and pinned CLI documentation.
+Files: `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: Candidate branch `codex/CER-M3-004-ark-agent` remains clean at `b06818ce6f21c25eb1c3f1424eea30965ca22af6`; its account/user/auth/region/project comparison is implemented. Official `GetAFPUsage` has rolling 5h/daily/weekly/monthly AFP windows, while Ark CLI v1.0.37 and its balance alias expose only 5h/weekly/monthly. The candidate's 12 proposed metrics therefore do not satisfy the original full-window scope and remain unimported at `EVIDENCE_BLOCKED`. Focused Release tests passed 15/15; full solution tests passed 122/122; Release build passed with 0 warnings/errors; branch `git diff --check` passed. No direct API call, credential inspection, live auth command, provider import, dependency, or main merge.
+Sources: https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-balance.md
