@@ -21,32 +21,22 @@ internal sealed record ArkAgentPlanIdentity(
     bool IsRoot,
     string? UserId,
     string? AccountId,
-    string? Profile,
-    string? Tenant,
     string? Region,
     string? ProjectName)
 {
     public bool CanCompareTo(ArkAgentPlanIdentity current) =>
-        HasCurrentValue(AccountId, current.AccountId) &&
-        HasCurrentValue(UserId, current.UserId) &&
-        HasCurrentValue(Profile, current.Profile) &&
-        HasCurrentValue(Region, current.Region) &&
-        HasCurrentValue(ProjectName, current.ProjectName);
+        AccountId is not null && current.AccountId is not null &&
+        (UserId is null) == (current.UserId is null) &&
+        (Region is null) == (current.Region is null) &&
+        (ProjectName is null) == (current.ProjectName is null);
 
     public bool MatchesCurrent(ArkAgentPlanIdentity current) =>
         StringComparer.Ordinal.Equals(AuthMethod, current.AuthMethod) &&
         IsRoot == current.IsRoot &&
-        MatchesWhenPresent(AccountId, current.AccountId) &&
-        MatchesWhenPresent(UserId, current.UserId) &&
-        MatchesWhenPresent(Profile, current.Profile) &&
-        MatchesWhenPresent(Region, current.Region) &&
-        MatchesWhenPresent(ProjectName, current.ProjectName);
-
-    private static bool HasCurrentValue(string? expected, string? current) =>
-        expected is null || current is not null;
-
-    private static bool MatchesWhenPresent(string? expected, string? current) =>
-        expected is null || StringComparer.Ordinal.Equals(expected, current);
+        StringComparer.Ordinal.Equals(AccountId, current.AccountId) &&
+        StringComparer.Ordinal.Equals(UserId, current.UserId) &&
+        StringComparer.Ordinal.Equals(Region, current.Region) &&
+        StringComparer.Ordinal.Equals(ProjectName, current.ProjectName);
 }
 
 internal sealed record ArkAgentPlanReading(ArkAgentPlanIdentity? Identity, ArkAgentPlanPoint[] Points)
@@ -150,20 +140,17 @@ internal static class ArkAgentPlanParser
                 !TryReadRequiredString(root, "auth_method", out var authMethod) ||
                 !TryReadRequiredBoolean(root, "is_root", out var isRoot) ||
                 !TryReadOptionalString(root, "user_id", out var userId) ||
-                !TryReadOptionalString(root, "account_id", out var accountId) ||
+                !TryReadRequiredString(root, "account_id", out var accountId) ||
                 !TryReadOptionalString(root, "region", out var region) ||
-                !TryReadOptionalString(root, "project_name", out var projectName) ||
-                !TryReadCurrentProfile(root, out var profile))
+                !TryReadOptionalString(root, "project_name", out var projectName))
                 return null;
 
             var hasUser = !string.IsNullOrWhiteSpace(userId);
-            var hasAccount = !string.IsNullOrWhiteSpace(accountId);
             if ((StringComparer.OrdinalIgnoreCase.Equals(authMethod, "sso") &&
-                 (isRoot ? !hasAccount : !hasUser)) || (!hasUser && !hasAccount))
+                 !isRoot && !hasUser))
                 return null;
 
-            return new ArkAgentPlanIdentity(authMethod, isRoot, userId, accountId, profile,
-                Tenant: null, Region: region, ProjectName: projectName);
+            return new ArkAgentPlanIdentity(authMethod, isRoot, userId, accountId, region, projectName);
         }
     }
 
@@ -174,46 +161,18 @@ internal static class ArkAgentPlanParser
             !TryReadRequiredString(viewer, "auth_method", out var authMethod) ||
             !TryReadRequiredBoolean(viewer, "is_root", out var isRoot) ||
             !TryReadOptionalString(viewer, "user_id", out var userId) ||
-            !TryReadOptionalString(viewer, "account_id", out var accountId) ||
-            !TryReadOptionalString(viewer, "profile", out var profile) ||
-            !TryReadOptionalString(viewer, "tenant", out var tenant) ||
+            !TryReadRequiredString(viewer, "account_id", out var accountId) ||
             !TryReadOptionalString(viewer, "region", out var region) ||
             !TryReadOptionalString(viewer, "project_name", out var projectName))
             return false;
 
         var hasUser = !string.IsNullOrWhiteSpace(userId);
-        var hasAccount = !string.IsNullOrWhiteSpace(accountId);
         if (StringComparer.OrdinalIgnoreCase.Equals(authMethod, "sso") &&
-            (isRoot ? !hasAccount : !hasUser))
+            !isRoot && !hasUser)
             return false;
-        if (!hasUser && !hasAccount) return false;
 
-        identity = new ArkAgentPlanIdentity(authMethod, isRoot, userId, accountId, profile, tenant, region,
-            projectName);
+        identity = new ArkAgentPlanIdentity(authMethod, isRoot, userId, accountId, region, projectName);
         return true;
-    }
-
-    private static bool TryReadCurrentProfile(JsonElement root, out string? profile)
-    {
-        profile = null;
-        if (root.TryGetProperty("profile", out var profileValue))
-        {
-            if (profileValue.ValueKind == JsonValueKind.Null) return true;
-            if (profileValue.ValueKind == JsonValueKind.String)
-            {
-                profile = profileValue.GetString();
-                return !string.IsNullOrWhiteSpace(profile);
-            }
-            if (profileValue.ValueKind == JsonValueKind.Object)
-                return TryReadRequiredString(profileValue, "name", out profile);
-            return false;
-        }
-
-        if (!root.TryGetProperty("active_profile", out var activeProfile) ||
-            activeProfile.ValueKind == JsonValueKind.Null)
-            return true;
-        return activeProfile.ValueKind == JsonValueKind.Object &&
-            TryReadRequiredString(activeProfile, "name", out profile);
     }
 
     private static bool TryReadRequiredString(JsonElement owner, string name, out string value)

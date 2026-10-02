@@ -37,7 +37,7 @@ public sealed class ArkAgentPlanProviderTests
     ];
 
     [TestMethod]
-    public async Task PublishesOnlyPersonalAgentPlanPeriodsInReportedUnits()
+    public async Task PublishesOnlyPersonalAgentPlanPeriodsWhenWhoamiOmitsProfile()
     {
         using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(Encoding.UTF8.GetBytes(
             """
@@ -109,6 +109,14 @@ public sealed class ArkAgentPlanProviderTests
              "items":[{"product":"agent-plan","subscribed":true}]}
             """));
         Assert.IsTrue(missingSubuser.Points.All(point =>
+            point.State == MetricState.Error && point.ErrorCode == "identity_unverified"));
+
+        var missingAccount = ArkAgentPlanParser.Parse(Encoding.UTF8.GetBytes(
+            """
+            {"viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","region":"cn-beijing","project_name":"default"},
+             "items":[{"product":"agent-plan","subscribed":true}]}
+            """));
+        Assert.IsTrue(missingAccount.Points.All(point =>
             point.State == MetricState.Error && point.ErrorCode == "identity_unverified"));
     }
 
@@ -396,26 +404,36 @@ public sealed class ArkAgentPlanProviderTests
     }
 
     [TestMethod]
-    public async Task WithholdsQuotaWhenPostAcquisitionIdentityReportsAnotherProfile()
+    public async Task WithholdsQuotaWhenPostAcquisitionAccountUserOrRouteDiffers()
     {
         var usagePayload = Encoding.UTF8.GetBytes(
             """
             {
-              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A"},
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A","region":"cn-beijing","project_name":"default"},
               "items":[{"product":"agent-plan","subscribed":true,"periods":[
                 {"label":"5h","used":3,"total":10,"percent":30}
               ]}]
             }
             """);
-        var currentIdentity = CreateWhoamiPayload(new ArkAgentPlanIdentity(
-            "sso", false, "user-A", "account-A", "profile-B", null, "cn-beijing", "default"));
-        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
-            _ => currentIdentity);
+        var currentIdentities = new[]
+        {
+            new ArkAgentPlanIdentity("sso", false, "user-A", "account-B", "cn-beijing", "default"),
+            new ArkAgentPlanIdentity("sso", false, "user-B", "account-A", "cn-beijing", "default"),
+            new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-shanghai", "default"),
+            new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "other"),
+            new ArkAgentPlanIdentity("sts", false, "user-A", "account-A", "cn-beijing", "default")
+        };
 
-        var snapshots = await ReadAfterPollAsync(harness);
+        foreach (var identity in currentIdentities)
+        {
+            using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
+                _ => CreateWhoamiPayload(identity));
 
-        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
-            snapshot.Value is null && snapshot.ErrorCode == "identity_changed"));
+            var snapshots = await ReadAfterPollAsync(harness);
+
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
+                snapshot.Value is null && snapshot.ErrorCode == "identity_changed"));
+        }
     }
 
     [TestMethod]
@@ -424,17 +442,19 @@ public sealed class ArkAgentPlanProviderTests
         var usagePayload = Encoding.UTF8.GetBytes(
             """
             {
-              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A"},
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A","region":"cn-beijing","project_name":"default"},
               "items":[{"product":"agent-plan","subscribed":true,"periods":[
                 {"label":"5h","used":3,"total":10,"percent":30}
               ]}]
             }
             """);
 
-        var currentIdentityWithoutProfile = CreateWhoamiPayload(new ArkAgentPlanIdentity(
-            "sso", false, "user-A", "account-A", null, null, "cn-beijing", "default"));
+        var currentIdentityWithoutAccount = CreateWhoamiPayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", null, "cn-beijing", "default"));
+        var currentIdentityWithoutProject = CreateWhoamiPayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", "account-A", "cn-beijing", null));
         foreach (var identityPayload in new byte[]?[]
-                 { null, Encoding.UTF8.GetBytes("{"), currentIdentityWithoutProfile })
+                 { null, Encoding.UTF8.GetBytes("{"), currentIdentityWithoutAccount, currentIdentityWithoutProject })
         {
             using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
                 _ => identityPayload);
@@ -505,7 +525,6 @@ public sealed class ArkAgentPlanProviderTests
             is_root = identity.IsRoot,
             user_id = identity.UserId,
             account_id = identity.AccountId,
-            profile = identity.Profile,
             region = identity.Region,
             project_name = identity.ProjectName
         });
