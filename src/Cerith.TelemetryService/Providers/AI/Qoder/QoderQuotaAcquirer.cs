@@ -75,9 +75,13 @@ internal sealed class QoderQuotaAcquirer : IDisposable
 
         using var deadline = new CancellationTokenSource(AcquisitionTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        await _rpcLock.WaitAsync(linked.Token).ConfigureAwait(false);
+        var lockAcquired = false;
         try
         {
+            if (!await TryAcquireRpcLockAsync(_rpcLock, linked.Token, deadline.Token, cancellationToken)
+                    .ConfigureAwait(false))
+                return QoderQuotaAcquisition.Failure("timeout", MetricState.Unavailable);
+            lockAcquired = true;
             using var authBefore = await CallAsync(endpoint, "auth/status", linked.Token).ConfigureAwait(false);
             if (!QoderQuotaParser.TryParseAuthStatus(authBefore.Result, out var identityBefore) || identityBefore is null)
                 return QoderQuotaAcquisition.Failure("identity_unavailable", MetricState.Unavailable);
@@ -123,7 +127,8 @@ internal sealed class QoderQuotaAcquirer : IDisposable
         }
         finally
         {
-            _rpcLock.Release();
+            if (lockAcquired)
+                _rpcLock.Release();
         }
     }
 
@@ -137,9 +142,13 @@ internal sealed class QoderQuotaAcquirer : IDisposable
 
         using var deadline = new CancellationTokenSource(RpcTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        await _rpcLock.WaitAsync(linked.Token).ConfigureAwait(false);
+        var lockAcquired = false;
         try
         {
+            if (!await TryAcquireRpcLockAsync(_rpcLock, linked.Token, deadline.Token, cancellationToken)
+                    .ConfigureAwait(false))
+                return new QoderOwnerVerification(QoderOwnerVerificationState.Unverifiable, null, "timeout");
+            lockAcquired = true;
             using var auth = await CallAsync(endpoint, "auth/status", linked.Token).ConfigureAwait(false);
             if (!QoderQuotaParser.TryParseAuthStatus(auth.Result, out var identity) || identity is null)
                 return new QoderOwnerVerification(QoderOwnerVerificationState.Unverifiable, null,
@@ -178,13 +187,29 @@ internal sealed class QoderQuotaAcquirer : IDisposable
         }
         finally
         {
-            _rpcLock.Release();
+            if (lockAcquired)
+                _rpcLock.Release();
         }
     }
 
     public void Dispose()
     {
         _ = Interlocked.Exchange(ref _disposed, 1);
+    }
+
+    internal static async Task<bool> TryAcquireRpcLockAsync(SemaphoreSlim rpcLock,
+        CancellationToken operationToken, CancellationToken deadlineToken, CancellationToken callerToken)
+    {
+        try
+        {
+            await rpcLock.WaitAsync(operationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) when (deadlineToken.IsCancellationRequested &&
+            !callerToken.IsCancellationRequested)
+        {
+            return false;
+        }
     }
 
     internal static bool TryGetLocalPipeName(string? ipcServerPath, out string pipeName)

@@ -105,6 +105,33 @@ public sealed class QoderQuotaAcquirerTests
     }
 
     [TestMethod]
+    public async Task RpcLockWaitTreatsOnlyItsOwnDeadlineAsTimeout()
+    {
+        using var held = new SemaphoreSlim(0, 1);
+        using var deadline = new CancellationTokenSource();
+        var waitingForDeadline = QoderQuotaAcquirer.TryAcquireRpcLockAsync(held, deadline.Token, deadline.Token,
+            CancellationToken.None);
+        Assert.IsFalse(waitingForDeadline.IsCompleted);
+        deadline.Cancel();
+
+        Assert.IsFalse(await waitingForDeadline.WaitAsync(TimeSpan.FromSeconds(1)));
+
+        using var caller = new CancellationTokenSource();
+        using var otherDeadline = new CancellationTokenSource();
+        var waitingForCaller = QoderQuotaAcquirer.TryAcquireRpcLockAsync(held, caller.Token, otherDeadline.Token,
+            caller.Token);
+        Assert.IsFalse(waitingForCaller.IsCompleted);
+        caller.Cancel();
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
+            waitingForCaller);
+
+        using var available = new SemaphoreSlim(1, 1);
+        Assert.IsTrue(await QoderQuotaAcquirer.TryAcquireRpcLockAsync(available, CancellationToken.None,
+            CancellationToken.None, CancellationToken.None));
+        available.Release();
+    }
+
+    [TestMethod]
     public async Task RpcFrameSendsFixedMethodAndReturnsOnlyTheResultObject()
     {
         var response = CreateWire("""{"jsonrpc":"2.0","id":1,"result":{"userId":"synthetic-user-1"},"debug":"synthetic-secret"}""");
