@@ -20,13 +20,15 @@ from pathlib import Path
 
 def check(binary, expected_version, mode):
     requests = []
+    admitted_class = mode == "oidc_xai"
 
     class Backend(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             requests.append(self.path)
-            self.send_response(404)
+            billing = self.path.startswith("/billing")
+            self.send_response(200 if billing else 404)
             self.end_headers()
-            self.wfile.write(b"{}")
+            self.wfile.write(b'{"config":{"creditUsagePercent":42.5}}' if billing else b"{}")
 
         def log_message(self, *_):
             pass
@@ -39,14 +41,14 @@ def check(binary, expected_version, mode):
         def write_owner(owner):
             auth = {
                 "key": "synthetic-not-a-credential-" + owner,
-                "auth_mode": mode,
+                "auth_mode": "oidc" if admitted_class else mode,
                 "create_time": "2026-10-02T00:00:00Z",
                 "expires_at": "2099-01-01T00:00:00Z",
                 "user_id": "synthetic-" + owner,
                 "principal_type": "User",
                 "principal_id": "synthetic-" + owner,
                 "email": owner + "@example.invalid",
-                "oidc_issuer": "https://auth.x.ai" if mode == "api_key"
+                "oidc_issuer": "https://auth.x.ai" if mode == "api_key" or admitted_class
                 else "https://untrusted.example.invalid",
             }
             auth_path.write_text(json.dumps({scope: auth, "xai::api_key": auth}), encoding="utf-8")
@@ -110,9 +112,13 @@ def check(binary, expected_version, mode):
             assert "result" in initialized, "ACP initialization failed"
             before = call("_x.ai/auth/info", {})
             assert before.get("result", {}).get("principalId") == "synthetic-a", "Synthetic owner was not loaded"
-            rejected = call("_x.ai/billing", {})
-            assert rejected.get("error", {}).get("code") == -32000, "Billing did not reject unsupported auth"
-            assert not any("billing" in path for path in requests), "Unsupported auth reached billing backend"
+            billing = call("_x.ai/billing", {})
+            if admitted_class:
+                assert billing.get("result", {}).get("config", {}).get("creditUsagePercent") == 42.5, "Mock quota was not acquired"
+                assert any("billing" in path for path in requests), "Admitted class did not reach loopback billing"
+            else:
+                assert billing.get("error", {}).get("code") == -32000, "Billing did not reject unsupported auth"
+                assert not any("billing" in path for path in requests), "Unsupported auth reached billing backend"
             write_owner("b")
             deadline = time.monotonic() + 3
             changed = False
@@ -127,7 +133,8 @@ def check(binary, expected_version, mode):
                 time.sleep(0.1)
             # Report this bounded observation; failure to reload is not mislabelled as safe owner handling.
             print(json.dumps({"version": expected_version, "auth_case": mode,
-                              "billing_rejected_before_backend": True,
+                              "credential_class_check_passed": True,
+                              "mock_billing_acquired": admitted_class,
                               "synthetic_owner_change_observed": changed}))
         finally:
             if process is not None:
@@ -151,8 +158,10 @@ if __name__ == "__main__":
     parser.add_argument("--sha256", required=True)
     parser.add_argument("--version", required=True)
     args = parser.parse_args()
+    if not __debug__:
+        parser.error("Run without optimization; assertions are qualification gates")
     binary = args.binary.resolve(strict=True)
     with binary.open("rb") as stream:
         assert hashlib.file_digest(stream, "sha256").hexdigest() == args.sha256.lower(), "Binary hash mismatch"
-    results = [check(binary, args.version, mode) for mode in ("api_key", "oidc")]
+    results = [check(binary, args.version, mode) for mode in ("api_key", "oidc", "oidc_xai")]
     raise SystemExit(0 if all(results) else 1)

@@ -73,3 +73,5 @@ Deuda explícita:
 Dependabot #3/#4 se integraron posteriormente como mantenimiento de GitHub Actions, sin cambio de comportamiento de producto. Graphify label drift permanece separado.
 
 Futuro no activo: `docs/ROADMAP.md` y los documentos de producto registran una expansión posterior de telemetría hardware/gaming (incluyendo CPU_FAN/GPU fan verificables, métricas CPU/GPU adicionales y separación de FPS) y un modo Test / Diagnostic Session para validación reproducible y comparación externa. Nada de ello cambia el alcance de M2 ni inicia M4; M3 está ACTIVE / INCOMPLETE.
+
+Closure self-review expanded the manual probe to an admitted xAI-issuer OIDC fixture: both binaries acquired only the loopback mock quota, but neither observed replacement owner in that case either. Six owner observations fail; this is still synthetic protocol evidence, not a valid subscription/renewal/live comparison. Hosted code/tool checkpoint 82da884 passed Build and Test (37042555549, 0 warnings/errors, 39/356/10 tests), Repository Quality (37042555581); CodeQL skipped (37042555555). The final three-case tool/documentary commit requires its own exact-head checks.

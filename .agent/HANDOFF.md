@@ -44,8 +44,8 @@ Current authorization now covers bounded implementation; after two credible Grok
 ## 6. VALIDATION
 
 Fresh local closure validation: Release build 0 warnings/errors; Core 39/39; Telemetry 356/356; Integration 10/10 (405/405), zero skipped; runtime source unchanged. Previous focused checks: Claude 18/18, Gemini 25/25, Grok 12/12, Ark Agent 20/20, Ark Coding 19 cases; coexistence 1/1; supervisor isolation 11/11. New exact-head CI must confirm the current checkpoint; do not present earlier counts as a completed new run.
-Manual Grok qualification: 1.0.34 exit 1; 1.0.46 exit 1. Credential rejection passed in four synthetic cases; bounded owner observation failed in all four. Not a provider acceptance gate pass.
-Python syntax and wrong-hash guard pass; diff-check and 136-file filename hygiene pass. Bounded added-diff secret/personal-path patterns: zero matches (not comprehensive). Production src/tests/project/dependency diff from f1531e2 is empty; no new runtime dependency. The full Telemetry suite covers the retained coexistence/supervisor cases; focused counts above are the preceding receipts.
+Manual Grok qualification: 1.0.34 exit 1; 1.0.46 exit 1. Credential rejection passed in four synthetic cases; bounded owner observation failed in all six, including both admitted-class mock-acquisition cases. Not a provider acceptance gate pass.
+Python syntax, wrong-hash and disabled-optimization guards pass; diff-check and 136-file filename hygiene pass. Bounded added-diff secret/personal-path patterns: zero matches (not comprehensive). Production src/tests/project/dependency diff from f1531e2 is empty; no new runtime dependency. The full Telemetry suite covers the retained coexistence/supervisor cases; focused counts above are the preceding receipts.
 Graph: incremental tool AST refresh, 3,292 nodes / 8,795 edges / 153 communities; existing corpus/edges preserved, no missing files/self-loops. No semantic/doc/model refresh; historical community names were retained.
 
 ## 7. CI
@@ -359,3 +359,5 @@ Temporary probe directories remain outside the repository: automatic approval re
 Conclusion after Advisor PASS final and PR #29 merge: `M1 — Hardware MVP: DONE` with both evidence gates PASS and the listed limits explicit. M2 is next and has not started.
 
 The product PR changed the provider, TelemetryService Program, WidgetHost MainWindow, one existing Telemetry test, canonical docs and operational memory. This reconciliation changes only `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md` and `docs/ROADMAP.md`. New tracked files/dependencies: none. No code structure changed, so Graphify refresh is unnecessary.
+
+Closure self-review expanded the manual probe to an admitted xAI-issuer OIDC fixture: both binaries acquired only the loopback mock quota, but neither observed replacement owner in that case either. Six owner observations fail; this is still synthetic protocol evidence, not a valid subscription/renewal/live comparison. Hosted code/tool checkpoint 82da884 passed Build and Test (37042555549, 0 warnings/errors, 39/356/10 tests), Repository Quality (37042555581); CodeQL skipped (37042555555). The final three-case tool/documentary commit requires its own exact-head checks.

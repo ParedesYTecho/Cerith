@@ -4,7 +4,8 @@
 using synthetic credentials, an isolated profile and a loopback billing backend.
 It checks `_x.ai/billing` rejection before backend access and whether auth/info
 observes a synthetic owner switch within three seconds. It never exports a bearer
-or sends a model/session request. Exit zero requires both checks for both auth cases;
+or sends a model/session request. The admitted xAI-issuer OIDC fixture must also acquire the loopback mock quota.
+Exit zero requires the class and owner checks for all three auth cases;
 a nonzero exit is a failed qualification, not a live-account result.
 
 ```powershell
