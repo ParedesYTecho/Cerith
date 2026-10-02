@@ -42,6 +42,7 @@ internal sealed record ArkAgentPlanIdentity(
 internal sealed record ArkAgentPlanReading(ArkAgentPlanIdentity? Identity, ArkAgentPlanPoint[] Points)
 {
     internal const int MetricsPerPeriod = 4;
+    // ark-cli v1.0.37 intentionally omits the backend AFPDaily bucket from its plan snapshot.
     internal static readonly string[] Periods = ["5h", "weekly", "monthly"];
 
     public static ArkAgentPlanReading Failure(string code) =>

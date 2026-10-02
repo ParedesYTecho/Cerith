@@ -37,7 +37,7 @@ public sealed class ArkAgentPlanProviderTests
     ];
 
     [TestMethod]
-    public async Task PublishesOnlyPersonalAgentPlanPeriodsWhenWhoamiOmitsProfile()
+    public async Task PublishesPersonalCliPeriodsAndIgnoresBackendDailyWhenWhoamiOmitsProfile()
     {
         using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(Encoding.UTF8.GetBytes(
             """
