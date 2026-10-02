@@ -535,3 +535,5 @@ The fake ACP server now reads the redirected client request stream through an ex
 Verification: Release solution build 0 warnings/errors; the two targeted cases 2/2 and full direct MTP Telemetry 295/295 passed. The corrected hosted Build and Test and repository hygiene runs are pending after the next push. No provider acceptance history changed; no main merge or mission-completion claim.
 
 Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+Hosted verification follow-up: after the test-only correction was pushed as `87d46108421b9bc67ec4ae0c09d7a8cb41efb50a`, Build and Test run [36945947340](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947340) passed, including IPC integration; Repository Quality run [36945947323](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947323) passed; CodeQL run [36945947343](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947343) was skipped under workflow policy. PR #47 remains open/draft and canonical `main` remains untouched.
