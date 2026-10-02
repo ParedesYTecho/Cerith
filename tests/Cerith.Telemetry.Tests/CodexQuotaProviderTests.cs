@@ -677,6 +677,7 @@ public sealed class CodexQuotaProviderTests
     [DataRow("opencode-go")]
     [DataRow("kiro")]
     [DataRow("command-code")]
+    [DataRow("qoder-cn")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -783,6 +784,7 @@ public sealed class CodexQuotaProviderTests
         using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
         using var zcodeHarness = new ZCodeQuotaProviderTests.Harness(registry, bus);
+        _ = new QoderCnQuotaProvider(registry, bus, new QoderCnCliClient(null), TimeProvider.System);
         var copilotResponses = new Queue<string>();
         const string accountId = "24680";
         const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
@@ -862,6 +864,8 @@ public sealed class CodexQuotaProviderTests
             "ai.kiro.credits.included.remaining")).GetAsyncEnumerator();
         await using var commandCodeReader = bus.Subscribe(new MetricId(
             "ai.commandcode.quota.5h.used_percent")).GetAsyncEnumerator();
+        await using var qoderCnReader = bus.Subscribe(new MetricId(
+            QoderCnQuotaProviderTests.IncludedRemainingMetricId)).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
@@ -880,6 +884,7 @@ public sealed class CodexQuotaProviderTests
             var zcodeRead = zcodeReader.MoveNextAsync().AsTask();
             var kiroRead = kiroReader.MoveNextAsync().AsTask();
             var commandCodeRead = commandCodeReader.MoveNextAsync().AsTask();
+            var qoderCnRead = qoderCnReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
@@ -890,9 +895,10 @@ public sealed class CodexQuotaProviderTests
             await zcodeHarness.Provider.PublishCurrentAsync();
             await kiroProvider.PublishOnceAsync();
             await commandCodeProvider.PublishCurrentAsync();
+            await QoderCnQuotaProviderTests.PublishSyntheticQuotaAsync(bus);
 
             var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
-                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead)
+                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -932,6 +938,10 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(MetricConfidence.Measured, commandCodeReader.Current.Confidence);
             Assert.AreEqual(25d, commandCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
             Assert.AreEqual("CommandCode.ObservedBillingApi.v1", commandCodeReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, qoderCnReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, qoderCnReader.Current.Confidence);
+            Assert.AreEqual(75d, qoderCnReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("QoderCN.CliControl.v1", qoderCnReader.Current.Source);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>

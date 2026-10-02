@@ -27,6 +27,30 @@ public sealed class QoderCnQuotaProviderTests
         "ai.qoder-cn.org_resource_package.remaining"
     ];
 
+    internal static string IncludedRemainingMetricId => MetricIds[2];
+
+    internal static async Task PublishSyntheticQuotaAsync(MetricBus bus)
+    {
+        ArgumentNullException.ThrowIfNull(bus);
+        var observedAt = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        MetricValue?[] values =
+        [
+            MetricValue.From(100d), MetricValue.From(25d), MetricValue.From(75d),
+            MetricValue.From(50d), MetricValue.From(10d), MetricValue.From(40d),
+            MetricValue.From(new DateTimeOffset(2030, 12, 31, 0, 0, 0, TimeSpan.Zero)),
+            null, null, null
+        ];
+
+        for (var i = 0; i < MetricIds.Length; i++)
+        {
+            var hasValue = values[i].HasValue;
+            await bus.PublishAsync(new MetricSnapshot(new MetricId(MetricIds[i]), values[i], observedAt,
+                hasValue ? MetricState.Fresh : MetricState.Unavailable,
+                hasValue ? MetricConfidence.Measured : MetricConfidence.Unknown,
+                source: "QoderCN.CliControl.v1", errorCode: i >= 7 ? "scope_unverified" : null));
+        }
+    }
+
     [TestMethod]
     public void RegistersSeparateIncludedAddOnAndValuelessOrganizationMetrics()
     {

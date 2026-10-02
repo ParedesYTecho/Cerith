@@ -361,6 +361,27 @@ The accepted provider makes bounded read-only requests to the fixed Command Code
 
 Used is not inverted into remaining quota; subscription status/plan are not quota. The auth-file, environment, CLI and browser checks on the validation host found no compatible signed-in account/session, so same-account comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. This does not imply the user has no account elsewhere. No login, registration, agreement acceptance, credential mutation or paid usage was attempted, and no renewal behavior is claimed.
 
+## CER-M3-004 — Qoder CN credits
+
+The accepted regional provider uses the existing Qoder CN CLI when its signed executable is present on `PATH`. It verifies the executable before launch, applies a bounded read-only usage request and shuts down the child within fixed limits; Cerith does not install the CLI or write its credentials. Qoder CN remains a distinct provider from Qoder International.
+
+The bounded validation host had no compatible local CLI/session or official browser session for a same-account comparison, so live comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. This does not imply an account is absent elsewhere and does not establish quota/UI equality. No login, registration, account creation, consent, paid usage or credential mutation was performed.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.qoder-cn.quota.included.total` | double / Credits / quota_limit | Direct `usage.userQuota.total`. |
+| `ai.qoder-cn.quota.included.used` | double / Credits / quota_used | Direct `usage.userQuota.used`. |
+| `ai.qoder-cn.quota.included.remaining` | double / Credits / quota_remaining | Direct `usage.userQuota.remaining`. |
+| `ai.qoder-cn.quota.add_on.total` | double / Credits / quota_limit | Direct `usage.addOnQuota.total`. |
+| `ai.qoder-cn.quota.add_on.used` | double / Credits / quota_used | Direct `usage.addOnQuota.used`. |
+| `ai.qoder-cn.quota.add_on.remaining` | double / Credits / quota_remaining | Direct `usage.addOnQuota.remaining`. |
+| `ai.qoder-cn.plan.expires_at` | DateTimeOffset / none / timestamp | `usage.expiresAt`, Unix milliseconds. |
+| `ai.qoder-cn.org_resource_package.cap` | double / Credits / quota_limit | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+| `ai.qoder-cn.org_resource_package.used` | double / Credits / quota_used | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+| `ai.qoder-cn.org_resource_package.remaining` | double / Credits / quota_remaining | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+
+Missing CLI/source fields remain valueless `Unavailable`; invalid signatures or malformed fields remain sanitized errors. Organization-package values are deliberately not published as quota until their ownership, unit and semantics are verified. No reset instant or same-account live agreement is claimed.
+
 ## CER-M3-004 — Antigravity first integration wave
 
 The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. A sanitized bounded local-RPC observation recognized four quota buckets and a stable before/after status identity. This establishes source RPC shape and identity only; production parser-to-MetricSnapshot agreement, installed-version validation, backend-cache behavior, and UI comparison remain unverified, so full live validation remains NOT RUN.

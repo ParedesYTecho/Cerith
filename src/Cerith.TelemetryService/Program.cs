@@ -90,19 +90,24 @@ internal static class Program
             using var commandCodeQuotaProvider = new CommandCodeQuotaProvider(registry, bus);
             await commandCodeQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "command-code", stop.Token);
+        var qoderCnQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            var qoderCnQuotaProvider = new QoderCnQuotaProvider(registry, bus);
+            await qoderCnQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "qoder-cn", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
             "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
-            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, and Command Code quota providers active");
+            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, Command Code, and Qoder CN quota providers active");
 
         try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
             antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
-            kiroQuotaRunner, commandCodeQuotaRunner); }
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
             antigravityQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
-            kiroQuotaRunner, commandCodeQuotaRunner); }
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
     }
