@@ -45,7 +45,7 @@ Se compararon Named Pipes, TCP loopback y AF_UNIX con dos runs de 5000 round tri
 
 ## Siguiente
 
-Mantener PR #47 draft. Publicar el paquete de revisión ya preparado y exigir CI verde en ese SHA. Después realizar exactamente una revisión global independiente GPT-6.1 Sol Medium y detenerse antes de aprobación final o merge a main. Preservar todas las ramas de proveedores y sus disposiciones. No imponer el gate 17/17 ni declarar CER-M3-004 o M3 completos.
+Mantener PR #47 draft. Publicar el paquete de revisión ya preparado y exigir CI verde en ese SHA. La revisión global independiente corresponde a un contexto futuro nuevo y de solo lectura; este owner prepara el paquete y no cuenta su auto-revisión como aprobación. No merge a main. Preservar todas las ramas de proveedores y sus disposiciones. No imponer el gate 17/17 ni declarar CER-M3-004 o M3 completos.
 
 PR #23 de context integrity/provenance se integró en `94de88be841968be18fd6d3225bd184044347af6`; CER-M1-001 se integró después en `b7e40447f48cd6afd2b015a94a49d825f28099f9`, sin conflicto.
 

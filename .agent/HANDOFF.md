@@ -10,7 +10,9 @@ Bounded production correction: Ark Agent Plan acquisition wait now responds to s
 
 Graph: preserved existing corpus with incremental replacement of two changed C# files: 3,289 nodes / 8,793 edges / 160 communities; zero missing source files, dangling endpoints or self-loops. No external model. Extractor coalesces the shared Ark namespace; graph navigation does not prove source semantics. Documentation semantics were not re-extracted.
 
-Next: commit/push this checkpoint, inspect hosted CI, finish bounded hostile wave review and replace .agent/CER-M3-004_REVIEW_PACKET.md with the complete fresh-context packet. Candidate closure is pending these gates. Shadow audit has not yet run. No main merge, auth/account operation, model request, reset credit or live claim upgrade.
+Current validated code checkpoint: 96eefc59b704e6d6a34b683c7be9cfcf9f0a704f. Hosted Build and Test SUCCESS (37005658373), Repository Quality SUCCESS (37005658310), CodeQL SKIPPED (37005658376). The complete fresh-context packet is prepared in .agent/CER-M3-004_REVIEW_PACKET.md; it records exact lineage, sources, metrics, owner/cache/shutdown boundaries, preserved blockers, commands and review questions. Bounded hostile self-review found and corrected the Ark shutdown gap; all staged source trees were compared with their preserved tips. This is self-review, not independent approval.
+
+Next: push the packet/current-scope checkpoint, update draft PR #47, and require exact-head CI before MISSION_CANDIDATE. Then only the independent future-context review/Advisor gate remains for production; the authorized Shadow evidence audit may follow. Shadow audit has not yet run. No main merge, auth/account operation, model request, reset credit or live claim upgrade.
 
 ---
 
