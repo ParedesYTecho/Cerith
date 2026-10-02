@@ -1,3 +1,15 @@
+# State — CER-M3-004 remaining-work closure
+
+Current disposition: MISSION_CANDIDATE, pending fresh independent review and Advisor/user decision; M3 ACTIVE / INCOMPLETE. PR #47 must remain draft. Canonical origin/main remains 72b43b268b4992d0b0ea45b6e29067d10450274f; local main is untouched. Sole owner/routing remains GPT-6.1 Sol Medium/native Codex/concurrency one for this run.
+
+Latest bounded unit: reproducible isolated Grok 1.0.34/1.0.46 protocol qualification rejects unsupported credential classes before backend access but fails owner-switch observation (both exit 1). Official child refresh/termination safety and existing-owner leader attachment remain unresolved; Grok stays EVIDENCE_BLOCKED, not LIVE_NOT_AVAILABLE. Claude's missing local subscription does not restrict other subscribers; an approved quiet renewable owner-safe seam is still unproven. No new provider is registered. Eleven accepted/staged providers are preserved; Qoder International/Kimi/Devin remain deferred, Ark Coding remains staged.
+
+The only new code is a manual stdlib development probe under tools/, with synthetic fixtures and loopback endpoints, no bearer/model request or real auth writes. Runtime/dependencies/MetricIds unchanged. Fresh local closure build: 0 warnings/errors; Core 39, Telemetry 356, Integration 10 (405/405), zero skipped. Prior hosted f1531e2 quality succeeded and CodeQL was skipped. The new checkpoint needs exact-head CI. Graph was incrementally refreshed for the tool: 3,292 nodes / 8,795 edges / 153 communities, old corpus/edges preserved, no missing files or self-loops; docs and historical labels were not re-extracted.
+
+Next action: fresh independent hostile review of the exact final PR head using .agent/CER-M3-004_REVIEW_PACKET.md, after confirming current hosted checks. This execution context cannot provide independent approval or merge main.
+
+## Preserved previous state record
+
 # Estado actual
 
 Proyecto: Cerith

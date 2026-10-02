@@ -1,14 +1,17 @@
 # Tools
 
-This directory is for small repository-development utilities that have a concrete repeated need.
+`check_grok_billing_protocol.py` qualifies an explicitly pinned Windows Grok binary
+using synthetic credentials, an isolated profile and a loopback billing backend.
+It checks `_x.ai/billing` rejection before backend access and whether auth/info
+observes a synthetic owner switch within three seconds. It never exports a bearer
+or sends a model/session request. Exit zero requires both checks for both auth cases;
+a nonzero exit is a failed qualification, not a live-account result.
 
-Do not turn it into a dumping ground.
+```powershell
+python tools/check_grok_billing_protocol.py --binary <official-grok.exe> --sha256 <verified-sha256> --version <exact-version>
+```
 
-Potential future tools:
-
-- repository preflight;
-- secret scan wrapper;
-- public-readiness audit;
-- Graphify/context helper.
-
-A tool file must satisfy the same “justify its existence” rule as product code.
+This manual development probe needs only Python's standard library and the
+explicitly selected binary; neither is a new Cerith runtime dependency.
+Version/hash verification and synthetic fixtures do not prove signed-in quota
+semantics, renewal, persistence safety or safe termination during refresh.

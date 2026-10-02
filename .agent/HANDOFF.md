@@ -1,3 +1,79 @@
+# CERITH AUTONOMOUS MARATHON HANDOFF
+
+## 1. VERDICT
+
+MISSION_CANDIDATE. Execution closure is complete within the verified scope; CER-M3-004 remains IN PROGRESS and M3 remains ACTIVE / INCOMPLETE pending fresh independent review/Advisor decision. No unsupported provider was imported to manufacture completion.
+
+## 2. CANONICAL STATE
+
+MAIN: 72b43b268b4992d0b0ea45b6e29067d10450274f (origin/main; local main remains untouched at 3f5ca74a26edf88a02e6bda05f759ee3c74032cd).
+PR: #47, OPEN / DRAFT.
+INTEGRATION BRANCH: codex/CER-M3-004-integration.
+Starting head for this closure: f1531e2559185e2e13ff62459711c8864a6e6c02 (105 ahead / 0 behind main).
+Exact final head/ahead/behind must be pinned after the closure commit with git rev-parse HEAD / git rev-list --left-right --count origin/main...HEAD and compared with gh pr view 47 --json headRefOid,isDraft,state. This file cannot embed the hash of its own commit. Reuse the existing integration worktree; no worktree was created or replaced.
+
+## 3. WORK COMPLETED THIS UNIT
+
+PROVIDER/TASK: Grok deployed billing qualification.
+PREVIOUS STATUS / FINAL STATUS: EVIDENCE_BLOCKED / EVIDENCE_BLOCKED, with a narrower proven credential-class contract and a concrete failed owner probe.
+BRANCH / START SHA / END SHA: grok-build / d51fba3184b606c36b141e2f9c232c85ef03d0ff / unchanged.
+CHANGES: one repeatable tools/check_grok_billing_protocol.py manual development check; canonical evidence and stale source links corrected. Both explicitly pinned official binary versions reject API-key/untrusted-issuer fixtures before loopback billing access; neither observes replacement owner within three seconds. Both commands exit 1, not PASS. Earlier less-isolated owner observation is retained as disagreement. Official stdio refresh plus child termination is not proven safe; --leader can create/evict writers. No token export, model/session request, real auth operation or new integration commit.
+LIVE CLASSIFICATION: EVIDENCE_BLOCKED; no compatible-account live claim.
+LIMITATIONS: synthetic cases do not prove valid subscription responses, expiry/rotation, all account races, persistence or deployed source equivalence.
+
+PROVIDER/TASK: Claude remaining contract.
+PREVIOUS / FINAL STATUS: EVIDENCE_BLOCKED / EVIDENCE_BLOCKED.
+BRANCH / START / END: claude / 51afc1cc91b4b461c93715e9c324c918a1cbc6fc / unchanged.
+CHANGES: confirmed official SDK prior-approval boundary and model-only setup-token scope; passive statusline lacks owner/backend observation binding. Host subscription absence is not an eligibility restriction. Existing valid-session reader and 18 deterministic tests remain preserved, not production registered. No inference, login, secret access or import.
+
+PROVIDER/TASK: integration closure.
+PREVIOUS / FINAL STATUS: MISSION_CANDIDATE / MISSION_CANDIDATE awaiting independent review. Provider runtime/registrations/dependencies remain unchanged. Scope/ownership, research matrix, review packet, tools documentation, state and handoff reconciled; historical records retained. Source detail is canonical in docs/AI_QUOTA_REFERENCE_MATRIX.md, not copied here as a second specification.
+
+## 4. PROVIDER MATRIX
+
+ACCEPTED/STAGED: Codex, Cursor, Antigravity quota, ZCode, GitHub Copilot, OpenCode Go, Kiro, Command Code, Qoder CN, Ark Agent Plan, Ark Coding Plan (11).
+EVIDENCE_BLOCKED: Claude; distinct enterprise Gemini CLI / Code Assist; Grok Build.
+HUMAN_GATE_PENDING: no new login/MFA/consent gate attempted.
+DEFERRED_AFTER_M3_QUOTA_WAVE: Qoder International, Kimi, Devin. Exact branches/tips/blockers remain in TASKS and the review packet. Ark Coding Plan is already staged, not deferred.
+
+## 5. DOCUMENTATION RECONCILIATION
+
+Files: tools/README.md, docs/AI_QUOTA_REFERENCE_MATRIX.md, .agent/TASKS.md, STATE.md, HANDOFF.md, WORKLOG.md and CER-M3-004_REVIEW_PACKET.md.
+Current authorization now covers bounded implementation; after two credible Grok avenues failed to satisfy owner/writer safety, no speculative provider delta was added. Claude coverage remains host-independent. No 17/17 acceptance gate, permanent model policy or architecture decision was introduced. Historical records preserved: YES.
+
+## 6. VALIDATION
+
+Fresh local closure validation: Release build 0 warnings/errors; Core 39/39; Telemetry 356/356; Integration 10/10 (405/405), zero skipped; runtime source unchanged. Previous focused checks: Claude 18/18, Gemini 25/25, Grok 12/12, Ark Agent 20/20, Ark Coding 19 cases; coexistence 1/1; supervisor isolation 11/11. New exact-head CI must confirm the current checkpoint; do not present earlier counts as a completed new run.
+Manual Grok qualification: 1.0.34 exit 1; 1.0.46 exit 1. Credential rejection passed in four synthetic cases; bounded owner observation failed in all four. Not a provider acceptance gate pass.
+Python syntax and wrong-hash guard pass; diff-check and 136-file filename hygiene pass. Bounded added-diff secret/personal-path patterns: zero matches (not comprehensive). Production src/tests/project/dependency diff from f1531e2 is empty; no new runtime dependency. The full Telemetry suite covers the retained coexistence/supervisor cases; focused counts above are the preceding receipts.
+Graph: incremental tool AST refresh, 3,292 nodes / 8,795 edges / 153 communities; existing corpus/edges preserved, no missing files/self-loops. No semantic/doc/model refresh; historical community names were retained.
+
+## 7. CI
+
+Prior exact f1531e2: Build and Test SUCCESS (37012137265), Repository Quality SUCCESS (37012137315), CodeQL SKIPPED (37012137241). Current closure checkpoint requires hosted build/quality receipts after push; skipped CodeQL is not a passing security scan.
+
+## 8. SECURITY / PRIVACY
+
+Credential material committed: NO. Personal/private artifacts committed: NO. New auth ownership: NONE. Only isolated synthetic fixture auth files and their processes were created/drained; neither official user credential storage nor accounts were changed. The manual tool emits fixed booleans/version labels, not secret or account payloads. No browser cookies, paid workload, reset credit or model request.
+
+## 9. SHADOW AUDIT
+
+Completed in the preceding marathon; not repeated here. Canonical evidence matrix remains in docs/REFERENCE_PROJECTS.md. Short soaks, all-Ignored mutation report, non-differential runner, weak drift/privacy acceptance and broad performance/zero-leak claims were downgraded. Useful fixture/adversarial/restart ideas remain USE_WITH_REVIEW; no architecture port or M4/M7 implementation.
+
+## 10. OPEN RISKS
+
+Claude: approved renewable subscription output with owner/observation binding remains missing. Gemini enterprise: supported product-appropriate quota output and Windows writer/persistence contract remain missing. Grok: failed bounded owner observation, safe official refresh/termination and existing-owner attachment not established. Existing staged-provider live limits, queued MetricBus transition boundary and source/version risks remain in the review packet. Synthetic/manual checks do not replace same-account validation.
+
+## 11. INDEPENDENT REVIEW READINESS
+
+YES after exact-head hosted checks are green. Packet: .agent/CER-M3-004_REVIEW_PACKET.md. Pin the final PR head independently; the owner did not perform an independent review. PR stays DRAFT; candidate status does not authorize merge or advance M3.
+
+## 12. EXACT NEXT ACTION
+
+Run a fresh independent hostile read-only review on the final green PR #47 head using the prepared packet.
+
+## Preserved earlier marathon record
+
 # Handoff — CER-M3-004 autonomous marathon
 
 Status: MISSION_CANDIDATE; task remains IN PROGRESS pending fresh independent review/Advisor decision; M3 ACTIVE / INCOMPLETE. Sole execution/shared-file owner is GPT-6.1 Sol Medium, native Codex, concurrency one. Historical review receipts remain historical; this owner's self-review is not independent approval. Keep PR #47 DRAFT and do not merge main.
