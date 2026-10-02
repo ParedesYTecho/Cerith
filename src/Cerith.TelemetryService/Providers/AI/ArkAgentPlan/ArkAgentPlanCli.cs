@@ -11,11 +11,17 @@ using System.Threading.Tasks;
 
 namespace Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 
-internal readonly record struct ArkCliResult(byte[]? Payload, string? FailureCode, bool IsUnavailable)
+internal readonly record struct ArkCliResult(
+    byte[]? Payload,
+    byte[]? CurrentIdentityPayload,
+    string? FailureCode,
+    bool IsUnavailable)
 {
-    public static ArkCliResult Success(byte[] payload) => new(payload, null, false);
-    public static ArkCliResult Failure(string code) => new(null, code, false);
-    public static ArkCliResult Unavailable(string code) => new(null, code, true);
+    public static ArkCliResult Success(byte[] payload) => new(payload, null, null, false);
+    public static ArkCliResult Success(byte[] payload, byte[] currentIdentityPayload) =>
+        new(payload, currentIdentityPayload, null, false);
+    public static ArkCliResult Failure(string code) => new(null, null, code, false);
+    public static ArkCliResult Unavailable(string code) => new(null, null, code, true);
 }
 
 internal static class ArkAgentPlanCli
@@ -26,6 +32,9 @@ internal static class ArkAgentPlanCli
     internal const string Source = "ArkCli.AgentPlanUsage.v1";
     private const string ExecutableRelativePath =
         "npm/node_modules/@volcengine/ark-cli/bin/arkcli-windows-amd64.exe";
+    private static readonly string[] UsageArguments =
+        ["usage", "plan", "--product", "agent-plan", "--format", "json"];
+    private static readonly string[] IdentityArguments = ["auth", "whoami", "--format", "json"];
     private static readonly string[] AmbientProxyVariables =
     [
         "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
@@ -44,7 +53,17 @@ internal static class ArkAgentPlanCli
             return ArkCliResult.Failure("executable_untrusted");
 
         using (verifiedExecutable)
-            return await RunAsync(executablePath, cancellationToken).ConfigureAwait(false);
+        {
+            var usage = await RunAsync(executablePath, UsageArguments, cancellationToken).ConfigureAwait(false);
+            if (usage.Payload is null) return usage;
+
+            var currentIdentity = await RunAsync(executablePath, IdentityArguments, cancellationToken)
+                .ConfigureAwait(false);
+            if (currentIdentity.Payload is null)
+                return ArkCliResult.Failure(currentIdentity.FailureCode ?? "identity_unverified");
+
+            return ArkCliResult.Success(usage.Payload, currentIdentity.Payload);
+        }
     }
 
     internal static string? GetExecutablePath()
@@ -58,6 +77,12 @@ internal static class ArkAgentPlanCli
     }
 
     internal static ProcessStartInfo CreateStartInfo(string executablePath)
+        => CreateStartInfo(executablePath, UsageArguments);
+
+    internal static ProcessStartInfo CreateIdentityStartInfo(string executablePath)
+        => CreateStartInfo(executablePath, IdentityArguments);
+
+    private static ProcessStartInfo CreateStartInfo(string executablePath, string[] arguments)
     {
         var expectedPath = GetExecutablePath();
         if (expectedPath is null || !StringComparer.OrdinalIgnoreCase.Equals(
@@ -74,17 +99,11 @@ internal static class ArkAgentPlanCli
             RedirectStandardError = true,
             WorkingDirectory = Directory.Exists(userProfile) ? userProfile : Environment.SystemDirectory
         };
-        startInfo.ArgumentList.Add("usage");
-        startInfo.ArgumentList.Add("plan");
-        startInfo.ArgumentList.Add("--product");
-        startInfo.ArgumentList.Add("agent-plan");
-        startInfo.ArgumentList.Add("--format");
-        startInfo.ArgumentList.Add("json");
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         startInfo.Environment["ARKCLI_NO_UPDATE_NOTIFIER"] = "1";
         startInfo.Environment["ARKCLI_CALLER_TYPE"] = "ai_agent";
         startInfo.Environment["ARKCLI_CALLER_NAME"] = "codex";
         startInfo.Environment["ARKCLI_SKILL_NAME"] = "arkcli-usage";
-        startInfo.Environment.Remove("ARK_PROFILE");
         startInfo.Environment.Remove("ARK_API_KEY");
         startInfo.Environment.Remove("ARK_BASE_URL");
         foreach (var variable in AmbientProxyVariables)
@@ -142,9 +161,10 @@ internal static class ArkAgentPlanCli
         }
     }
 
-    private static async Task<ArkCliResult> RunAsync(string executablePath, CancellationToken cancellationToken)
+    private static async Task<ArkCliResult> RunAsync(string executablePath, string[] arguments,
+        CancellationToken cancellationToken)
     {
-        using var process = new Process { StartInfo = CreateStartInfo(executablePath) };
+        using var process = new Process { StartInfo = CreateStartInfo(executablePath, arguments) };
         var started = false;
         try
         {

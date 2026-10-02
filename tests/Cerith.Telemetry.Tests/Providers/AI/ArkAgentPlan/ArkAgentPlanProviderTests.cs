@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
@@ -185,7 +186,7 @@ public sealed class ArkAgentPlanProviderTests
     }
 
     [TestMethod]
-    public void CliProcessUsesOnlyThePinnedPackagePathAndReadOnlyUsageCommand()
+    public void CliProcessUsesOnlyThePinnedPackagePathAndReadOnlyCommands()
     {
         var executablePath = ArkAgentPlanCli.GetExecutablePath();
         Assert.IsNotNull(executablePath);
@@ -212,15 +213,20 @@ public sealed class ArkAgentPlanProviderTests
             foreach (var variable in proxyVariables)
                 Environment.SetEnvironmentVariable(variable, "http://proxy.invalid:8080");
             var startInfo = ArkAgentPlanCli.CreateStartInfo(executablePath);
+            var identityStartInfo = ArkAgentPlanCli.CreateIdentityStartInfo(executablePath);
             Assert.IsFalse(startInfo.UseShellExecute);
             Assert.IsTrue(startInfo.RedirectStandardInput);
             CollectionAssert.AreEqual(
                 new[] { "usage", "plan", "--product", "agent-plan", "--format", "json" },
                 startInfo.ArgumentList.ToArray());
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_BASE_URL"));
-            Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_PROFILE"));
+            Assert.AreEqual("synthetic-profile", startInfo.Environment["ARK_PROFILE"]);
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_API_KEY"));
             Assert.IsTrue(proxyVariables.All(variable => !startInfo.Environment.ContainsKey(variable)));
+            CollectionAssert.AreEqual(new[] { "auth", "whoami", "--format", "json" },
+                identityStartInfo.ArgumentList.ToArray());
+            Assert.AreEqual("synthetic-profile", identityStartInfo.Environment["ARK_PROFILE"]);
+            Assert.IsTrue(proxyVariables.All(variable => !identityStartInfo.Environment.ContainsKey(variable)));
             Assert.AreEqual("1", startInfo.Environment["ARKCLI_NO_UPDATE_NOTIFIER"]);
             Assert.AreEqual(64, ArkAuthenticodeVerifier.ExpectedSha256.Length);
             var rejectedPath = false;
@@ -390,6 +396,57 @@ public sealed class ArkAgentPlanProviderTests
     }
 
     [TestMethod]
+    public async Task WithholdsQuotaWhenPostAcquisitionIdentityReportsAnotherProfile()
+    {
+        var usagePayload = Encoding.UTF8.GetBytes(
+            """
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A"},
+              "items":[{"product":"agent-plan","subscribed":true,"periods":[
+                {"label":"5h","used":3,"total":10,"percent":30}
+              ]}]
+            }
+            """);
+        var currentIdentity = CreateWhoamiPayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", "account-A", "profile-B", null, "cn-beijing", "default"));
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
+            _ => currentIdentity);
+
+        var snapshots = await ReadAfterPollAsync(harness);
+
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
+            snapshot.Value is null && snapshot.ErrorCode == "identity_changed"));
+    }
+
+    [TestMethod]
+    public async Task WithholdsQuotaWhenPostAcquisitionIdentityIsMissingMalformedOrUnscoped()
+    {
+        var usagePayload = Encoding.UTF8.GetBytes(
+            """
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A"},
+              "items":[{"product":"agent-plan","subscribed":true,"periods":[
+                {"label":"5h","used":3,"total":10,"percent":30}
+              ]}]
+            }
+            """);
+
+        var currentIdentityWithoutProfile = CreateWhoamiPayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", "account-A", null, null, "cn-beijing", "default"));
+        foreach (var identityPayload in new byte[]?[]
+                 { null, Encoding.UTF8.GetBytes("{"), currentIdentityWithoutProfile })
+        {
+            using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
+                _ => identityPayload);
+
+            var snapshots = await ReadAfterPollAsync(harness);
+
+            Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Error &&
+                snapshot.Value is null && snapshot.ErrorCode == "identity_unverified"));
+        }
+    }
+
+    [TestMethod]
     public async Task ShutdownCompletesWhenSubscriberQueueIsFull()
     {
         using var harness = new Harness(_ =>
@@ -440,6 +497,26 @@ public sealed class ArkAgentPlanProviderTests
         return descriptor!;
     }
 
+    private static byte[] CreateWhoamiPayload(ArkAgentPlanIdentity identity) =>
+        JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            logged_in = true,
+            auth_method = identity.AuthMethod,
+            is_root = identity.IsRoot,
+            user_id = identity.UserId,
+            account_id = identity.AccountId,
+            profile = identity.Profile,
+            region = identity.Region,
+            project_name = identity.ProjectName
+        });
+
+    private static byte[]? CreateWhoamiPayload(ArkCliResult usageResult)
+    {
+        if (usageResult.Payload is null) return null;
+        var identity = ArkAgentPlanParser.Parse(usageResult.Payload).Identity;
+        return identity is null ? null : CreateWhoamiPayload(identity);
+    }
+
     private static async Task<MetricSnapshot[]> ReadAfterPollAsync(Harness harness)
     {
         var readers = MetricIds.Select(id => harness.Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray();
@@ -463,8 +540,16 @@ public sealed class ArkAgentPlanProviderTests
         public FixedTimeProvider Time { get; } = new(ObservedAt);
         public ArkAgentPlanProvider Provider { get; }
 
-        public Harness(Func<CancellationToken, Task<ArkCliResult>> acquire) =>
-            Provider = new ArkAgentPlanProvider(Registry, Bus, acquire, Time);
+        public Harness(Func<CancellationToken, Task<ArkCliResult>> acquire,
+            Func<ArkCliResult, byte[]?>? currentIdentity = null) =>
+            Provider = new ArkAgentPlanProvider(Registry, Bus, async token =>
+            {
+                var result = await acquire(token).ConfigureAwait(false);
+                var identityPayload = currentIdentity is null
+                    ? result.CurrentIdentityPayload ?? CreateWhoamiPayload(result)
+                    : currentIdentity(result);
+                return result with { CurrentIdentityPayload = identityPayload };
+            }, Time);
 
         public void Dispose()
         {

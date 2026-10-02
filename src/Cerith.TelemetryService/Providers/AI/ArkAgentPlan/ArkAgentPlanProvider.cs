@@ -82,13 +82,30 @@ internal sealed class ArkAgentPlanProvider : IDisposable
             var acquisition = await _acquire(stop.Token).ConfigureAwait(false);
             stop.Token.ThrowIfCancellationRequested();
             var observedAt = _timeProvider.GetUtcNow();
-            var points = acquisition.Payload is not null
-                ? ArkAgentPlanParser.Parse(acquisition.Payload).Points
-                : Enumerable.Repeat(
+            ArkAgentPlanPoint[] points;
+            if (acquisition.Payload is not null)
+            {
+                var reading = ArkAgentPlanParser.Parse(acquisition.Payload);
+                if (reading.Identity is not null)
+                {
+                    var currentIdentity = acquisition.CurrentIdentityPayload is null
+                        ? null
+                        : ArkAgentPlanParser.ParseCurrentIdentity(acquisition.CurrentIdentityPayload);
+                    if (currentIdentity is null || !reading.Identity.CanCompareTo(currentIdentity))
+                        reading = ArkAgentPlanReading.Failure("identity_unverified");
+                    else if (!reading.Identity.MatchesCurrent(currentIdentity))
+                        reading = ArkAgentPlanReading.Failure("identity_changed");
+                }
+                points = reading.Points;
+            }
+            else
+            {
+                points = Enumerable.Repeat(
                     acquisition.IsUnavailable
                         ? ArkAgentPlanPoint.Unavailable(acquisition.FailureCode)
                         : ArkAgentPlanPoint.Error(acquisition.FailureCode ?? "cli_failed"),
                     _descriptors.Length).ToArray();
+            }
 
             for (var index = 0; index < _descriptors.Length; index++)
             {
