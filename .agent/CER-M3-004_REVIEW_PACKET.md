@@ -95,7 +95,7 @@ Current first-party versions/pins, two investigated avenues and exact unblock co
 | Kimi | DEFERRED_AFTER_M3_QUOTA_WAVE; kimi / 25630291296c7b8721036dc8ff7dd48a98aebb7d | Official Windows OAuth writer/reader locking/rotation not proven; require safe client-owned bridge or approved independent grant. Existing tests/evidence preserved. |
 | Devin | DEFERRED_AFTER_M3_QUOTA_WAVE; devin / 1a8e169e2bf73f7650ed22c630cb01a63739eafb | Product/team and quota-source provenance unproven; GetPlanStatus alone does not establish Devin subscription quota. Existing work preserved. |
 
-No HUMAN_GATE_PENDING was newly encountered. These branches were not imported or reset. Previously local-only Claude, Gemini, Grok, Kimi and Devin tips were pushed unchanged after scoped privacy/filename checks; all preserved tips now have remote backups. Inspect current Git before reviewing.
+No HUMAN_GATE_PENDING was newly encountered. These branches were not imported or reset. Previously local-only Claude, Gemini, Grok, Kimi and Devin tips were pushed unchanged after scoped privacy/filename checks; those five remote tips match exactly. Other pre-existing provider branches remain preserved locally; do not assume they have matching remote branch refs. Inspect current Git before reviewing.
 
 ## Lifecycle, cache and privacy boundaries to challenge
 
