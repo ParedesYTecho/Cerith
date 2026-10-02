@@ -26,6 +26,10 @@ public sealed class ArkAgentPlanProviderTests
         "ai.ark.agent_plan.5h.total",
         "ai.ark.agent_plan.5h.used_percent",
         "ai.ark.agent_plan.5h.reset",
+        "ai.ark.agent_plan.daily.used",
+        "ai.ark.agent_plan.daily.total",
+        "ai.ark.agent_plan.daily.used_percent",
+        "ai.ark.agent_plan.daily.reset",
         "ai.ark.agent_plan.weekly.used",
         "ai.ark.agent_plan.weekly.total",
         "ai.ark.agent_plan.weekly.used_percent",
@@ -37,9 +41,9 @@ public sealed class ArkAgentPlanProviderTests
     ];
 
     [TestMethod]
-    public async Task PublishesPersonalCliPeriodsAndIgnoresBackendDailyWhenWhoamiOmitsProfile()
+    public async Task PublishesPersonalCliPeriodsAndProfilePinnedBackendDaily()
     {
-        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(Encoding.UTF8.GetBytes(
+        var usagePayload = Encoding.UTF8.GetBytes(
             """
             {
               "viewer": {
@@ -61,23 +65,26 @@ public sealed class ArkAgentPlanProviderTests
                 },
                 {
                   "product": "agent-plan",
+                  "tier": "medium",
                   "subscribed": true,
                   "periods": [
                     {"label": "5h", "used": 2.25, "total": 10, "percent": 22.5, "reset_at": "2026-10-02T18:00:00+08:00"},
                     {"label": "weekly", "used": 8, "total": 40, "percent": 20},
-                    {"label": "monthly", "used": 18.5, "total": 100, "percent": 18.5, "reset_at": "2026-11-01T00:00:00+08:00"},
-                    {"label": "daily", "used": 999, "total": 1000, "percent": 99.9}
+                    {"label": "monthly", "used": 18.5, "total": 100, "percent": 18.5, "reset_at": "2026-11-01T00:00:00+08:00"}
                   ]
                 }
               ]
             }
-            """))));
+            """);
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.SuccessWithDaily(
+            usagePayload, CreateDailyPayload())));
 
         var snapshots = await ReadAfterPollAsync(harness);
 
-        Assert.AreEqual(12, snapshots.Length);
+        Assert.AreEqual(16, snapshots.Length);
         CollectionAssert.AreEqual(MetricIds, snapshots.Select(snapshot => snapshot.MetricId.Value).ToArray());
-        Assert.IsTrue(snapshots.Where((_, index) => index != 7).All(snapshot =>
+        Assert.AreEqual("private-profile", ArkAgentPlanParser.Parse(usagePayload).Identity!.Profile);
+        Assert.IsTrue(snapshots.Where((_, index) => index != 11).All(snapshot =>
             snapshot.State == MetricState.Fresh && snapshot.Confidence == MetricConfidence.Measured &&
             snapshot.Source == ArkAgentPlanCli.Source && snapshot.ObservedAt == ObservedAt));
         Assert.AreEqual(MetricValueKind.Decimal, snapshots[0].Value!.Value.Kind);
@@ -87,8 +94,66 @@ public sealed class ArkAgentPlanProviderTests
         Assert.AreEqual(22.5m, snapshots[2].Value!.Value.AsDecimal());
         Assert.AreEqual(new DateTimeOffset(2026, 10, 2, 18, 0, 0, TimeSpan.FromHours(8)),
             snapshots[3].Value!.Value.AsDateTimeOffset());
-        Assert.IsNull(snapshots[7].Value);
-        Assert.AreEqual(MetricState.Unavailable, snapshots[7].State);
+        Assert.AreEqual(22.5m, snapshots[4].Value!.Value.AsDecimal());
+        Assert.AreEqual(100m, snapshots[5].Value!.Value.AsDecimal());
+        Assert.AreEqual(22.5m, snapshots[6].Value!.Value.AsDecimal());
+        Assert.AreEqual(DateTimeOffset.FromUnixTimeMilliseconds(1_800_000_000_000),
+            snapshots[7].Value!.Value.AsDateTimeOffset());
+        Assert.IsNull(snapshots[11].Value);
+        Assert.AreEqual(MetricState.Unavailable, snapshots[11].State);
+    }
+
+    [TestMethod]
+    public void DailyParserPreservesMissingZeroAndOverQuotaSemantics()
+    {
+        var identity = new ArkAgentPlanIdentity(
+            "sso", false, "synthetic-user", "synthetic-account", "cn-beijing", "default", "synthetic-profile");
+
+        var missing = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(includeDaily: false), identity, "Medium");
+        Assert.IsTrue(missing.All(point => point.State == MetricState.Unavailable && point.Value is null));
+
+        var zero = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(quota: "0", used: "0", resetTime: null),
+            identity, "Medium");
+        Assert.AreEqual(0m, zero[0].Value!.Value.AsDecimal());
+        Assert.AreEqual(0m, zero[1].Value!.Value.AsDecimal());
+        Assert.AreEqual(MetricState.Unavailable, zero[2].State);
+        Assert.AreEqual(MetricState.Unavailable, zero[3].State);
+
+        var overQuota = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(quota: "10", used: "12.5"),
+            identity, "Medium");
+        Assert.AreEqual(125m, overQuota[2].Value!.Value.AsDecimal());
+    }
+
+    [TestMethod]
+    public void DailyParserRejectsWrongActionRegionTierAndMalformedFields()
+    {
+        var identity = new ArkAgentPlanIdentity(
+            "sso", false, "synthetic-user", "synthetic-account", "cn-beijing", "default", "synthetic-profile");
+        var wrongScopeResponses = new[]
+        {
+            (CreateDailyPayload(action: "GetSeatAFPUsage"), "source_unverified"),
+            (CreateDailyPayload(region: "cn-shanghai"), "identity_unverified"),
+            (CreateDailyPayload(planType: "Small"), "scope_mismatch")
+        };
+
+        foreach (var (payload, errorCode) in wrongScopeResponses)
+        {
+            var points = ArkAgentPlanParser.ParseDaily(payload, identity, "Medium");
+            Assert.IsTrue(points.All(point => point.State == MetricState.Error && point.ErrorCode == errorCode));
+        }
+
+        var malformed = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(quota: "NaN"), identity, "Medium");
+        Assert.AreEqual("invalid_quota", malformed[1].ErrorCode);
+        Assert.AreEqual("invalid_quota", malformed[2].ErrorCode);
+
+        var underflow = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(quota: "1e-50"), identity, "Medium");
+        Assert.AreEqual("invalid_quota", underflow[1].ErrorCode);
+
+        var apiError = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(apiError: true), identity, "Medium");
+        Assert.IsTrue(apiError.All(point => point.State == MetricState.Error && point.ErrorCode == "api_failed"));
+
+        var invalidReset = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(resetTime: long.MaxValue), identity, "Medium");
+        Assert.AreEqual("invalid_reset", invalidReset[3].ErrorCode);
     }
 
     [TestMethod]
@@ -221,7 +286,7 @@ public sealed class ArkAgentPlanProviderTests
             foreach (var variable in proxyVariables)
                 Environment.SetEnvironmentVariable(variable, "http://proxy.invalid:8080");
             var startInfo = ArkAgentPlanCli.CreateStartInfo(executablePath);
-            var identityStartInfo = ArkAgentPlanCli.CreateIdentityStartInfo(executablePath);
+            var dailyStartInfo = ArkAgentPlanCli.CreateDailyStartInfo(executablePath, "synthetic-profile");
             Assert.IsFalse(startInfo.UseShellExecute);
             Assert.IsTrue(startInfo.RedirectStandardInput);
             CollectionAssert.AreEqual(
@@ -231,10 +296,12 @@ public sealed class ArkAgentPlanProviderTests
             Assert.AreEqual("synthetic-profile", startInfo.Environment["ARK_PROFILE"]);
             Assert.IsFalse(startInfo.Environment.ContainsKey("ARK_API_KEY"));
             Assert.IsTrue(proxyVariables.All(variable => !startInfo.Environment.ContainsKey(variable)));
-            CollectionAssert.AreEqual(new[] { "auth", "whoami", "--format", "json" },
-                identityStartInfo.ArgumentList.ToArray());
-            Assert.AreEqual("synthetic-profile", identityStartInfo.Environment["ARK_PROFILE"]);
-            Assert.IsTrue(proxyVariables.All(variable => !identityStartInfo.Environment.ContainsKey(variable)));
+            CollectionAssert.AreEqual(
+                new[] { "api", "usage.get_afp_usage", "--params", "{}", "--format", "json", "--profile=synthetic-profile" },
+                dailyStartInfo.ArgumentList.ToArray());
+            Assert.IsFalse(dailyStartInfo.Environment.ContainsKey("ARK_BASE_URL"));
+            Assert.IsFalse(dailyStartInfo.Environment.ContainsKey("ARK_API_KEY"));
+            Assert.IsTrue(proxyVariables.All(variable => !dailyStartInfo.Environment.ContainsKey(variable)));
             Assert.AreEqual("1", startInfo.Environment["ARKCLI_NO_UPDATE_NOTIFIER"]);
             Assert.AreEqual(64, ArkAuthenticodeVerifier.ExpectedSha256.Length);
             var rejectedPath = false;
@@ -247,6 +314,27 @@ public sealed class ArkAgentPlanProviderTests
                 rejectedPath = true;
             }
             Assert.IsTrue(rejectedPath);
+            var rejectedProfile = false;
+            try
+            {
+                ArkAgentPlanCli.CreateDailyStartInfo(executablePath,
+                    new string('x', ArkAgentPlanCli.MaxProfileNameLength + 1));
+            }
+            catch (ArgumentException)
+            {
+                rejectedProfile = true;
+            }
+            Assert.IsTrue(rejectedProfile);
+            var rejectedControlProfile = false;
+            try
+            {
+                ArkAgentPlanCli.CreateDailyStartInfo(executablePath, "invalid\0profile");
+            }
+            catch (ArgumentException)
+            {
+                rejectedControlProfile = true;
+            }
+            Assert.IsTrue(rejectedControlProfile);
         }
         finally
         {
@@ -336,6 +424,50 @@ public sealed class ArkAgentPlanProviderTests
     }
 
     [TestMethod]
+    public async Task DailyCliFailureLeavesIndependentPlanWindowsUsable()
+    {
+        var usagePayload = Encoding.UTF8.GetBytes(
+            """
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A","profile":"profile-A","region":"cn-beijing","project_name":"default"},
+              "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+                {"label":"5h","used":3,"total":10,"percent":30},
+                {"label":"weekly","used":8,"total":40,"percent":20},
+                {"label":"monthly","used":18,"total":100,"percent":18}
+              ]}]
+            }
+            """);
+        var identity = ArkAgentPlanParser.Parse(usagePayload).Identity!;
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(
+            usagePayload, null, "cli_failed", false, CreateUsagePayload(identity))));
+
+        var snapshots = await ReadAfterPollAsync(harness);
+
+        Assert.AreEqual(MetricState.Fresh, snapshots[0].State);
+        Assert.AreEqual(3m, snapshots[0].Value!.Value.AsDecimal());
+        Assert.IsTrue(snapshots.Skip(4).Take(4).All(snapshot => snapshot.State == MetricState.Error &&
+            snapshot.Value is null && snapshot.ErrorCode == "cli_failed"));
+        Assert.AreEqual(MetricState.Fresh, snapshots[8].State);
+        Assert.AreEqual(8m, snapshots[8].Value!.Value.AsDecimal());
+        Assert.AreEqual(MetricState.Fresh, snapshots[12].State);
+        Assert.AreEqual(18m, snapshots[12].Value!.Value.AsDecimal());
+    }
+
+    [TestMethod]
+    public async Task UnsubscribedPlanRemainsUnavailableWhenScopeIsStable()
+    {
+        var identity = new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing",
+            "default", "profile-A");
+        var payload = CreateUsagePayload(identity, subscribed: false);
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(payload)));
+
+        var snapshots = await ReadAfterPollAsync(harness);
+
+        Assert.IsTrue(snapshots.All(snapshot => snapshot.State == MetricState.Unavailable &&
+            snapshot.Value is null && snapshot.ErrorCode is null));
+    }
+
+    [TestMethod]
     public async Task AcquisitionFailureDoesNotReplayPreviousAccountValues()
     {
         var payload = Encoding.UTF8.GetBytes(
@@ -404,7 +536,7 @@ public sealed class ArkAgentPlanProviderTests
     }
 
     [TestMethod]
-    public async Task WithholdsQuotaWhenPostAcquisitionAccountUserOrRouteDiffers()
+    public async Task WithholdsQuotaWhenPostAcquisitionScopeProfileOrPlanDiffers()
     {
         var usagePayload = Encoding.UTF8.GetBytes(
             """
@@ -415,19 +547,23 @@ public sealed class ArkAgentPlanProviderTests
               ]}]
             }
             """);
-        var currentIdentities = new[]
+        var currentScopes = new[]
         {
-            new ArkAgentPlanIdentity("sso", false, "user-A", "account-B", "cn-beijing", "default"),
-            new ArkAgentPlanIdentity("sso", false, "user-B", "account-A", "cn-beijing", "default"),
-            new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-shanghai", "default"),
-            new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "other"),
-            new ArkAgentPlanIdentity("sts", false, "user-A", "account-A", "cn-beijing", "default")
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-B", "cn-beijing", "default", "profile-A"), "medium", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-B", "account-A", "cn-beijing", "default", "profile-A"), "medium", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-shanghai", "default", "profile-A"), "medium", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "other", "profile-A"), "medium", true),
+            (new ArkAgentPlanIdentity("sts", false, "user-A", "account-A", "cn-beijing", "default", "profile-A"), "medium", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "default", "profile-B"), "medium", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "default", "profile-A"), "large", true),
+            (new ArkAgentPlanIdentity("sso", false, "user-A", "account-A", "cn-beijing", "default", "profile-A"), "medium", false)
         };
 
-        foreach (var identity in currentIdentities)
+        foreach (var (identity, tier, subscribed) in currentScopes)
         {
-            using var harness = new Harness(_ => Task.FromResult(ArkCliResult.Success(usagePayload)),
-                _ => CreateWhoamiPayload(identity));
+            using var harness = new Harness(_ => Task.FromResult(
+                ArkCliResult.SuccessWithDaily(usagePayload, CreateDailyPayload())),
+                _ => CreateUsagePayload(identity, tier, subscribed));
 
             var snapshots = await ReadAfterPollAsync(harness);
 
@@ -449,10 +585,10 @@ public sealed class ArkAgentPlanProviderTests
             }
             """);
 
-        var currentIdentityWithoutAccount = CreateWhoamiPayload(new ArkAgentPlanIdentity(
-            "sso", false, "user-A", null, "cn-beijing", "default"));
-        var currentIdentityWithoutProject = CreateWhoamiPayload(new ArkAgentPlanIdentity(
-            "sso", false, "user-A", "account-A", "cn-beijing", null));
+        var currentIdentityWithoutAccount = CreateUsagePayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", null, "cn-beijing", "default", "profile-A"));
+        var currentIdentityWithoutProject = CreateUsagePayload(new ArkAgentPlanIdentity(
+            "sso", false, "user-A", "account-A", "cn-beijing", null, "profile-A"));
         foreach (var identityPayload in new byte[]?[]
                  { null, Encoding.UTF8.GetBytes("{"), currentIdentityWithoutAccount, currentIdentityWithoutProject })
         {
@@ -517,23 +653,47 @@ public sealed class ArkAgentPlanProviderTests
         return descriptor!;
     }
 
-    private static byte[] CreateWhoamiPayload(ArkAgentPlanIdentity identity) =>
+    private static byte[] CreateUsagePayload(ArkAgentPlanIdentity identity, string? tier = "medium",
+        bool subscribed = true) =>
         JsonSerializer.SerializeToUtf8Bytes(new
         {
-            logged_in = true,
-            auth_method = identity.AuthMethod,
-            is_root = identity.IsRoot,
-            user_id = identity.UserId,
-            account_id = identity.AccountId,
-            region = identity.Region,
-            project_name = identity.ProjectName
+            viewer = new
+            {
+                auth_method = identity.AuthMethod,
+                is_root = identity.IsRoot,
+                user_id = identity.UserId,
+                account_id = identity.AccountId,
+                profile = identity.Profile,
+                region = identity.Region,
+                project_name = identity.ProjectName
+            },
+            items = new[]
+            {
+                new
+                {
+                    product = "agent-plan",
+                    tier,
+                    subscribed,
+                    periods = new[] { new { label = "5h", used = 2, total = 10, percent = 20 } }
+                }
+            }
         });
 
-    private static byte[]? CreateWhoamiPayload(ArkCliResult usageResult)
+    private static byte[] CreateDailyPayload(string action = "GetAFPUsage", string service = "ark",
+        string version = "2024-01-01", string region = "cn-beijing", string planType = "Medium",
+        string quota = "100.0", string used = "22.5", long? resetTime = 1_800_000_000_000,
+        bool includeDaily = true, bool apiError = false)
     {
-        if (usageResult.Payload is null) return null;
-        var identity = ArkAgentPlanParser.Parse(usageResult.Payload).Identity;
-        return identity is null ? null : CreateWhoamiPayload(identity);
+        object? daily = includeDaily ? new { Quota = quota, Used = used, ResetTime = resetTime } : null;
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            ResponseMetadata = new
+            {
+                Action = action, Service = service, Version = version, Region = region,
+                Error = apiError ? new { Code = "synthetic-error" } : null
+            },
+            Result = new { PlanType = planType, AFPDaily = daily }
+        });
     }
 
     private static async Task<MetricSnapshot[]> ReadAfterPollAsync(Harness harness)
@@ -560,14 +720,14 @@ public sealed class ArkAgentPlanProviderTests
         public ArkAgentPlanProvider Provider { get; }
 
         public Harness(Func<CancellationToken, Task<ArkCliResult>> acquire,
-            Func<ArkCliResult, byte[]?>? currentIdentity = null) =>
+            Func<ArkCliResult, byte[]?>? currentUsage = null) =>
             Provider = new ArkAgentPlanProvider(Registry, Bus, async token =>
             {
                 var result = await acquire(token).ConfigureAwait(false);
-                var identityPayload = currentIdentity is null
-                    ? result.CurrentIdentityPayload ?? CreateWhoamiPayload(result)
-                    : currentIdentity(result);
-                return result with { CurrentIdentityPayload = identityPayload };
+                var currentUsagePayload = currentUsage is null
+                    ? result.CurrentUsagePayload ?? result.Payload
+                    : currentUsage(result);
+                return result with { CurrentUsagePayload = currentUsagePayload };
             }, Time);
 
         public void Dispose()

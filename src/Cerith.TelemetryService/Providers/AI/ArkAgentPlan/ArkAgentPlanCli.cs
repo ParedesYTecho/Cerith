@@ -13,15 +13,24 @@ namespace Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 
 internal readonly record struct ArkCliResult(
     byte[]? Payload,
-    byte[]? CurrentIdentityPayload,
+    byte[]? DailyPayload,
+    byte[]? CurrentUsagePayload,
     string? FailureCode,
-    bool IsUnavailable)
+    string? DailyFailureCode,
+    bool IsUnavailable,
+    bool DailyIsUnavailable)
 {
-    public static ArkCliResult Success(byte[] payload) => new(payload, null, null, false);
-    public static ArkCliResult Success(byte[] payload, byte[] currentIdentityPayload) =>
-        new(payload, currentIdentityPayload, null, false);
-    public static ArkCliResult Failure(string code) => new(null, null, code, false);
-    public static ArkCliResult Unavailable(string code) => new(null, null, code, true);
+    public static ArkCliResult Success(byte[] payload) =>
+        new(payload, null, null, null, null, false, false);
+    public static ArkCliResult Success(byte[] payload, byte[] currentUsagePayload) =>
+        new(payload, null, currentUsagePayload, null, null, false, false);
+    public static ArkCliResult SuccessWithDaily(byte[] payload, byte[] dailyPayload) =>
+        new(payload, dailyPayload, null, null, null, false, false);
+    public static ArkCliResult Success(byte[] payload, byte[]? dailyPayload, string? dailyFailureCode,
+        bool dailyIsUnavailable, byte[] currentUsagePayload) =>
+        new(payload, dailyPayload, currentUsagePayload, null, dailyFailureCode, false, dailyIsUnavailable);
+    public static ArkCliResult Failure(string code) => new(null, null, null, code, code, false, false);
+    public static ArkCliResult Unavailable(string code) => new(null, null, null, code, code, true, true);
 }
 
 internal static class ArkAgentPlanCli
@@ -29,12 +38,13 @@ internal static class ArkAgentPlanCli
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
     internal const int MaxStandardOutputBytes = ArkAgentPlanParser.MaxPayloadBytes;
     internal const int MaxStandardErrorBytes = 16 * 1024;
+    internal const int MaxProfileNameLength = 256;
     internal const string Source = "ArkCli.AgentPlanUsage.v1";
+    private const string DailyAction = "usage.get_afp_usage";
     private const string ExecutableRelativePath =
         "npm/node_modules/@volcengine/ark-cli/bin/arkcli-windows-amd64.exe";
     private static readonly string[] UsageArguments =
         ["usage", "plan", "--product", "agent-plan", "--format", "json"];
-    private static readonly string[] IdentityArguments = ["auth", "whoami", "--format", "json"];
     private static readonly string[] AmbientProxyVariables =
     [
         "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
@@ -54,15 +64,41 @@ internal static class ArkAgentPlanCli
 
         using (verifiedExecutable)
         {
-            var usage = await RunAsync(executablePath, UsageArguments, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            var usage = await RunAsync(CreateStartInfo(executablePath), cancellationToken).ConfigureAwait(false);
             if (usage.Payload is null) return usage;
 
-            var currentIdentity = await RunAsync(executablePath, IdentityArguments, cancellationToken)
-                .ConfigureAwait(false);
-            if (currentIdentity.Payload is null)
-                return ArkCliResult.Failure(currentIdentity.FailureCode ?? "identity_unverified");
+            var reading = ArkAgentPlanParser.Parse(usage.Payload);
+            if (reading.Identity is null) return ArkCliResult.Success(usage.Payload);
 
-            return ArkCliResult.Success(usage.Payload, currentIdentity.Payload);
+            byte[]? dailyPayload = null;
+            string? dailyFailureCode = null;
+            var dailyIsUnavailable = false;
+            if (!reading.IsSubscribed)
+            {
+                dailyIsUnavailable = true;
+            }
+            else if (!reading.HasDailyPeriod && !IsValidProfileName(reading.Identity.Profile))
+            {
+                dailyFailureCode = "identity_unverified";
+            }
+            else if (!reading.HasDailyPeriod)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var daily = await RunAsync(CreateDailyStartInfo(executablePath, reading.Identity.Profile!),
+                    cancellationToken).ConfigureAwait(false);
+                dailyPayload = daily.Payload;
+                dailyFailureCode = daily.FailureCode;
+                dailyIsUnavailable = daily.IsUnavailable;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            var currentUsage = await RunAsync(CreateStartInfo(executablePath), cancellationToken).ConfigureAwait(false);
+            if (currentUsage.Payload is null)
+                return ArkCliResult.Failure(currentUsage.FailureCode ?? "identity_unverified");
+
+            return ArkCliResult.Success(usage.Payload, dailyPayload, dailyFailureCode, dailyIsUnavailable,
+                currentUsage.Payload);
         }
     }
 
@@ -77,12 +113,30 @@ internal static class ArkAgentPlanCli
     }
 
     internal static ProcessStartInfo CreateStartInfo(string executablePath)
-        => CreateStartInfo(executablePath, UsageArguments);
+        => CreateStartInfo(executablePath, UsageArguments, "arkcli-usage");
 
-    internal static ProcessStartInfo CreateIdentityStartInfo(string executablePath)
-        => CreateStartInfo(executablePath, IdentityArguments);
+    internal static ProcessStartInfo CreateDailyStartInfo(string executablePath, string profileName)
+        => CreateStartInfo(executablePath,
+            ["api", DailyAction, "--params", "{}", "--format", "json", $"--profile={ValidateProfileName(profileName)}"],
+            "arkcli-api-explorer");
 
-    private static ProcessStartInfo CreateStartInfo(string executablePath, string[] arguments)
+    private static string ValidateProfileName(string profileName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileName);
+        if (!IsValidProfileName(profileName))
+            throw new ArgumentException("Ark CLI profile name is invalid or exceeds its limit.", nameof(profileName));
+        return profileName;
+    }
+
+    private static bool IsValidProfileName(string? profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || profileName.Length > MaxProfileNameLength) return false;
+        foreach (var character in profileName)
+            if (char.IsControl(character)) return false;
+        return true;
+    }
+
+    private static ProcessStartInfo CreateStartInfo(string executablePath, string[] arguments, string skillName)
     {
         var expectedPath = GetExecutablePath();
         if (expectedPath is null || !StringComparer.OrdinalIgnoreCase.Equals(
@@ -103,7 +157,7 @@ internal static class ArkAgentPlanCli
         startInfo.Environment["ARKCLI_NO_UPDATE_NOTIFIER"] = "1";
         startInfo.Environment["ARKCLI_CALLER_TYPE"] = "ai_agent";
         startInfo.Environment["ARKCLI_CALLER_NAME"] = "codex";
-        startInfo.Environment["ARKCLI_SKILL_NAME"] = "arkcli-usage";
+        startInfo.Environment["ARKCLI_SKILL_NAME"] = skillName;
         startInfo.Environment.Remove("ARK_API_KEY");
         startInfo.Environment.Remove("ARK_BASE_URL");
         foreach (var variable in AmbientProxyVariables)
@@ -161,10 +215,10 @@ internal static class ArkAgentPlanCli
         }
     }
 
-    private static async Task<ArkCliResult> RunAsync(string executablePath, string[] arguments,
+    private static async Task<ArkCliResult> RunAsync(ProcessStartInfo startInfo,
         CancellationToken cancellationToken)
     {
-        using var process = new Process { StartInfo = CreateStartInfo(executablePath, arguments) };
+        using var process = new Process { StartInfo = startInfo };
         var started = false;
         try
         {

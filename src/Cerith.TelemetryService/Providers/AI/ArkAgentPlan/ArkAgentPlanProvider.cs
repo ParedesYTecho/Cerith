@@ -88,15 +88,40 @@ internal sealed class ArkAgentPlanProvider : IDisposable
                 var reading = ArkAgentPlanParser.Parse(acquisition.Payload);
                 if (reading.Identity is not null)
                 {
-                    var currentIdentity = acquisition.CurrentIdentityPayload is null
+                    var currentReading = acquisition.CurrentUsagePayload is null
                         ? null
-                        : ArkAgentPlanParser.ParseCurrentIdentity(acquisition.CurrentIdentityPayload);
-                    if (currentIdentity is null || !reading.Identity.CanCompareTo(currentIdentity))
+                        : ArkAgentPlanParser.Parse(acquisition.CurrentUsagePayload);
+                    if (currentReading?.Identity is null || !reading.Identity.CanCompareTo(currentReading.Identity))
                         reading = ArkAgentPlanReading.Failure("identity_unverified");
-                    else if (!reading.Identity.MatchesCurrent(currentIdentity))
+                    else if (!reading.Identity.MatchesCurrent(currentReading.Identity) ||
+                             reading.IsSubscribed != currentReading.IsSubscribed ||
+                             !StringComparer.Ordinal.Equals(reading.Tier, currentReading.Tier))
                         reading = ArkAgentPlanReading.Failure("identity_changed");
                 }
                 points = reading.Points;
+                if (reading.Identity is not null && reading.IsSubscribed && !reading.HasDailyPeriod)
+                {
+                    ArkAgentPlanPoint[] dailyPoints;
+                    if (acquisition.DailyPayload is not null)
+                    {
+                        dailyPoints = ArkAgentPlanParser.ParseDaily(acquisition.DailyPayload,
+                            reading.Identity, reading.Tier);
+                    }
+                    else if (acquisition.DailyFailureCode is not null || acquisition.DailyIsUnavailable)
+                    {
+                        var dailyPoint = acquisition.DailyIsUnavailable
+                            ? ArkAgentPlanPoint.Unavailable(acquisition.DailyFailureCode)
+                            : ArkAgentPlanPoint.Error(acquisition.DailyFailureCode ?? "cli_failed");
+                        dailyPoints = Enumerable.Repeat(dailyPoint, ArkAgentPlanReading.MetricsPerPeriod).ToArray();
+                    }
+                    else
+                    {
+                        dailyPoints = Enumerable.Repeat(ArkAgentPlanPoint.Unavailable(),
+                            ArkAgentPlanReading.MetricsPerPeriod).ToArray();
+                    }
+                    Array.Copy(dailyPoints, 0, points, ArkAgentPlanReading.MetricsPerPeriod,
+                        ArkAgentPlanReading.MetricsPerPeriod);
+                }
             }
             else
             {
