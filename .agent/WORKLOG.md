@@ -537,3 +537,17 @@ Verification: Release solution build 0 warnings/errors; the two targeted cases 2
 Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
 
 Hosted verification follow-up: after the test-only correction was pushed as `87d46108421b9bc67ec4ae0c09d7a8cb41efb50a`, Build and Test run [36945947340](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947340) passed, including IPC integration; Repository Quality run [36945947323](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947323) passed; CodeQL run [36945947343](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947343) was skipped under workflow policy. PR #47 remains open/draft and canonical `main` remains untouched.
+
+## 2026-10-02 — Dewey One — integration checkpoint reconciliation
+
+Runtime: authoritative current-turn turn_context verifies GPT-6 Luna, max, at 2026-10-02T00:05:51.862Z (UTC); sole shared integration owner.
+
+Reconciliation: the existing worktree and branch are codex/CER-M3-004-integration, clean at local/remote PR tip f9a1396eaed119dc62c966b5e0eceeed728f0940 before this documentation checkpoint. The user-supplied 6430669da8102f1d2f90212bf6d0643aed31a429 is an ancestor. The six commits since it (5a91da4, c6c7390, e8187f7, a87487c, 87d4610, f9a1396) contain the Copilot validation record, Kiro test-fixture corrections and checkpoint documents; no provider production edit or import was needed. Kiro and Command Code histories remain preserved. Local main is 3f5ca74a26edf88a02e6bda05f759ee3c74032cd; origin/main is 72b43b268b4992d0b0ea45b6e29067d10450274f; neither moved. PR #47 is open/draft at the same remote tip.
+
+Live evidence: the sanitized validation policy and Copilot receipt confirm LIVE_VERIFIED for actual production CopilotQuotaProvider acquisition compared with the same account's official included-usage UI for available remaining-percent observations. Missing per-bucket reset instants remain null/Unavailable; credential class, lifetime and automatic renewal remain unknown. These limits were already represented in the provider contract and PR body; no private paths, account identifiers, amounts, payloads or credentials were copied.
+
+Verification at integration PR tip f9a1396 (provider code/test content at 87d4610): serial Release solution build passed with 0 warnings/errors; guarded direct MTP DLL suites passed Core 39/39, Telemetry 295/295 and Integration 10/10. Focused gated coexistence passed 1/1 and supervisor failure isolation 8/8. Configured filename hygiene passed for 117 tracked files; scoped added-diff privacy checks found no machine paths or token-shaped values and only reserved .example.com identities in synthetic fixtures; git diff --check passed. Graphify was refreshed after its graph lacked the Kiro fixture helper: 2,742 nodes, 7,490 edges, 98 communities. At PR head f9a1396, Build and Test run 36946498585 and Repository Quality run 36946498590 passed; CodeQL run 36946498601 was skipped by policy.
+
+No shared primitive is justified: no pair of accepted providers demonstrates both identical semantics and harmful duplication. PR #47 remains draft; the 16-provider objective and M3 remain active/incomplete. No main merge.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
