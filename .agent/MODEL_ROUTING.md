@@ -18,11 +18,11 @@ Current default:
 
 ```text
 model  = GPT-6 Luna
-effort = Max
+effort = Xhigh
 route  = native Codex
 ```
 
-Use Luna Max as the normal sole repository write owner for:
+Use Luna Xhigh as the normal sole repository write owner for:
 
 - implementation after the semantics are understood;
 - deterministic tests;
@@ -114,7 +114,7 @@ when the work warrants a strong reasoning model and the Web route is not the rig
 
 This tier does **not** require trying Sol Web first. Web and native are alternative routes chosen from task shape; they are not a mandatory ladder.
 
-After the difficult reasoning point is resolved, implementation normally returns to Luna Max.
+After the difficult reasoning point is resolved, implementation normally returns to Luna Xhigh.
 
 ## Exceptional native escalation: GPT-6.1 Sol High
 
@@ -141,12 +141,12 @@ There is no single mandatory linear ladder.
 Typical execution:
 
 ```text
-Luna Max native executes
+Luna Xhigh native executes
 → strong reasoning gate chosen by task shape:
    - GPT-5.6 Sol Web High for short bounded high-quality work, or
    - GPT-6.1 Sol Medium native for substantial/context-heavy strong reasoning
 → GPT-6.1 Sol High native only for a concrete unresolved critical issue
-→ Luna Max implements/fixes/finishes
+→ Luna Xhigh implements/fixes/finishes
 ```
 
 ## Ownership
@@ -159,13 +159,13 @@ Antigravity may take independent non-overlapping work or a second-pass review wh
 
 ## Runtime continuity and review ownership
 
-Before editing on each turn, verify the latest authoritative runtime `turn_context` model and effort; prompt or spawn text is not proof, and implementation must stop if the assigned route cannot be verified. CER-M3-004 implementation owners require GPT-6 Luna Max. Resume only when the runtime explicitly preserves Luna Max and the resumed turn verifies it; otherwise continue on the same worktree and branch with a fresh Luna Max worker. MID and FINAL reviews are external, read-only GPT-6.1 Sol Medium gates and never change the implementation owner's runtime. Follow the two-gate cadence and common checklist in `.agent/TASKS.md`.
+Before editing on each turn, verify the latest authoritative runtime `turn_context` model and effort; prompt or spawn text is not proof. For this CER-M3-004 task, use GPT-6 Luna Xhigh through native Codex with one writer and no provider-level Sol review gates. After a mission candidate exists, request exactly one independent, read-only GPT-6.1 Sol Medium review; it does not change the implementation owner's runtime.
 
 ## Quota and quality rule
 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
-- Use Luna Max for execution and ordinary work.
+- Use Luna Xhigh for execution and ordinary work in this task.
 - Use Sol Web High when a bounded problem benefits from stronger reasoning and Web's slower/smaller context is acceptable.
 - Use GPT-6.1 Sol Medium native when strong reasoning, larger context or the native harness is materially useful.
 - Use GPT-6.1 Sol High only when Medium leaves a critical issue unresolved.

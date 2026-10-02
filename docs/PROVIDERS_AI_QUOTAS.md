@@ -382,6 +382,12 @@ The bounded validation host had no compatible local CLI/session or official brow
 
 Missing CLI/source fields remain valueless `Unavailable`; invalid signatures or malformed fields remain sanitized errors. Organization-package values are deliberately not published as quota until their ownership, unit and semantics are verified. No reset instant or same-account live agreement is claimed.
 
+## CER-M3-004 — Qoder International (deferred)
+
+Qoder International remains distinct from Qoder CN. Current first-party documentation describes the CLI `/usage` panel and the Agent SDK `getUsageInfo()` account-quota method ([CLI usage](https://docs.qoder.com/cli/usage), [SDK cost and usage](https://docs.qoder.com/cli/sdk/cost-usage)). The SDK documentation describes a JSONL stdio control protocol ([SDK transport](https://docs.qoder.com/cli/sdk/how-it-works)).
+
+The preserved `codex/CER-M3-004-qoder` branch instead queries the signed desktop process over local named-pipe methods `auth/status` and `credit/usage`. I found no first-party contract for those desktop IPC methods, so their support/versioning remains unresolved. Switching to the documented SDK would require a separate SDK/runtime integration and is outside this low-dependency reconciliation. The branch remains preserved at `7a1a89e9f88ea1de57f5bf180f4e8bfd382c88fb`, is not registered or imported, and has no candidate MetricIds. The Qoder CLI/process was not found on this validation host; no local or same-account live comparison was run.
+
 ## CER-M3-004 — Volcengine Ark Agent Plan
 
 The provider uses the official Ark CLI control-plane path. `usage plan --product agent-plan --format json --profile=<viewer.profile>` supplies the personal plan's 5-hour, weekly and monthly periods and the viewer scope. The CLI's registered `api usage.get_afp_usage --params {} --format json --profile=<viewer.profile>` action supplies the backend daily period omitted by the product projection. After acquisition Cerith runs an unforced `usage plan` read and publishes only if account, user, profile, region, project, auth method, root status, plan tier and subscription still match. The profile is validated and pinned only for the documented CLI calls; Cerith does not read, store, renew or rewrite Ark credentials.
@@ -408,6 +414,23 @@ The preserved provider branch `codex/CER-M3-004-ark-agent` is accepted for stagi
 | `ai.ark.agent_plan.monthly.total` | decimal / AFP / quota_limit | `periods[label=monthly].total`. |
 | `ai.ark.agent_plan.monthly.used_percent` | decimal / % / quota_used_percent | `periods[label=monthly].percent`, used percentage. |
 | `ai.ark.agent_plan.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`. |
+
+## CER-M3-004 — Volcengine Ark Coding Plan
+
+The provider uses the official Ark CLI `usage plan --product coding-plan --profile <profile> --env prod --format json` route, with `auth whoami` before and after acquisition. The parser accepts the personal Coding Plan product only, compares the profile/account/user identity across the read, and currently accepts `auth_method=sso`; other auth methods remain unavailable. Official [usage-plan documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md) defines Coding Plan as a quota snapshot with session, weekly and monthly windows. The official [auth-mode documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md) assigns SSO/STS renewal to the CLI/SDK. Cerith does not read or persist credentials; the official CLI remains their owner and may renew its own session.
+
+The validation host has no `arkcli` command on `PATH`, so no live command, account comparison or credential-side-effect probe was run. Live validation is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`; this does not imply an account is absent elsewhere. No login, consent, credential mutation, account creation or paid usage was attempted.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.ark-coding-plan.quota.session.used` | double / % / quota_used | `items[product=coding-plan].periods[label=session].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.weekly.used` | double / % / quota_used | `items[product=coding-plan].periods[label=weekly].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.monthly.used` | double / % / quota_used | `items[product=coding-plan].periods[label=monthly].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.session.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=session].reset_at`, explicit UTC or numeric offset. |
+| `ai.ark-coding-plan.quota.weekly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=weekly].reset_at`, explicit UTC or numeric offset. |
+| `ai.ark-coding-plan.quota.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`, explicit UTC or numeric offset. |
+
+The percentages are used values and are not inverted into remaining. Missing fields remain `Unavailable`; invalid percentages or reset timestamps are valueless errors. An elapsed reset makes both metrics for that period unavailable. Team products and unsupported auth methods are not inferred or substituted. The preserved provider branch is `codex/CER-M3-004-ark-coding-plan` at `c5841bf2ee6140d61ee517db62d8b176a996ce21`; integration and automated validation are recorded in `.agent/TASKS.md` and `.agent/WORKLOG.md`.
 
 Missing values remain unavailable; malformed values are errors. Values are not rounded or clamped, and account/profile transitions fail closed before publication. No direct API request, account creation, login, credential mutation, or paid usage was performed.
 

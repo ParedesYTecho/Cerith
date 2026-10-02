@@ -66,6 +66,11 @@ internal static class Program
             using var antigravityQuotaProvider = new AntigravityQuotaProvider(registry, bus);
             await antigravityQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "antigravity", stop.Token);
+        var arkCodingPlanQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var arkCodingPlanProvider = new ArkCodingPlanQuotaProvider(registry, bus);
+            await arkCodingPlanProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "ark-coding-plan", stop.Token);
         var arkAgentPlanQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
         {
             using var arkAgentPlanProvider = new ArkAgentPlanProvider(registry, bus);
@@ -104,15 +109,15 @@ internal static class Program
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
             "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
-            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, Command Code, Qoder CN, and Ark Agent Plan quota providers active");
+            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, Command Code, Qoder CN, Ark Coding Plan, and Ark Agent Plan quota providers active");
 
         try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
             kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
-            antigravityQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
             kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");

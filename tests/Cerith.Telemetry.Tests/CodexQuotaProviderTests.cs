@@ -680,6 +680,7 @@ public sealed class CodexQuotaProviderTests
     [DataRow("command-code")]
     [DataRow("qoder-cn")]
     [DataRow("ark-agent-plan")]
+    [DataRow("ark-coding-plan")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -786,6 +787,7 @@ public sealed class CodexQuotaProviderTests
         using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
         using var zcodeHarness = new ZCodeQuotaProviderTests.Harness(registry, bus);
+        using var arkCodingPlanFixture = new ArkCodingPlanQuotaProviderTests.Fixture(registry, bus);
         _ = new QoderCnQuotaProvider(registry, bus, new QoderCnCliClient(null), TimeProvider.System);
         const string arkUsage = """
             {"viewer":{"auth_method":"sso","is_root":false,"user_id":"synthetic-user","account_id":"synthetic-account","profile":"synthetic-profile","region":"cn-beijing","project_name":"default"},
@@ -804,6 +806,8 @@ public sealed class CodexQuotaProviderTests
         using var arkAgentPlanProvider = new ArkAgentPlanProvider(registry, bus,
             _ => Task.FromResult(ArkCliResult.Success(arkUsagePayload, arkDailyPayload, null, false, arkUsagePayload)),
             TimeProvider.System);
+        arkCodingPlanFixture.EnqueueSuccessfulCycle();
+        await arkCodingPlanFixture.Provider.PollOnceAsync();
         var copilotResponses = new Queue<string>();
         const string accountId = "24680";
         const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
@@ -887,6 +891,8 @@ public sealed class CodexQuotaProviderTests
             QoderCnQuotaProviderTests.IncludedRemainingMetricId)).GetAsyncEnumerator();
         await using var arkAgentPlanReader = bus.Subscribe(new MetricId(
             "ai.ark.agent_plan.daily.used")).GetAsyncEnumerator();
+        await using var arkCodingPlanReader = bus.Subscribe(new MetricId(
+            "ai.ark-coding-plan.quota.session.used")).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
@@ -907,6 +913,7 @@ public sealed class CodexQuotaProviderTests
             var commandCodeRead = commandCodeReader.MoveNextAsync().AsTask();
             var qoderCnRead = qoderCnReader.MoveNextAsync().AsTask();
             var arkAgentPlanRead = arkAgentPlanReader.MoveNextAsync().AsTask();
+            var arkCodingPlanRead = arkCodingPlanReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
@@ -919,9 +926,11 @@ public sealed class CodexQuotaProviderTests
             await commandCodeProvider.PublishCurrentAsync();
             await QoderCnQuotaProviderTests.PublishSyntheticQuotaAsync(bus);
             await arkAgentPlanProvider.PollOnceAsync();
+            await arkCodingPlanFixture.Provider.PublishCurrentAsync();
 
             var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
-                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead, arkAgentPlanRead)
+                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead, arkAgentPlanRead,
+                    arkCodingPlanRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -969,6 +978,10 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(MetricConfidence.Measured, arkAgentPlanReader.Current.Confidence);
             Assert.AreEqual(22.5m, arkAgentPlanReader.Current.Value!.Value.AsDecimal());
             Assert.AreEqual("ArkCli.AgentPlanUsage.v1", arkAgentPlanReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, arkCodingPlanReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, arkCodingPlanReader.Current.Confidence);
+            Assert.AreEqual(50d, arkCodingPlanReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("ArkCodingPlan.Usage.Plan.ReadOnly.v1", arkCodingPlanReader.Current.Source);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>

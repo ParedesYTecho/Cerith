@@ -261,18 +261,24 @@ public sealed class ArkCodingPlanQuotaProviderTests
         Assert.Fail("Expected the pending operation to be canceled.");
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "cerith-ark-provider-" + Guid.NewGuid().ToString("N"));
-        public MetricRegistry Registry { get; } = new();
-        public MetricBus Bus { get; } = new(1);
-        public ManualTimeProvider Time { get; } = new(InitialUtc);
-        public ScriptedRunner Runner { get; }
-        public ArkCodingPlanQuotaAcquirer Acquirer { get; }
-        public ArkCodingPlanQuotaProvider Provider { get; }
+        private readonly bool _ownsBus;
+        public MetricRegistry Registry { get; }
+        public MetricBus Bus { get; }
+        internal ManualTimeProvider Time { get; } = new(InitialUtc);
+        internal ScriptedRunner Runner { get; }
+        internal ArkCodingPlanQuotaAcquirer Acquirer { get; }
+        internal ArkCodingPlanQuotaProvider Provider { get; }
 
-        public Fixture()
+        public Fixture() : this(null, null) { }
+
+        public Fixture(MetricRegistry? registry, MetricBus? bus)
         {
+            Registry = registry ?? new MetricRegistry();
+            Bus = bus ?? new MetricBus(1);
+            _ownsBus = bus is null;
             Directory.CreateDirectory(_root);
             var cliPath = Path.Combine(_root, "arkcli.exe");
             File.WriteAllBytes(cliPath, []);
@@ -287,6 +293,12 @@ public sealed class ArkCodingPlanQuotaProviderTests
         public void EnqueuePlan(string json) => Runner.EnqueueJson(json);
         public void EnqueueFailure(string code) => Runner.EnqueueFailure(code);
         public void EnqueuePending(TaskCompletionSource<bool> entered) => Runner.EnqueuePending(entered);
+        public void EnqueueSuccessfulCycle()
+        {
+            EnqueueIdentity(IdentityA);
+            EnqueuePlan(UsageJson(InitialUtc.AddMinutes(5)));
+            EnqueueIdentity(IdentityA);
+        }
 
         public async Task<MetricSnapshot> ReadMetricAsync(string id)
         {
@@ -300,12 +312,12 @@ public sealed class ArkCodingPlanQuotaProviderTests
         public void Dispose()
         {
             Provider.Dispose();
-            Bus.Dispose();
+            if (_ownsBus) Bus.Dispose();
             Directory.Delete(_root, recursive: true);
         }
     }
 
-    private sealed class ScriptedRunner
+    internal sealed class ScriptedRunner
     {
         private readonly Queue<Func<CancellationToken, Task<byte[]>>> _responses = new();
         public List<ProcessStartInfo> Commands { get; } = [];
@@ -340,7 +352,7 @@ public sealed class ArkCodingPlanQuotaProviderTests
         }
     }
 
-    private sealed class ManualTimeProvider(DateTimeOffset initialUtc) : TimeProvider
+    internal sealed class ManualTimeProvider(DateTimeOffset initialUtc) : TimeProvider
     {
         private DateTimeOffset _utc = initialUtc;
         private long _timestamp = -TimeSpan.TicksPerDay;
