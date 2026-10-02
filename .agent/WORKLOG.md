@@ -590,3 +590,12 @@ Event: decision
 Summary: Preserved the provider branch and classified it EVIDENCE_BLOCKED because no safe current-owner boundary is established across an in-flight profile switch.
 Files: .agent/TASKS.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/WORKLOG.md.
 Result: Branch codex/CER-M3-004-ark-agent is clean at 680622c5df8b6fee4be989f15745d840b62a0db9. Focused Release tests passed 13/13 and the Release build had 0 warnings/errors. The response viewer binds the returned snapshot but does not prove the active profile at publication. First-party auth status/whoami can refresh, so no auth command was run. The host lacks a compatible CLI/session, but LIVE_NOT_AVAILABLE_ON_THIS_HOST is not valid while identity remains unresolved. No provider import, credential mutation, or canonical-main change.
+
+
+## 2026-10-02 06:34 — Dewey One — bounded Ark identity research
+
+Event: discovery
+Summary: Current first-party Ark docs recommend auth whoami for the ordinary identity summary, specify profile selection precedence, and assign STS renewal to the official CLI; they do not guarantee whoami never refreshes.
+Files: .agent/WORKLOG.md.
+Result: Luna checked usage-plan, profile, config and auth-mode references directly. A narrow external research request explicitly selected chatgpt-web/gpt-5.6-sol at high effort, but the dispatch/result exposed no execution receipt; WEB_SOL_ROUTE_UNVERIFIED. Its output is not counted as a provider review or gate. The preserved Ark Agent Plan worker is evaluating a bounded post-acquisition identity check. No local auth command, credential access, or refresh was performed.
+Sources: https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-profile/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-config/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md
