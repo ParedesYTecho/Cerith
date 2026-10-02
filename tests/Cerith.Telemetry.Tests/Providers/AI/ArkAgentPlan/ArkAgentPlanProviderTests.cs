@@ -647,6 +647,39 @@ public sealed class ArkAgentPlanProviderTests
         }
     }
 
+    [TestMethod]
+    public async Task ShutdownDoesNotWaitForNonCooperativeAcquisition()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var acquisition = new TaskCompletionSource<ArkCliResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var harness = new Harness(_ =>
+        {
+            entered.TrySetResult();
+            return acquisition.Task;
+        });
+        var readers = MetricIds.Select(id => harness.Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray();
+        var pendingReads = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
+        using var stop = new CancellationTokenSource();
+        var run = harness.Provider.RunAsync(stop.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            stop.Cancel();
+            await run.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.IsFalse(acquisition.Task.IsCompleted);
+            await Task.WhenAll(pendingReads).WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.IsTrue(readers.All(reader => reader.Current.State == MetricState.Stopped &&
+                reader.Current.Value is null));
+        }
+        finally
+        {
+            stop.Cancel();
+            acquisition.TrySetResult(ArkCliResult.Unavailable("cli_not_found"));
+            await run.WaitAsync(TimeSpan.FromSeconds(3));
+            foreach (var reader in readers) await reader.DisposeAsync();
+        }
+    }
+
     private static MetricDescriptor FindDescriptor(MetricRegistry registry, string id)
     {
         Assert.IsTrue(registry.TryGet(new MetricId(id), out var descriptor));

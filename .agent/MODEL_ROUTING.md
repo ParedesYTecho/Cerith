@@ -2,6 +2,12 @@
 
 Operational preference only. This may change frequently.
 
+## Current CER-M3-004 autonomous marathon override
+
+For this run, the sole execution/write owner is GPT-6.1 Sol, Medium effort, native Codex; fast mode disabled and default concurrency one. The general routing guidance below remains historical/default context and does not override this run. No routine swarm or per-provider Sol gates. A bounded read-only specialist is optional only for separable work that immediately reduces technical risk.
+
+The owner performs hostile self-review but cannot count it as independent review. At MISSION_CANDIDATE, prepare the packet for a fresh future read-only context, keep PR #47 draft, and do not merge canonical main. This is temporary operational routing, not a permanent product or architecture decision.
+
 ## Core rule
 
 Treat **model**, **reasoning effort** and **route** as separate decisions.
@@ -159,7 +165,7 @@ Antigravity may take independent non-overlapping work or a second-pass review wh
 
 ## Runtime continuity and review ownership
 
-Before editing on each turn, verify the latest authoritative runtime `turn_context` model and effort; prompt or spawn text is not proof. For this CER-M3-004 task, use GPT-6 Luna Xhigh through native Codex with one writer and no provider-level Sol review gates. After a mission candidate exists, request exactly one independent, read-only GPT-6.1 Sol Medium review; it does not change the implementation owner's runtime.
+Use the calling harness's authoritative runtime metadata when available; do not invent execution receipts. The current CER-M3-004 marathon follows the override above. Earlier Luna execution and provider-specific review events remain historical evidence. The next final review must use a fresh read-only context and must not be this execution owner's self-review.
 
 ## Quota and quality rule
 

@@ -79,7 +79,7 @@ internal sealed class ArkAgentPlanProvider : IDisposable
         await _pollLock.WaitAsync(stop.Token).ConfigureAwait(false);
         try
         {
-            var acquisition = await _acquire(stop.Token).ConfigureAwait(false);
+            var acquisition = await _acquire(stop.Token).WaitAsync(stop.Token).ConfigureAwait(false);
             stop.Token.ThrowIfCancellationRequested();
             var observedAt = _timeProvider.GetUtcNow();
             ArkAgentPlanPoint[] points;
