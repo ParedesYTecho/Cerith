@@ -551,3 +551,17 @@ Verification at integration PR tip f9a1396 (provider code/test content at 87d461
 No shared primitive is justified: no pair of accepted providers demonstrates both identical semantics and harmful duplication. PR #47 remains draft; the 16-provider objective and M3 remain active/incomplete. No main merge.
 
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Kiro/Command Code integration checkpoint
+
+Runtime: authoritative current-session `turn_context` verifies GPT-6 Luna, max. Sole shared integration owner; provider worktrees and accepted histories were not resumed or recreated.
+
+Reconciliation: resumed the existing `codex/CER-M3-004-integration` worktree. Supplied checkpoint `6430669da8102f1d2f90212bf6d0643aed31a429` is an ancestor. Before this docs-only checkpoint, local HEAD and PR #47 remote tip were both `c9ba4f1286e7c76ad35148c4d3a025dade6966b0`, clean. PR #47 is open/draft. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains mission baseline `72b43b268b4992d0b0ea45b6e29067d10450274f`. No main merge.
+
+Integration remains limited to the already-imported exact Kiro and Command Code FINALPASS histories in `4d7f0ada` and `82da0b3`. Their existing registration, metric catalog, supervisor failure-isolation coverage, gated same-bus coexistence and bounded cancel/drain are preserved. ZCode's coexistence fixture directly reuses the existing Harness; no wrapper or shared primitive is needed. Cursor auth remains DEFERRED/UNRESOLVED and live comparison NOT RUN. The sanitized validation receipt records Copilot `LIVE_VERIFIED` only for actual production-provider versus same-account official UI available remaining-percent observations; absent bucket resets remain null/Unavailable, and credential class/lifetime/renewal are unknown. No private account data or paths were copied.
+
+The hosted Kiro identity-test timeout was not fixed by increasing its injected deadline from five to ten seconds. The final test-only correction replaces the synthetic PowerShell child with a bounded temporary `cmd.exe` fixture; provider production code and cadence are unchanged. At `c9ba4f1`, serial Release build passed with 0 warnings/errors; guarded MTP suites passed Core 39/39, Telemetry 295/295 and Integration 10/10; focused coexistence passed 1/1 and supervisor isolation 8/8. The local `dotnet test` bridge yielded zero tests, so the built test applications ran directly with minimum-count guards. Hosted Build and Test `36952045701` and Repository Quality `36952045748` passed; CodeQL `36952045695` was skipped by policy. Graphify was refreshed after the source/test change (2,743 nodes, 7,491 edges, 99 communities). Configured filename hygiene passed for 117 tracked files; scoped privacy patterns and `git diff --check` passed. These checks are not a comprehensive secret scan.
+
+No shared primitive is justified: no two accepted providers show the same relevant semantics plus harmful duplication. Updated the operational checkpoint and PR #47 evidence while retaining the draft. CER-M3-004 and the 16-provider mission remain active/incomplete.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
