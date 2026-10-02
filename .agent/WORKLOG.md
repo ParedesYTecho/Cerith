@@ -565,3 +565,13 @@ The hosted Kiro identity-test timeout was not fixed by increasing its injected d
 No shared primitive is justified: no two accepted providers show the same relevant semantics plus harmful duplication. Updated the operational checkpoint and PR #47 evidence while retaining the draft. CER-M3-004 and the 16-provider mission remain active/incomplete.
 
 Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Qoder CN acceptance and routing reconciliation
+
+Runtime: this integration session's authoritative `turn_context` verifies GPT-6 Luna, max. GPT-6 Luna Max owns mission coordination, research, implementation, hostile provider self-review, and integration. Current policy has no per-provider Sol gate; one global read-only GPT-5.6 Sol High Web review may occur at candidate completion only if its route/model receipt is verifiable. Earlier Sol gates remain historical; global `.agent/MODEL_ROUTING.md` was not changed.
+
+Qoder CN's provider handoff and exact clean branch tip confirm FINAL PASS / READY FOR INTEGRATION at `b2bc2f59018e63aad5938e92a3494b9ded5e4baf`, with provider-local Release build 0 warnings/errors and Telemetry 232/232. Its bounded live disposition is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`: neither official CLI command is on PATH or running and no compatible local product/config/browser route was found. No install, login, account creation, or usage occurred; this does not imply accounts are absent elsewhere. Positive verification against the official binary and same-account UI remains unverified. Qoder CN remains unimported and queued for a separate small group after Qoder International completes its own FINAL PASS. Qoder International and Ark Coding Plan remain at MID; Ark Agent Plan remains NOT STARTED. Other provider dispositions are unchanged.
+
+Before this docs checkpoint, integration branch and PR #47 remote tip were clean at `24f8488b448e48e8ff09540c09714556b7298fc5`; Build and Test `36953109826` and Repository Quality `36953109811` passed, and CodeQL `36953109831` was skipped by policy. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains `72b43b268b4992d0b0ea45b6e29067d10450274f`. No provider source or global routing file changed; no Qoder implementation was imported and no main merge occurred.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
