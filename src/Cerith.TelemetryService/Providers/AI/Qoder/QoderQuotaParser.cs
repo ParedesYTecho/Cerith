@@ -29,8 +29,9 @@ internal static class QoderQuotaParser
 {
     internal const int MetricCount = 16;
     internal const int MaxJsonDepth = 20;
-    // TokenTracker's pinned Qoder test identifies this exact epoch value as no expiry.
-    internal const long NoExpiryEpochMilliseconds = 253402214400000;
+    // Qoder uses far-future expirations for no-expiry plans; the reference rejects 2100 and later.
+    internal static readonly long NoExpiryThresholdEpochMilliseconds =
+        new DateTimeOffset(2100, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds();
 
     internal static readonly string[] MetricIds =
     [
@@ -259,7 +260,7 @@ internal static class QoderQuotaParser
             return QoderQuotaPoint.Unavailable();
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var milliseconds))
             return QoderQuotaPoint.Error("invalid_timestamp");
-        if (milliseconds == NoExpiryEpochMilliseconds)
+        if (milliseconds >= NoExpiryThresholdEpochMilliseconds)
             return QoderQuotaPoint.Unavailable();
 
         try

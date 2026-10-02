@@ -210,18 +210,24 @@ public sealed class QoderQuotaParserTests
     }
 
     [TestMethod]
-    public void ExactKnownNoExpiryValueIsAbsentAndOtherEpochMillisecondsRemainTimestamps()
+    public void FarFutureNoExpirySentinelsAreAbsentAndOrdinaryEpochMillisecondsRemainTimestamps()
     {
-        var sentinelJson = $$"""
-            { "userId": "synthetic-user-1", "expiresAt": {{QoderQuotaParser.NoExpiryEpochMilliseconds}} }
+        var boundaryJson = $$"""
+            { "userId": "synthetic-user-1", "expiresAt": {{QoderQuotaParser.NoExpiryThresholdEpochMilliseconds}} }
             """;
-        var datedJson = """
+        const string sentinelJson = """
+            { "userId": "synthetic-user-1", "expiresAt": 253402214400000 }
+            """;
+        const string datedJson = """
             { "userId": "synthetic-user-1", "expiresAt": 1798761600000 }
             """;
 
+        var boundary = Parse(boundaryJson, new QoderSessionIdentity("synthetic-user-1", null));
         var sentinel = Parse(sentinelJson, new QoderSessionIdentity("synthetic-user-1", null));
         var dated = Parse(datedJson, new QoderSessionIdentity("synthetic-user-1", null));
 
+        Assert.AreEqual(MetricState.Unavailable, boundary.Points[15].State);
+        Assert.IsNull(boundary.Points[15].Value);
         Assert.AreEqual(MetricState.Unavailable, sentinel.Points[15].State);
         Assert.IsNull(sentinel.Points[15].Value);
         Assert.AreEqual(DateTimeOffset.FromUnixTimeMilliseconds(1798761600000),
