@@ -10,6 +10,7 @@ namespace Cerith.TelemetryService;
 internal sealed class QoderCnQuotaProvider
 {
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan StopPublicationTimeout = TimeSpan.FromMilliseconds(250);
     private const string Source = "QoderCN.CliControl.v1";
 
     private static readonly (string Id, string Name, string SemanticType, MetricValueKind Kind, string? Unit)[] Definitions =
@@ -77,7 +78,7 @@ internal sealed class QoderCnQuotaProvider
         finally
         {
             Interlocked.Exchange(ref _runState, 2);
-            await PublishStoppedAsync().ConfigureAwait(false);
+            await PublishStoppedBestEffortAsync().ConfigureAwait(false);
         }
     }
 
@@ -103,14 +104,27 @@ internal sealed class QoderCnQuotaProvider
         }
     }
 
-    private async Task PublishStoppedAsync()
+    private async Task PublishStoppedBestEffortAsync()
+    {
+        using var deadline = new CancellationTokenSource(StopPublicationTimeout);
+        try
+        {
+            await PublishStoppedAsync(deadline.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            return;
+        }
+    }
+
+    private async Task PublishStoppedAsync(CancellationToken cancellationToken)
     {
         var observedAt = _timeProvider.GetUtcNow();
         for (var i = 0; i < _descriptors.Length; i++)
         {
             var snapshot = new MetricSnapshot(_descriptors[i].Id, null, observedAt, MetricState.Stopped,
                 MetricConfidence.Unknown, source: Source);
-            await _bus.PublishAsync(snapshot).ConfigureAwait(false);
+            await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
         }
     }
 }

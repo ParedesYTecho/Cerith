@@ -103,10 +103,16 @@ internal sealed class QoderCnCliClient
         {
             if (process is not null)
             {
-                await StopProcessAsync(process).ConfigureAwait(false);
-                if (stderrDrain is not null)
-                    await stderrDrain.WaitAsync(StopTimeout).ConfigureAwait(false);
-                process.Dispose();
+                try
+                {
+                    await StopProcessAsync(process).ConfigureAwait(false);
+                    if (stderrDrain is not null)
+                        await stderrDrain.WaitAsync(StopTimeout).ConfigureAwait(false);
+                }
+                finally
+                {
+                    process.Dispose();
+                }
             }
         }
     }

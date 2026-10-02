@@ -69,6 +69,32 @@ public sealed class QoderCnQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task CancellationCompletesWhenBestEffortStoppedPublicationHitsFullSubscriber()
+    {
+        var registry = new MetricRegistry();
+        using var bus = new MetricBus(1);
+        var metricId = new MetricId(MetricIds[0]);
+        await using var reader = bus.Subscribe(metricId).GetAsyncEnumerator();
+        var firstRead = reader.MoveNextAsync().AsTask();
+        MetricSnapshot CreateSnapshot(double value) => new(metricId, MetricValue.From(value),
+            TimeProvider.System.GetUtcNow(), MetricState.Fresh, MetricConfidence.Measured, source: "test");
+
+        await bus.PublishAsync(CreateSnapshot(1));
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(1)));
+        await bus.PublishAsync(CreateSnapshot(2));
+
+        var provider = new QoderCnQuotaProvider(registry, bus, new QoderCnCliClient(null), TimeProvider.System);
+        using var cancellation = new CancellationTokenSource();
+        var run = provider.RunAsync(cancellation.Token);
+        Assert.IsFalse(run.IsCompleted);
+        cancellation.Cancel();
+
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(2d, reader.Current.Value!.Value.AsDouble());
+    }
+
+    [TestMethod]
     public async Task UntrustedCliPublishesNoQuotaAndStopsCleanlyOnCancellation()
     {
         var directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"qoder-cn-provider-{Guid.NewGuid():N}");
