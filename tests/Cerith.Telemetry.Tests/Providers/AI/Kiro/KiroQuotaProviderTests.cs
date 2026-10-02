@@ -221,10 +221,22 @@ public sealed class KiroQuotaProviderTests
     [TestMethod]
     public async Task IdentityClientReadsOnlySyntheticCliWhoAmIJson()
     {
-        const string script = "[Console]::Out.WriteLine('{\"account\":{\"opaque\":\"synthetic\"}}')";
+        const string script = """
+            @echo off
+            echo {"account":{"opaque":"synthetic"}}
+            """;
 
-        var observation = await KiroAcpUsageClient.ReadIdentityAsync(TimeProvider.System, IdentityKey,
-            CancellationToken.None, CreatePowerShellStartInfo(script), TimeSpan.FromSeconds(10));
+        var (startInfo, scriptPath) = CreateCommandStartInfo(script);
+        KiroIdentityObservation observation;
+        try
+        {
+            observation = await KiroAcpUsageClient.ReadIdentityAsync(TimeProvider.System, IdentityKey,
+                CancellationToken.None, startInfo, TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            File.Delete(scriptPath);
+        }
 
         Assert.AreEqual(KiroIdentityStatus.Ready, observation.Status);
         Assert.AreEqual(32, observation.Fingerprint!.Length);
@@ -246,7 +258,7 @@ public sealed class KiroQuotaProviderTests
             echo {"jsonrpc":"2.0","method":"_kiro/error/rate_limit","params":{"opaque":true}}
             """;
 
-        var (startInfo, scriptPath) = CreateAcpCommandStartInfo(script);
+        var (startInfo, scriptPath) = CreateCommandStartInfo(script);
         KiroAcquisition acquisition;
         try
         {
@@ -278,7 +290,7 @@ public sealed class KiroQuotaProviderTests
             echo {"jsonrpc":"2.0","id":2,"result":{"synthetic":true}}
             """;
 
-        var (startInfo, scriptPath) = CreateAcpCommandStartInfo(script);
+        var (startInfo, scriptPath) = CreateCommandStartInfo(script);
         KiroAcquisition acquisition;
         try
         {
@@ -1202,7 +1214,7 @@ public sealed class KiroQuotaProviderTests
         return startInfo;
     }
 
-    private static (ProcessStartInfo StartInfo, string ScriptPath) CreateAcpCommandStartInfo(string script)
+    private static (ProcessStartInfo StartInfo, string ScriptPath) CreateCommandStartInfo(string script)
     {
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         var scriptPath = Path.Combine(Path.GetTempPath(), $"cerith-kiro-acp-{Guid.NewGuid():N}.cmd");
