@@ -99,7 +99,7 @@ public sealed class QoderQuotaParserTests
     }
 
     [TestMethod]
-    public void AbsentOrganizationPackagePreservesAggregateFields()
+    public void AbsentOrganizationPackageWithholdsAggregateFields()
     {
         const string json = """
             {
@@ -111,9 +111,7 @@ public sealed class QoderQuotaParserTests
 
         var reading = Parse(json, new QoderSessionIdentity("synthetic-user-1", null));
 
-        AssertMeasured(reading.Points[13], 31.25d);
-        Assert.AreEqual(MetricState.Fresh, reading.Points[14].State);
-        Assert.IsFalse(reading.Points[14].Value!.Value.AsBoolean());
+        AssertAggregateScopeUnverified(reading);
     }
 
     [TestMethod]
@@ -182,7 +180,8 @@ public sealed class QoderQuotaParserTests
             {
               "userId": "synthetic-user-1",
               "totalUsagePercentage": 100.01,
-              "userQuota": { "used": 5, "total": 10, "remaining": 5, "percentage": -1, "unit": "requests" }
+              "userQuota": { "used": 5, "total": 10, "remaining": 5, "percentage": -1, "unit": "requests" },
+              "orgResourcePackage": { "available": false }
             }
             """;
 

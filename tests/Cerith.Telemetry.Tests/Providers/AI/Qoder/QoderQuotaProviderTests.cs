@@ -134,7 +134,8 @@ public sealed class QoderQuotaProviderTests
               "totalUsagePercentage": 42,
               "isQuotaExceeded": false,
               "userQuota": { "used": 5, "total": 10, "remaining": 5, "unit": "credits" },
-              "addOnQuota": { "used": 2, "total": 20, "remaining": 18, "unit": "credits" }
+              "addOnQuota": { "used": 2, "total": 20, "remaining": 18, "unit": "credits" },
+              "orgResourcePackage": { "available": false }
             }
             """;
         var registry = new MetricRegistry();

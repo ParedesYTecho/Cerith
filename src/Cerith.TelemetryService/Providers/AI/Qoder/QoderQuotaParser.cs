@@ -182,10 +182,10 @@ internal static class QoderQuotaParser
                     points[index] = QoderQuotaPoint.Unavailable("scope_unverified");
             }
 
-            var organizationMayBeAvailable = root.TryGetProperty("orgResourcePackage", out var organizationPackage) &&
-                (organizationPackage.ValueKind != JsonValueKind.Object ||
-                 !organizationPackage.TryGetProperty("available", out var organizationAvailable) ||
-                 organizationAvailable.ValueKind != JsonValueKind.False);
+            var organizationMayBeAvailable = !root.TryGetProperty("orgResourcePackage", out var organizationPackage) ||
+                organizationPackage.ValueKind != JsonValueKind.Object ||
+                !organizationPackage.TryGetProperty("available", out var organizationAvailable) ||
+                organizationAvailable.ValueKind != JsonValueKind.False;
             if (organizationMayBeAvailable)
             {
                 points[13] = QoderQuotaPoint.Unavailable("scope_unverified");
