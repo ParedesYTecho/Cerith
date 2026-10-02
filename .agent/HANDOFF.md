@@ -4,11 +4,11 @@ Status: CER-M3-004 remains IN PROGRESS and M3 ACTIVE / INCOMPLETE. Ten non-Codex
 
 Integration state: Ark Coding Plan tip c5841bf2ee6140d61ee517db62d8b176a996ce21 is imported by merge ed1a6ec. The temporary Qoder International merge was reverted in 9319474; branch tip remains 7a1a89e9f88ea1de57f5bf180f4e8bfd382c88fb. Qoder's current first-party docs document CLI /usage and SDK getUsageInfo(), but not the branch's desktop IPC calls auth/status and credit/usage.
 
-Verification: Release solution build passed with 0 warnings/errors. Guarded direct MTP suites passed Core 39/39, Telemetry 355/355 and Integration 10/10. Filename hygiene and git diff --check passed. Scoped privacy patterns found no personal paths, known token patterns or bearer values; synthetic .invalid fixture email matches were manually reviewed. This is not a comprehensive secret scan. Ark Coding Plan and Qoder International live comparison were not run; arkcli, qoder and qodercli were not found on PATH. Hosted CI for the new candidate is pending.
+Verification: Release solution build passed with 0 warnings/errors. Guarded direct MTP suites passed Core 39/39, Telemetry 355/355 and Integration 10/10. Filename hygiene and git diff --check passed. Scoped privacy patterns found no personal paths, known token patterns or bearer values; synthetic .invalid fixture email matches were manually reviewed. This is not a comprehensive secret scan. Ark Coding Plan and Qoder International live comparison were not run; arkcli, qoder and qodercli were not found on PATH. Hosted Build and Test passed at d3cfc24 (run 37002245312); Repository Quality passed (run 37002245300); CodeQL was skipped by policy (run 37002245169). The review-packet commit will require fresh CI.
 
 Mission review cadence: keep PR #47 draft. After local candidate validation and hosted CI, request exactly one read-only GPT-6.1 Sol Medium review. Stop before final approval or canonical-main merge. Do not claim 17/17 coverage, mission completion or M3 completion.
 
-Next: finish Graphify refresh and final diff review, commit and push the authorized candidate, update the draft PR description, and inspect hosted CI. Preserve all provider worktrees. Once CI passes, prepare the bounded global-review packet; never merge main in this task.
+Next: finish Graphify refresh and final diff review, commit and push the authorized candidate, update the draft PR description, and inspect hosted CI. Preserve all provider worktrees. The bounded global-review packet is .agent/CER-M3-004_REVIEW_PACKET.md. Push the final draft update and require fresh CI on that exact head before requesting review; never merge main in this task.
 ---
 
 # Handoff — CER-M3-003 AI telemetry expansion plan and foundation contract
