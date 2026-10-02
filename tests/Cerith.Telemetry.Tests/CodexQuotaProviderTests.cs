@@ -16,6 +16,7 @@ using Cerith.Core;
 using Cerith.Telemetry.Tests.Providers.AI.Antigravity;
 using Cerith.TelemetryService;
 using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 using Cerith.TelemetryService.Providers.AI.CommandCode;
 using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
 using Cerith.TelemetryService.Providers.AI.Kiro;
@@ -678,6 +679,7 @@ public sealed class CodexQuotaProviderTests
     [DataRow("kiro")]
     [DataRow("command-code")]
     [DataRow("qoder-cn")]
+    [DataRow("ark-agent-plan")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -785,6 +787,23 @@ public sealed class CodexQuotaProviderTests
         using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
         using var zcodeHarness = new ZCodeQuotaProviderTests.Harness(registry, bus);
         _ = new QoderCnQuotaProvider(registry, bus, new QoderCnCliClient(null), TimeProvider.System);
+        const string arkUsage = """
+            {"viewer":{"auth_method":"sso","is_root":false,"user_id":"synthetic-user","account_id":"synthetic-account","profile":"synthetic-profile","region":"cn-beijing","project_name":"default"},
+             "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+               {"label":"5h","used":2,"total":10,"percent":20},
+               {"label":"weekly","used":8,"total":40,"percent":20},
+               {"label":"monthly","used":18,"total":100,"percent":18}
+             ]}]}
+            """;
+        const string arkDaily = """
+            {"ResponseMetadata":{"Action":"GetAFPUsage","Service":"ark","Version":"2024-01-01","Region":"cn-beijing","Error":null},
+             "Result":{"PlanType":"Medium","AFPDaily":{"Quota":"100","Used":"22.5","ResetTime":1800000000000}}}
+            """;
+        var arkUsagePayload = Encoding.UTF8.GetBytes(arkUsage);
+        var arkDailyPayload = Encoding.UTF8.GetBytes(arkDaily);
+        using var arkAgentPlanProvider = new ArkAgentPlanProvider(registry, bus,
+            _ => Task.FromResult(ArkCliResult.Success(arkUsagePayload, arkDailyPayload, null, false, arkUsagePayload)),
+            TimeProvider.System);
         var copilotResponses = new Queue<string>();
         const string accountId = "24680";
         const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
@@ -866,6 +885,8 @@ public sealed class CodexQuotaProviderTests
             "ai.commandcode.quota.5h.used_percent")).GetAsyncEnumerator();
         await using var qoderCnReader = bus.Subscribe(new MetricId(
             QoderCnQuotaProviderTests.IncludedRemainingMetricId)).GetAsyncEnumerator();
+        await using var arkAgentPlanReader = bus.Subscribe(new MetricId(
+            "ai.ark.agent_plan.daily.used")).GetAsyncEnumerator();
 
         codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
         await codexHarness.Provider.PollOnceAsync();
@@ -885,6 +906,7 @@ public sealed class CodexQuotaProviderTests
             var kiroRead = kiroReader.MoveNextAsync().AsTask();
             var commandCodeRead = commandCodeReader.MoveNextAsync().AsTask();
             var qoderCnRead = qoderCnReader.MoveNextAsync().AsTask();
+            var arkAgentPlanRead = arkAgentPlanReader.MoveNextAsync().AsTask();
 
             await hardwareProvider.PublishNextAsync();
             await presentMonProvider.PublishNextAsync();
@@ -896,9 +918,10 @@ public sealed class CodexQuotaProviderTests
             await kiroProvider.PublishOnceAsync();
             await commandCodeProvider.PublishCurrentAsync();
             await QoderCnQuotaProviderTests.PublishSyntheticQuotaAsync(bus);
+            await arkAgentPlanProvider.PollOnceAsync();
 
             var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
-                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead)
+                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead, arkAgentPlanRead)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
 
@@ -942,6 +965,10 @@ public sealed class CodexQuotaProviderTests
             Assert.AreEqual(MetricConfidence.Measured, qoderCnReader.Current.Confidence);
             Assert.AreEqual(75d, qoderCnReader.Current.Value!.Value.AsDouble(), 0.000001);
             Assert.AreEqual("QoderCN.CliControl.v1", qoderCnReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, arkAgentPlanReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, arkAgentPlanReader.Current.Confidence);
+            Assert.AreEqual(22.5m, arkAgentPlanReader.Current.Value!.Value.AsDecimal());
+            Assert.AreEqual("ArkCli.AgentPlanUsage.v1", arkAgentPlanReader.Current.Source);
         }
 
         await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>

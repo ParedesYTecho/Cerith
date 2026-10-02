@@ -382,18 +382,24 @@ The bounded validation host had no compatible local CLI/session or official brow
 
 Missing CLI/source fields remain valueless `Unavailable`; invalid signatures or malformed fields remain sanitized errors. Organization-package values are deliberately not published as quota until their ownership, unit and semantics are verified. No reset instant or same-account live agreement is claimed.
 
-## CER-M3-004 — Volcengine Ark Agent Plan candidate (EVIDENCE_BLOCKED)
+## CER-M3-004 — Volcengine Ark Agent Plan
 
-The official personal [`GetAFPUsage` API](https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh) documents rolling 5-hour, one-day, one-week and one-month windows. `Quota` and `Used` are AFP; reset timestamps are epoch milliseconds. The official [Ark CLI v1.0.37 usage-plan contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md) maps personal `agent-plan` to this API but returns only `5h`, `weekly` and `monthly`, explicitly omitting backend `daily`. Its [`usage balance --type plan`](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-balance.md) route uses the same query/projection; `plan-details` reports usage history rather than the quota snapshot.
+The provider uses the official Ark CLI control-plane path. `usage plan --product agent-plan --format json --profile=<viewer.profile>` supplies the personal plan's 5-hour, weekly and monthly periods and the viewer scope. The CLI's registered `api usage.get_afp_usage --params {} --format json --profile=<viewer.profile>` action supplies the backend daily period omitted by the product projection. After acquisition Cerith runs an unforced `usage plan` read and publishes only if account, user, profile, region, project, auth method, root status, plan tier and subscription still match. The profile is validated and pinned only for the documented CLI calls; Cerith does not read, store, renew or rewrite Ark credentials.
 
-The preserved candidate branch `codex/CER-M3-004-ark-agent` at `b06818ce6f21c25eb1c3f1424eea30965ca22af6` uses the official CLI for acquisition and compares the returned viewer with a post-query `auth whoami` identity across account, user, auth method, root status, region and project. It currently defines 12 proposed metrics for three windows. These are not registered or integrated. The host had no compatible local CLI/session; because the documented route omits a real quota bucket and no documented CLI-owned route exposes it, the candidate remains `EVIDENCE_BLOCKED`, not `LIVE_NOT_AVAILABLE_ON_THIS_HOST` and not FINAL PASS. No direct API call, credential inspection, auth command or live quota request was made for this finding.
+The official [personal `GetAFPUsage` API](https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh) defines rolling 5-hour, daily, weekly and monthly Agent Plan windows. `Quota` and `Used` are AFP, and `ResetTime` is Unix milliseconds. The pinned [Ark CLI v1.0.37 usage-plan contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md) identifies the personal product projection and its omitted daily field; the pinned [API Explorer contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-api-explorer/references/arkcli-api.md) documents registered control-plane API actions. Official [auth-mode documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md) assigns SSO/STS renewal to the Ark CLI/Go SDK, which may refresh expired STS credentials. Cerith delegates that ownership to the official CLI and does not invoke a separate auth command. Custom data-plane API-key/base-URL overrides and ambient proxy variables are removed from the child environment.
 
-| Proposed MetricId | Kind / unit / semantic type | Exact CLI source meaning |
+The preserved provider branch `codex/CER-M3-004-ark-agent` is accepted for staging at `0c9ba1c04b1899a502f5fc554a7dc8196a41dd5f`; its history is imported in merge `1d5cb488e56600124ced8e6e8b3cf537ff3783e2`. No compatible CLI/profile or authenticated session exists on this host, and the official console showed its login page. Live validation is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. Evidence otherwise used: first-party API/CLI/auth documentation, pinned CLI route and profile behavior, a network-blocked dry-run of the registered action, deterministic parser/identity/lifecycle tests, and source inspection. This does not imply that the user lacks an account elsewhere. The Ark CLI does not expose the HTTP `Retry-After` header to Cerith; Cerith adds no transport retry and does not claim header-aware behavior. Provider polling is one minute.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
 | --- | --- | --- |
 | `ai.ark.agent_plan.5h.used` | decimal / AFP / quota_used | `periods[label=5h].used`. |
 | `ai.ark.agent_plan.5h.total` | decimal / AFP / quota_limit | `periods[label=5h].total`. |
 | `ai.ark.agent_plan.5h.used_percent` | decimal / % / quota_used_percent | `periods[label=5h].percent`, used percentage. |
 | `ai.ark.agent_plan.5h.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=5h].reset_at`. |
+| `ai.ark.agent_plan.daily.used` | decimal / AFP / quota_used | `Result.AFPDaily.Used`. |
+| `ai.ark.agent_plan.daily.total` | decimal / AFP / quota_limit | `Result.AFPDaily.Quota`. |
+| `ai.ark.agent_plan.daily.used_percent` | decimal / % / quota_used_percent | `Used / Quota × 100`; unavailable when either input is absent or quota is zero. |
+| `ai.ark.agent_plan.daily.reset` | DateTimeOffset / timestamp / timestamp | `Result.AFPDaily.ResetTime`, Unix milliseconds. |
 | `ai.ark.agent_plan.weekly.used` | decimal / AFP / quota_used | `periods[label=weekly].used`. |
 | `ai.ark.agent_plan.weekly.total` | decimal / AFP / quota_limit | `periods[label=weekly].total`. |
 | `ai.ark.agent_plan.weekly.used_percent` | decimal / % / quota_used_percent | `periods[label=weekly].percent`, used percentage. |
@@ -403,7 +409,7 @@ The preserved candidate branch `codex/CER-M3-004-ark-agent` at `b06818ce6f21c25e
 | `ai.ark.agent_plan.monthly.used_percent` | decimal / % / quota_used_percent | `periods[label=monthly].percent`, used percentage. |
 | `ai.ark.agent_plan.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`. |
 
-No daily MetricIds are proposed because the official CLI does not expose those values. Do not substitute endpoint usage, plan-detail history, or a second independently authenticated API path for the missing personal quota. Reconsider only when a documented route can obtain the daily quota under an approved credential owner, or the product scope is explicitly narrowed.
+Missing values remain unavailable; malformed values are errors. Values are not rounded or clamped, and account/profile transitions fail closed before publication. No direct API request, account creation, login, credential mutation, or paid usage was performed.
 
 ## CER-M3-004 — Antigravity first integration wave
 
