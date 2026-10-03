@@ -2,7 +2,7 @@
 
 ## CER-M3-005 — First passive/local AI activity vertical slice
 
-Status: IN PROGRESS — implementation, local validation, hostile owner review, hygiene/privacy inspection and code Graphify update are complete; PR delivery and exact-head CI are pending.
+Status: IN PROGRESS — implementation, local validation, hostile owner review, hygiene/privacy inspection and code Graphify update are complete; PR #50 is open and unmerged. Hosted checks must match the latest pushed head.
 Owner: Codex — sole repository write owner for this task.
 Branch: `codex/CER-M3-005-m3b-activity`
 Base: `2441568f0899affdbc6e43d8359a6496c4c4dde7` (canonical `main` / `origin/main`).
@@ -29,7 +29,9 @@ The native SQLite boundary reads one file read-only per poll, uses the standard 
 
 Local validation: `dotnet build Cerith.sln -c Release` PASS (0 warnings/errors); `dotnet test Cerith.sln -c Release --no-build --verbosity minimal` PASS (445/445, zero skipped); focused `OpenCodeActivityProviderTests` PASS (11/11); provider-failure isolation selection PASS (12/12, including `opencode-activity`). End-to-end IPC/MetricId, repeated-snapshot and missing-source transitions, bounded lock cancellation, source appearance/replacement, and hardware coexistence are covered by the focused suite. No quota-provider-specific concurrent coexistence test was added. `git diff --check` PASS. Hygiene scan covered 137 tracked paths plus all three new untracked files: zero private-artifact filename matches, zero sensitive-content matches, and zero trailing-whitespace lines. No runtime/package/project dependency was added; the test project only links the existing NamedPipeMetricClient source. Graphify code-only incremental update PASS (3,089 nodes / 9,895 edges; no LLM calls). Host probe remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST` / `activity_absent`.
 
-Hosted receipt: PR #50 implementation head `0d8b67b9cca104ca1b993f335bd04e88fd55d70a` — Build and Test PASS (run 37159116636); Repository Quality PASS (run 37159116603); CodeQL SKIPPED (run 37159116613; not a security PASS). This task's docs-only receipt commit will have its own exact-head checks. Do not merge PR #50 in this task.
+Hosted receipt: PR #50 implementation head `0d8b67b9cca104ca1b993f335bd04e88fd55d70a` — Build and Test PASS (run 37159116636); Repository Quality PASS (run 37159116603); CodeQL SKIPPED (run 37159116613; not a security PASS). Do not merge PR #50 in this task.
+
+Docs-receipt head `edbea38a92c91c21ed8edb3a131f455d8401288a` — Build and Test PASS (run 37159384180); Repository Quality PASS (run 37159384157); CodeQL SKIPPED (run 37159384139; not a security PASS). The PR status checks always reflect the current exact head and must be rechecked after each push.
 
 ## Current model-routing policy reconciliation
 
