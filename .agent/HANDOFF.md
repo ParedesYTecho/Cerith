@@ -1,12 +1,14 @@
-# CERITH CER-M3-005 ACTIVE HANDOFF — 2026-10-04
+# CERITH CER-M3-005 — M3.B first-slice handoff — 2026-10-04
 
-## Current task
+## Current completion record
 
 Phase A is complete: PR #49 was squash-merged from expected head `564b56e1d11b89fa95334c3f30181ee1654823c2` as `2441568f0899affdbc6e43d8359a6496c4c4dde7`. Exact-head Build and Test and Repository Quality were SUCCESS; CodeQL was SKIPPED. Local `main` matched `origin/main` at the result SHA and was clean before branching. Routing reconciliation is complete.
 
-CER-M3-005 is the sole-owner task on `codex/CER-M3-005-m3b-activity`, based on `2441568f0899affdbc6e43d8359a6496c4c4dde7`. The first-party OpenCode v1.17.9 local SQLite source was selected after bounded 5-candidate reconnaissance. The independent GPT-6.1 Sol Medium read-only design review returned PASS after six finding groups were resolved. PR #50 is open, non-draft and unmerged. The implementation head and first docs-receipt head passed exact-head Build and Test and Repository Quality; CodeQL was SKIPPED on both. PR #50 shows status for its current exact head; recheck after later pushes and leave the PR unmerged. The bounded production-path probe returned `Unavailable/activity_absent`; no host message content was read.
+CER-M3-005 is DONE via PR #50. Its first accepted M3.B slice is passive/local OpenCode activity through MetricSnapshot → MetricBus → Named Pipe → MetricId subscription. The selected message is joined to its parent session and accepted only when `session.version` is exactly `1.17.9`; unsupported versions yield valueless Unavailable, missing/unusable versions yield valueless Error, and the reader never falls back to an older assistant. No session/version identity or content is published. The version-qualification correction is commit `c3c9dc313114e1d64a0e8062093855d22a461c8f`.
 
-The implementation received a hostile owner review; the independent Sol PASS was the required design gate. Release build passes with 0 warnings/errors, the full solution passes 445/445, focused acceptance is 11/11, and provider-failure isolation passes 12/12 with OpenCode included. Privacy/hygiene scans found zero flagged private artifacts, sensitive added content, or trailing whitespace. Graphify's code-only incremental update completed without LLM processing. PR #50 is open, non-draft and unmerged; exact-head Build and Test and Repository Quality passed on the implementation head and first docs-receipt head; CodeQL was SKIPPED on both. Current-head status is available on PR #50; recheck after any later push and leave the PR unmerged. Keep M3 ACTIVE / INCOMPLETE; do not start another activity provider, M4 or M7. Live evidence is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`, not synthetic evidence presented as live.
+Validation: Release build 0 warnings/errors; full solution 446/446, zero skipped; focused OpenCode 12/12; shared-bus coexistence with the real OpenCode provider plus hardware, PresentMon/gaming, Codex, Cursor and Antigravity 4/4; provider-failure isolation 12/12. Hygiene/privacy checks and `git diff --check` passed; no runtime dependency was added. The bounded host probe selected no eligible assistant, so source-version qualification was not evaluated. Live activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; no real message content was read. Exact reviewed head and hosted receipts are carried by PR #50. CodeQL SKIPPED is not a security PASS.
+
+M3 remains ACTIVE / INCOMPLETE pending evidence-backed disposition of remaining M3.B targets. M4 and M7 are NOT STARTED. No second M3.B collector was started. Historical workflow records below are preserved as statements of their original state.
 
 ## Historical — CER-M3-004 merge handoff — 2026-10-03
 
