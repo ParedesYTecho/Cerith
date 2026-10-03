@@ -1,21 +1,122 @@
-# Handoff — CER-M3-003 closure / CER-M3-004 quota wave plan
+# CERITH CER-M3-004 FINAL ZCODE CLOSURE HANDOFF
 
-Status: CER-M3-003 DONE. PR #45 was squash-merged as `2aa865ef35000680a3110ff7134b836bd966ef82`; approved head `5b38464ed1313d44cb3ce8d71f02b1c634f43c56` and integrated tree `031351c287d0bbef17ee6862018af94bd2a073c4` match exactly. Final bounded GPT-6.1 Sol High review PASS. Build and Test PASS, Repository Quality PASS, CodeQL SKIPPED under D-013.
+## Current review state — 2026-10-03
 
-M3 remains ACTIVE / INCOMPLETE. D-024 is now canonical. CER-M3-004 — AI quota expansion wave 1 is NEXT / NOT STARTED.
+Verdict: `ZCODE_CORRECTION_COMPLETE_READY_FOR_FINAL_REREVIEW`. This is not an independent PASS. The fresh bounded review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69` returned `FIXES STILL REQUIRED — NO-GO FOR MERGE`, with findings 1–4 and 6–9 closed and finding 5 partially unresolved. Preserve that result; the current correction addresses only finding 5. The next reviewer must inspect the ZCode-only delta from `84fbf84d1065ba859605cdd2dc83019a1b51fe69` to the exact pushed head, its regressions, the review/handoff reconciliation and exact-head CI.
 
-CER-M3-004 intent:
-- run the remaining 16 usage-limit providers in parallel with Luna Max provider-specific write owners;
-- keep one integration owner for shared registration/lifecycle/docs/dependencies;
-- no generic runtime foundation before evidence proves one necessary;
-- workers own only their provider source/tests/fixtures paths;
-- workers stop and escalate any shared dependency/auth/storage/Core/IPC requirement;
-- normal setup is zero-config where possible, one-time authorization when genuinely required, never repeated startup configuration;
-- integrate accepted providers in small verified groups even if implementation happens concurrently.
+## Residual finding and correction
 
-Remaining quota targets: Claude; Antigravity; Cursor; Gemini CLI / Code Assist; Kimi; Kiro; Grok Build; GitHub Copilot; ZCode; OpenCode Go; Command Code; Qoder; Qoder CN; Ark Coding Plan; Ark Agent Plan; Devin.
+ZCode's `ApplyAuthReadLocked` cleared A's retry state when auth became invalid but retained `_nextPollTimestamp`. After `_activeAuth` became null, B's ready observation did not satisfy the changed-owner/credential conditions, so a direct poll remained blocked by A's one-hour deadline and the sleeping loop was not awakened. The fix resets admission and wakes only on verified-owner → unverifiable and no-verified-owner → verified-owner transitions. It clears owner-specific retry/rejection state for B, preserves same-owner A→A backoff and avoids repeated wakes during continuous invalid state. Changes are limited to `src/Cerith.TelemetryService/Providers/AI/ZCode/ZCodeQuotaProvider.cs` and its existing focused test file.
 
-No provider implementation starts in this reconciliation branch.
+Regressions: `UnavailableAuthBetweenOwnersClearsLongRetryAdmissionForDirectPoll` and `RunWakesForNewOwnerAfterUnavailableAuthClearsSleepingOwnersRetry` failed against the unfixed base and pass after the correction. `UnavailableAuthCancelsPendingOldOwnerPublication` also passes, holding a bus publication across the invalid-auth transition and verifying it cannot publish A's quota. Existing direct A→B, running-loop A→B, same-owner retry, owner-work cancellation and bounded shutdown tests remain green.
+
+## Validation and repository state
+
+Release build: 0 warnings/errors. Core 39/39; Telemetry 384/384; Integration 10/10; total 433/433; zero skipped. ZCode focused suite 28/28; shared-bus coexistence 1/1; supervisor failure isolation 11/11. `git diff --check` PASS; filename/path hygiene PASS (137 paths); bounded sensitive-added-diff scan PASS (zero credential/private-path matches); dependency/project diff EMPTY. The exact pushed SHA, ahead/behind count, Build and Test, Repository Quality, CodeQL disposition and run IDs are recorded in the current PR #47 description. PR #47 remains OPEN / DRAFT and mergeable; canonical `main` remains untouched. M3 remains ACTIVE / INCOMPLETE.
+
+Provider statuses are unchanged: accepted/staged Codex, Cursor, Antigravity quota, ZCode, GitHub Copilot, OpenCode Go, Kiro, Command Code, Qoder CN, Ark Agent Plan and Ark Coding Plan; EVIDENCE_BLOCKED Claude, Gemini CLI / Code Assist and Grok Build; DEFERRED_AFTER_M3_QUOTA_WAVE Qoder International, Kimi and Devin. No subagents, Sol, Astra or Luna Max were used. THIS IS NOT THE FINAL INDEPENDENT RE-REVIEW.
+
+## Exact next action
+
+Run one final fresh read-only independent re-review limited to the ZCode delta from 84fbf84d1065ba859605cdd2dc83019a1b51fe69 to <FINAL_HEAD>, its regressions, documentation reconciliation and exact-head CI. Preserve the eight previously closed findings unless this ZCode-only delta changes their basis.
+
+## Preserved previous Grok / Shadow closure record
+
+## 1. VERDICT
+
+MISSION_CANDIDATE. Execution closure is complete within the verified scope; CER-M3-004 remains IN PROGRESS and M3 remains ACTIVE / INCOMPLETE pending fresh independent review/Advisor decision. No unsupported provider was imported to manufacture completion.
+
+## 2. CANONICAL STATE
+
+MAIN: 72b43b268b4992d0b0ea45b6e29067d10450274f (origin/main; local main remains untouched at 3f5ca74a26edf88a02e6bda05f759ee3c74032cd).
+PR: #47, OPEN / DRAFT.
+INTEGRATION BRANCH: codex/CER-M3-004-integration.
+Starting head for this closure: f1531e2559185e2e13ff62459711c8864a6e6c02 (105 ahead / 0 behind main).
+Exact final head/ahead/behind must be pinned after the closure commit with git rev-parse HEAD / git rev-list --left-right --count origin/main...HEAD and compared with gh pr view 47 --json headRefOid,isDraft,state. This file cannot embed the hash of its own commit. Reuse the existing integration worktree; no worktree was created or replaced.
+
+## 3. WORK COMPLETED THIS UNIT
+
+PROVIDER/TASK: Grok deployed billing qualification.
+PREVIOUS STATUS / FINAL STATUS: EVIDENCE_BLOCKED / EVIDENCE_BLOCKED, with a narrower proven credential-class contract and a concrete failed owner probe.
+BRANCH / START SHA / END SHA: grok-build / d51fba3184b606c36b141e2f9c232c85ef03d0ff / unchanged.
+CHANGES: one repeatable tools/check_grok_billing_protocol.py manual development check; canonical evidence and stale source links corrected. Both explicitly pinned official binary versions reject API-key/untrusted-issuer fixtures before loopback billing access; neither observes replacement owner within three seconds. Both commands exit 1, not PASS. Earlier less-isolated owner observation is retained as disagreement. Official stdio refresh plus child termination is not proven safe; --leader can create/evict writers. No token export, model/session request, real auth operation or new integration commit.
+LIVE CLASSIFICATION: EVIDENCE_BLOCKED; no compatible-account live claim.
+LIMITATIONS: synthetic cases do not prove valid subscription responses, expiry/rotation, all account races, persistence or deployed source equivalence.
+
+PROVIDER/TASK: Claude remaining contract.
+PREVIOUS / FINAL STATUS: EVIDENCE_BLOCKED / EVIDENCE_BLOCKED.
+BRANCH / START / END: claude / 51afc1cc91b4b461c93715e9c324c918a1cbc6fc / unchanged.
+CHANGES: confirmed official SDK prior-approval boundary and model-only setup-token scope; passive statusline lacks owner/backend observation binding. Host subscription absence is not an eligibility restriction. Existing valid-session reader and 18 deterministic tests remain preserved, not production registered. No inference, login, secret access or import.
+
+PROVIDER/TASK: integration closure.
+PREVIOUS / FINAL STATUS: MISSION_CANDIDATE / MISSION_CANDIDATE awaiting independent review. Provider runtime/registrations/dependencies remain unchanged. Scope/ownership, research matrix, review packet, tools documentation, state and handoff reconciled; historical records retained. Source detail is canonical in docs/AI_QUOTA_REFERENCE_MATRIX.md, not copied here as a second specification.
+
+## 4. PROVIDER MATRIX
+
+ACCEPTED/STAGED: Codex, Cursor, Antigravity quota, ZCode, GitHub Copilot, OpenCode Go, Kiro, Command Code, Qoder CN, Ark Agent Plan, Ark Coding Plan (11).
+EVIDENCE_BLOCKED: Claude; distinct enterprise Gemini CLI / Code Assist; Grok Build.
+HUMAN_GATE_PENDING: no new login/MFA/consent gate attempted.
+DEFERRED_AFTER_M3_QUOTA_WAVE: Qoder International, Kimi, Devin. Exact branches/tips/blockers remain in TASKS and the review packet. Ark Coding Plan is already staged, not deferred.
+
+## 5. DOCUMENTATION RECONCILIATION
+
+Files: tools/README.md, docs/AI_QUOTA_REFERENCE_MATRIX.md, .agent/TASKS.md, STATE.md, HANDOFF.md, WORKLOG.md and CER-M3-004_REVIEW_PACKET.md.
+Current authorization now covers bounded implementation; after two credible Grok avenues failed to satisfy owner/writer safety, no speculative provider delta was added. Claude coverage remains host-independent. No 17/17 acceptance gate, permanent model policy or architecture decision was introduced. Historical records preserved: YES.
+
+## 6. VALIDATION
+
+Fresh local closure validation: Release build 0 warnings/errors; Core 39/39; Telemetry 356/356; Integration 10/10 (405/405), zero skipped; runtime source unchanged. Previous focused checks: Claude 18/18, Gemini 25/25, Grok 12/12, Ark Agent 20/20, Ark Coding 19 cases; coexistence 1/1; supervisor isolation 11/11. Hosted checkpoint 113afc6 also confirms 39/356/10 tests; the final documentation head must be pinned separately for review.
+Manual Grok qualification: 1.0.34 exit 1; 1.0.46 exit 1. Credential rejection passed in four synthetic cases; bounded owner observation failed in all six, including both admitted-class mock-acquisition cases. Not a provider acceptance gate pass.
+Python syntax, wrong-hash and disabled-optimization guards pass; diff-check and 136-file filename hygiene pass. Bounded added-diff secret/personal-path patterns: zero matches (not comprehensive). Production src/tests/project/dependency diff from f1531e2 is empty; no new runtime dependency. The full Telemetry suite covers the retained coexistence/supervisor cases; focused counts above are the preceding receipts.
+Graph: incremental tool AST refresh, 3,292 nodes / 8,795 edges / 153 communities; existing corpus/edges preserved, no missing files/self-loops. No semantic/doc/model refresh; historical community names were retained.
+
+## 7. CI
+
+Prior exact f1531e2: Build and Test SUCCESS (37012137265), Repository Quality SUCCESS (37012137315), CodeQL SKIPPED (37012137241). Closure code/tool checkpoint 113afc6 passed hosted build/quality (37043424898 / 37043424940); CodeQL skipped (37043424841), not a passing security scan. The final receipt-only head is resolved from Git/PR and must have its own green checks.
+
+## 8. SECURITY / PRIVACY
+
+Credential material committed: NO. Personal/private artifacts committed: NO. New auth ownership: NONE. Only isolated synthetic fixture auth files and their processes were created/drained; neither official user credential storage nor accounts were changed. The manual tool emits fixed booleans/version labels, not secret or account payloads. No browser cookies, paid workload, reset credit or model request.
+
+## 9. SHADOW AUDIT
+
+Completed in the preceding marathon; not repeated here. Canonical evidence matrix remains in docs/REFERENCE_PROJECTS.md. Short soaks, all-Ignored mutation report, non-differential runner, weak drift/privacy acceptance and broad performance/zero-leak claims were downgraded. Useful fixture/adversarial/restart ideas remain USE_WITH_REVIEW; no architecture port or M4/M7 implementation.
+
+## 10. OPEN RISKS
+
+Claude: approved renewable subscription output with owner/observation binding remains missing. Gemini enterprise: supported product-appropriate quota output and Windows writer/persistence contract remain missing. Grok: failed bounded owner observation, safe official refresh/termination and existing-owner attachment not established. Existing staged-provider live limits, queued MetricBus transition boundary and source/version risks remain in the review packet. Synthetic/manual checks do not replace same-account validation.
+
+## 11. INDEPENDENT REVIEW READINESS
+
+YES after exact-head hosted checks are green. Packet: .agent/CER-M3-004_REVIEW_PACKET.md. Pin the final PR head independently; the owner did not perform an independent review. PR stays DRAFT; candidate status does not authorize merge or advance M3.
+
+## 12. EXACT NEXT ACTION
+
+Run a fresh independent hostile read-only review on the final green PR #47 head using the prepared packet.
+
+## Preserved earlier marathon record
+
+# Handoff — CER-M3-004 autonomous marathon
+
+Status: MISSION_CANDIDATE; task remains IN PROGRESS pending fresh independent review/Advisor decision; M3 ACTIVE / INCOMPLETE. Sole execution/shared-file owner is GPT-6.1 Sol Medium, native Codex, concurrency one. Historical review receipts remain historical; this owner's self-review is not independent approval. Keep PR #47 DRAFT and do not merge main.
+
+Starting truth: fetched origin/main 72b43b268b4992d0b0ea45b6e29067d10450274f; local main 3f5ca74a26edf88a02e6bda05f759ee3c74032cd remains untouched. Existing integration head 9b3056e54d3a876e05bc19119637575640d5ba62 was 100 ahead / 0 behind origin/main and had green Build and Test / Repository Quality; CodeQL SKIPPED. All 18 worktrees were clean and no competing active writer was found. Twelve newer commits than the user's expected snapshot were preserved, including Ark Coding Plan integration and Qoder International's justified revert.
+
+Completed: current first-party Claude / Gemini CLI-Code Assist / Grok Build blocker rechecks, exact versions and source pins in docs/AI_QUOTA_REFERENCE_MATRIX.md. Claude remains blocked on an approved quiet renewable subscription bridge; enterprise Gemini remains distinct but blocked on product-appropriate supported acquisition and safe persistence; Grok's newer no-API-key source policy narrows its provenance blocker but is not bound to the installed binary. Preserved focused branches pass 18/18, 25/25 and 12/12 respectively; none was imported. Qoder International, Kimi and Devin remain deferred; Ark Coding Plan was already accepted/staged and was not reverted.
+
+Bounded production correction: Ark Agent Plan acquisition wait now responds to shutdown even if its dependency ignores cancellation. New regression failed before the change and passes afterward; focused provider tests 20/20. No quota semantics, credentials or dependencies changed. Fresh Release build 0 warnings/errors; Core 39/39, Telemetry 356/356, Integration 10/10 (405 total); coexistence 1/1; supervisor isolation 11/11; Ark Coding Plan combined focused coverage 19 cases. Diff-check and 135-file filename hygiene pass. Bounded added-diff pattern scan: zero known-token/bearer/private-key/personal-path matches; eight synthetic .invalid emails, zero others. This is not a comprehensive secret scan. Dependency diff from main is empty.
+
+Graph: preserved existing corpus with incremental replacement of two changed C# files: 3,289 nodes / 8,793 edges / 160 communities; zero missing source files, dangling endpoints or self-loops. No external model. Extractor coalesces the shared Ark namespace; graph navigation does not prove source semantics. Documentation semantics were not re-extracted.
+
+Current validated code checkpoint: 96eefc59b704e6d6a34b683c7be9cfcf9f0a704f. Hosted Build and Test SUCCESS (37005658373), Repository Quality SUCCESS (37005658310), CodeQL SKIPPED (37005658376). The complete fresh-context packet is prepared in .agent/CER-M3-004_REVIEW_PACKET.md; it records exact lineage, sources, metrics, owner/cache/shutdown boundaries, preserved blockers, commands and review questions. Bounded hostile self-review found and corrected the Ark shutdown gap; all staged source trees were compared with their preserved tips. This is self-review, not independent approval.
+
+Candidate packet head 991187e605657256f0cff8f8d14af3998fbd8989 passed Build and Test (37006483453) and Repository Quality (37006483463); CodeQL SKIPPED (37006483519). Draft PR body now describes actual wave/dispositions/tests/limitations. Previously local-only Claude, Gemini, Grok, Kimi and Devin branches were pushed unchanged after scoped privacy/filename checks. A signed official Grok 1.0.46 artifact/version-only check retained its alpha-versus-stable channel and source-binding uncertainty; no ACP/auth command.
+
+Shadow audit completed read-only: canonical evidence matrix and key SHA-256 receipts are in docs/REFERENCE_PROJECTS.md. Located mutation report has 44/44 Ignored mutants; short tests do not demonstrate required long soaks. Differential runner counts records without either parser; drift fallback can report unchanged without a valid pin; privacy harness excludes its reports root. Official Codex/Claude sample refs fail. Python restart is an in-process simulation; C# child-kill/checkpoint source is a useful test design awaiting reproduction. M4 dummy-window and M7 same-process/benchmark artifacts do not prove production runtime, long multiprocess soak or zero leaks. WSL/zero-idle-CPU producer retractions retained. No research harness executed, artifact changed or architecture ported; dirty rehearsal preserved.
+
+Exact next action: run a fresh independent hostile review of the final PR head using .agent/CER-M3-004_REVIEW_PACKET.md. Final documentary/audit commit requires green exact-head Build and Test / Repository Quality; CodeQL skipped is not a security pass. PR remains DRAFT and main untouched. No auth/account operation, model request, reset credit or live claim upgrade. Current validated code remains 96eefc5; obtain exact final documentary head with git rev-parse HEAD / gh pr view 47 --json headRefOid. No independent review has occurred.
+
+Follow-up requested 2026-10-02: three preserved quota-reference clones and six additional GitHub monitors inspected at exact revisions; canonical findings in docs/AI_QUOTA_REFERENCE_MATRIX.md#github-acquisition-comparison-follow-up--2026-10-02. Contract explicitly requires Claude coverage for compatible subscribers independently of host access. Official Grok FAQ proves shared weekly pool; pinned x.ai/billing auth gate rejects ApiKey/WebLogin and avoids bearer export, narrowing the prior assessment. Passive official billing logs are a real source but omit owner identity. Next acquisition investigation should prove deployed version and owner binding for x.ai/billing; do not reuse bearer-export ambiguity, invent zero, mutate credentials or port reference architecture. Provider branches/code/tests/dependencies unchanged; source-only research is not live acceptance. New documentary head requires exact-head CI, while the prior final code/documentary head 43aef2e passed hosted build/quality (37008881062/37008881026), CodeQL skipped (37008881045). PR remains draft; future independent review must pin the new head.
 
 ---
 
@@ -280,3 +381,7 @@ Temporary probe directories remain outside the repository: automatic approval re
 Conclusion after Advisor PASS final and PR #29 merge: `M1 — Hardware MVP: DONE` with both evidence gates PASS and the listed limits explicit. M2 is next and has not started.
 
 The product PR changed the provider, TelemetryService Program, WidgetHost MainWindow, one existing Telemetry test, canonical docs and operational memory. This reconciliation changes only `.agent/STATE.md`, `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md` and `docs/ROADMAP.md`. New tracked files/dependencies: none. No code structure changed, so Graphify refresh is unnecessary.
+
+Closure self-review expanded the manual probe to an admitted xAI-issuer OIDC fixture: both binaries acquired only the loopback mock quota, but neither observed replacement owner in that case either. Six owner observations fail; this is still synthetic protocol evidence, not a valid subscription/renewal/live comparison. Hosted code/tool checkpoint 82da884 passed Build and Test (37042555549, 0 warnings/errors, 39/356/10 tests), Repository Quality (37042555581); CodeQL skipped (37042555555). The three-case tool checkpoint subsequently passed its own exact-head checks, recorded below.
+
+Hosted code/tool checkpoint 113afc648c03b36c04c888b0c867d34f284ca958 (107 ahead / 0 behind main): Build and Test SUCCESS 37043424898, 0 warnings/errors, Core 39/39, Telemetry 356/356, Integration 10/10; Repository Quality SUCCESS 37043424940; CodeQL SKIPPED 37043424841, not a security pass. The final receipt-only documentation commit preserves that exact runtime/tool tree. Pin the current PR head and its checks for fresh review.

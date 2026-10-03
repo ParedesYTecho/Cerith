@@ -5,6 +5,11 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
+using Cerith.TelemetryService.Providers.AI.CommandCode;
+using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
+using Cerith.TelemetryService.Providers.AI.Kiro;
 
 namespace Cerith.TelemetryService;
 
@@ -34,7 +39,6 @@ internal static class Program
         var registry = new MetricRegistry();
         using var provider = new HardwareTelemetryProvider(registry, bus);
         using var gamingProvider = new PresentMonTelemetryProvider(registry, bus, processId);
-        using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
         var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
@@ -47,17 +51,90 @@ internal static class Program
         var publisher = PublishAsync(provider, first, stop.Token);
         await gamingProvider.PublishNextAsync(stop.Token);
         var gamingPublisher = PublishGamingAsync(gamingProvider, stop.Token);
-        var codexQuotaRunner = codexQuotaProvider.RunAsync(stop.Token);
+        var codexQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var codexQuotaProvider = new CodexQuotaProvider(registry, bus);
+            await codexQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "codex", stop.Token);
+        var cursorQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var cursorQuotaProvider = new CursorQuotaProvider(registry, bus);
+            await cursorQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "cursor", stop.Token);
+        var antigravityQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var antigravityQuotaProvider = new AntigravityQuotaProvider(registry, bus);
+            await antigravityQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "antigravity", stop.Token);
+        var arkCodingPlanQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var arkCodingPlanProvider = new ArkCodingPlanQuotaProvider(registry, bus);
+            await arkCodingPlanProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "ark-coding-plan", stop.Token);
+        var arkAgentPlanQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var arkAgentPlanProvider = new ArkAgentPlanProvider(registry, bus);
+            await arkAgentPlanProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "ark-agent-plan", stop.Token);
+        var zcodeQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var zcodeQuotaProvider = new ZCodeQuotaProvider(registry, bus);
+            await zcodeQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "zcode", stop.Token);
+        var copilotQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var copilotQuotaProvider = new CopilotQuotaProvider(registry, bus);
+            await copilotQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "github-copilot", stop.Token);
+        var openCodeGoQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var openCodeGoQuotaProvider = new OpenCodeGoQuotaProvider(registry, bus);
+            await openCodeGoQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "opencode-go", stop.Token);
+        var kiroQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var kiroQuotaProvider = new KiroQuotaProvider(registry, bus);
+            await kiroQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "kiro", stop.Token);
+        var commandCodeQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            using var commandCodeQuotaProvider = new CommandCodeQuotaProvider(registry, bus);
+            await commandCodeQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "command-code", stop.Token);
+        var qoderCnQuotaRunner = KeepServiceAliveAfterProviderExitAsync(async () =>
+        {
+            var qoderCnQuotaProvider = new QoderCnQuotaProvider(registry, bus);
+            await qoderCnQuotaProvider.RunAsync(stop.Token).ConfigureAwait(false);
+        }, "qoder-cn", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
-            "; Codex quota polling enabled for standard file auth");
+            "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
+            "GitHub Copilot CLI, OpenCode Go, Kiro ACP, Command Code, Qoder CN, Ark Coding Plan, and Ark Agent Plan quota providers active");
 
-        try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner); }
+        try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
+            antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         finally { await stop.CancelAsync(); }
 
-        try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner); }
+        try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
+            antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
+    }
+
+    internal static async Task KeepServiceAliveAfterProviderExitAsync(Func<Task> startProvider, string providerId,
+        CancellationToken serviceStop)
+    {
+        var errorCode = "provider_stopped";
+        try { await startProvider().ConfigureAwait(false); }
+        catch (OperationCanceledException) when (serviceStop.IsCancellationRequested) { return; }
+        catch (Exception) { errorCode = "provider_failure"; }
+
+        if (serviceStop.IsCancellationRequested) return;
+        Console.Error.WriteLine($"AI quota provider stopped: {providerId}; {errorCode}");
+        try { await Task.Delay(Timeout.InfiniteTimeSpan, serviceStop).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (serviceStop.IsCancellationRequested) { }
     }
 
     private static bool TryParseTarget(string[] args, out int? processId)

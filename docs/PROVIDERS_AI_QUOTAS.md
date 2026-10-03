@@ -14,6 +14,12 @@ Default setup policy: first reuse a safe existing official local authorization w
 
 This broader policy does **not** retroactively change CER-M3-002 Codex: its accepted production path remains read-only and non-renewing. A provider-specific reconnect after genuine expiration/revocation is different from asking the user to repeat configuration on every Cerith startup.
 
+### Validation outcomes
+
+Provider coverage is independent of the validation host's subscriptions. Claude remains a required subscription-quota target: a compatible signed-in subscriber must be eligible for discovery/acquisition even when the development host has no subscription or token. Missing local authorization yields a truthful valueless state on that host, not a global provider disablement or proof that the source is unusable elsewhere. Same-account live comparison may need another compatible host; deterministic coverage must still exercise valid subscriber acquisition, absent credentials, expired credentials and owner transitions. This requirement does not waive the provider's source, identity or credential-ownership gates.
+
+Keep live access, implementation evidence and human action as separate outcomes. `LIVE_VERIFIED` requires a real Cerith acquisition compared with the official product for the same compatible account/workspace. `LIVE_NOT_AVAILABLE_ON_THIS_HOST` applies only after relevant safe local, CLI and browser routes are exhausted and the missing compatible host session is the remaining comparison barrier; it says nothing about accounts elsewhere and does not establish credential renewal. Synthetic tests, manually rewritten credentials and RPC-schema observations do not prove live equality or silent future startup. `EVIDENCE_BLOCKED` is for unresolved implementation-critical route, product, scope, auth/renewal, units, reset or source-authority questions; do not use it to disguise absent host access. `HUMAN_GATE_PENDING` requires a plausible compatible session and a specific irreducible user action such as MFA or consent. Do not create accounts, spend paid quota/credits, trigger artificial inference, or mutate credentials/security settings solely to obtain validation evidence.
+
 ## Reference hierarchy
 
 For each provider compare:
@@ -249,6 +255,207 @@ Create hand-built sanitized fixtures with origin URL/revision, capture date, syn
 Automated conformance and live validation for CER-M3-002 are complete. The same-account/workspace near-simultaneous official usage-UI comparison remains required and was completed. The second live implementation-level corroboration was a bounded, read-only terminal call to the already-installed official Codex app-server `account/rateLimits/read`, compared with one Cerith acquisition for the same selected account. The official UI and app-server matched the reported ordinary-window duration, used/remaining direction (within documented display/integer rounding) and `reset_at`. The `reset_after_seconds` versus `reset_at` disagreement remains visible as `source_disagreement`; do not average values or silently choose a side.
 
 The current Gengchou, TokenTracker and AI Limits public Codex implementations were inspected as separate codebases. Each, and the official app-server path, ultimately reads the same `/wham/usage` upstream; none is an independent upstream oracle. No third-party quota-monitor software needs to be installed or run merely to repeat that same upstream read when an already-installed official terminal surface can safely provide equivalent implementation-level corroboration. This approach and exception are specific to CER-M3-002 and do not change future Claude or Antigravity acceptance gates. Keep all disagreements and their provenance explicit. Record only sanitized timestamps/version and comparison evidence. Source or identity mismatch blocks acceptance until explained. Never generate paid workload, consume reset credits or refresh credentials on Cerith's behalf. A screenshot containing private data is not a fixture. The M3-001 HTTP 200 probe establishes access/shape on one Windows host only; it does not satisfy this live cross-validation gate or validate all plans/auth modes.
+
+## CER-M3-004 — Cursor first integration wave
+
+Cursor FINAL PASS commit 24ca7027e204fb1361cb79f573ddf132c9490994 and Antigravity FINAL PASS 8889e4b34da1445c2bafe08093c11dc8c63fd1e3 are preserved in the staging history; no canonical-main merge. The provider uses fixed HTTPS routes observed in Cursor client behavior, without a public API stability guarantee: https://cursor.com/api/usage-summary, https://api2.cursor.sh/aiserver.v1.DashboardService/GetSandAccessStatus, and https://api2.cursor.sh/aiserver.v1.DashboardService/GetSandUsageStatus.
+
+The read-only auth path reads the current user's Cursor `state.vscdb` `cursorAuth/accessToken` and optional `.cursor/cli-config.json` `authInfo.authId`, verifies their normalized subject, and holds the session material only in memory. It does not refresh, write, or copy credentials. Plan quota comes only from the individual plan's direct used percentages; team usage, on-demand usage, and currency amounts are excluded. Grok Bot quota is a separate period and is read only when its access/grant status permits it; a zero included limit does not create a quota value.
+
+Silent-startup auth acceptance is DEFERRED/UNRESOLVED, distinct from live UI comparison. The official [Cursor download page](https://cursor.com/download) redirected to the versioned Windows x64 user installer [Cursor 3.22.12](https://downloads.cursor.com/production/3a92974361033b2051526321308c2740fe5912c5/win32/x64/user-setup/CursorUserSetup-x64-3.22.12.exe). Product version was 3.22.12; Authenticode status was Valid for Anysphere, Inc.; artifact SHA-256 was 0B76176E54FCD9B51302968AEEBCE3EE708E93DA61071ECC2FCD50F79C1C3E79. The installer was not run or installed. A versioned official-upstream innoextract 1.10-dev Windows build, verified against its [official SHA-256 manifest](https://constexpr.org/innoextract/files/snapshots/innoextract-1.10-dev-2025-01-07/SHA256SUMS) (package digest 8c472a72b944e9848f75c4fb1f47b4907f0a7924ad226cac1beb51d31621abd2), advertises support through Inno Setup 6.3.3, detected this payload as Inno Setup 6.4.0.1, and failed parsing its setup headers. No auth/session code was extracted; this trace establishes neither lifetime/renewability of state.vscdb cursorAuth/accessToken nor a supported owner-renewal operation. First-party [CLI authentication](https://prod.cursor.com/docs/cli/reference/authentication) and [ACP](https://prod.cursor.com/docs/cli/acp) docs do not establish the desktop credential lifecycle. No user session, credential, auth state, or client execution was involved. Do not claim silent Cerith-only startup after renewable-token expiry until evidence shows either a nonrenewable long-lived desktop credential (with exceptional-expiry reconnect) or a safe supported official-owner renewal path. The synthetic RenewableTokenReplacementIsReadSilentlyOnTheNextPoll test proves reread/recovery only, not automatic renewal. A subsequent sanitized observation found the official browser UI accessible but no local Cursor desktop database/config; classify it as UI_ONLY. This proves neither same-account quota equality nor credential lifetime/renewal. The separate live UI/quota comparison remains NOT RUN. Cursor remains deferred from full product acceptance, but that provider-specific gate does not block other exact FINAL PASS imports.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.cursor.quota.plan.total.used_percent` | double / % / quota_used | Direct `individualUsage.plan.totalPercentUsed`. |
+| `ai.cursor.quota.plan.auto.used_percent` | double / % / quota_used | Direct `individualUsage.plan.autoPercentUsed`. |
+| `ai.cursor.quota.plan.api.used_percent` | double / % / quota_used | Direct `individualUsage.plan.apiPercentUsed`. |
+| `ai.cursor.quota.plan.reset` | DateTimeOffset / timestamp | Explicit `billingCycleEnd`. |
+| `ai.cursor.quota.plan.duration` | TimeSpan / duration | Explicit billing-cycle end minus start. |
+| `ai.cursor.quota.grok_bot.period.used_percent` | double / % / quota_used | Reported Sand usage percentage. |
+| `ai.cursor.quota.grok_bot.period.reset` | DateTimeOffset / timestamp | Reported Sand period reset. |
+| `ai.cursor.quota.grok_bot.period.duration` | TimeSpan / duration | Reported Sand period end minus start. |
+
+Percentages remain used percentages in the finite 0–100 range; they are never inverted into remaining capacity. Missing values publish valueless `Unavailable`, malformed values publish sanitized `Error`, and an elapsed reset invalidates that quota family. The provider bounds polling to 60 seconds, requests to 10 seconds, response bodies to 64 KiB, and cached values to 15 minutes.
+
+Deterministic tests cover parser and descriptor semantics, synthetic local auth, identity changes, missing auth without network access, HTTP/auth failures, cancellation, timeouts, cache expiry, and bounded publication/shutdown. No same-account Cursor UI comparison or live quota request was performed. The offline tests and provider FINAL PASS do not establish live-account agreement.
+
+## CER-M3-004 — ZCode coding-plan quota
+
+The accepted ZCode implementation is staged with its original provider commits preserved. The provider reads the locally selected coding-plan family and configured API-key identity without writing credentials, then issues bounded read-only requests to the fixed Z.ai or BigModel quota endpoint. Ambiguous provider/account selection is rejected; credentials are not renewed or persisted by Cerith. No real-account quota comparison is claimed.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.zcode.coding_plan.level` | string / none / plan_id | Selected plan level. |
+| `ai.zcode.coding_plan.five_hour.remaining_percent` | double / % / quota_remaining | `TOKENS_LIMIT` 5-hour bucket; `100 - percentage` where the source percentage is used. |
+| `ai.zcode.coding_plan.five_hour.reset_at` | DateTimeOffset / timestamp | Explicitly zoned reset timestamp for that bucket. |
+| `ai.zcode.coding_plan.five_hour.bucket_metadata` | string / JSON / quota_bucket_metadata | Source type/unit, actual bucket `number`, and bounded model details. |
+| `ai.zcode.coding_plan.weekly.remaining_percent` | double / % / quota_remaining | `TOKENS_LIMIT` weekly bucket; `100 - percentage` where the source percentage is used. |
+| `ai.zcode.coding_plan.weekly.reset_at` | DateTimeOffset / timestamp | Explicitly zoned reset timestamp for that bucket. |
+| `ai.zcode.coding_plan.weekly.bucket_metadata` | string / JSON / quota_bucket_metadata | Source type/unit, actual bucket `number`, and bounded model details. |
+| `ai.zcode.coding_plan.tools.remaining_percent` | double / % / quota_remaining | `TIME_LIMIT` tools bucket; `100 - percentage` where the source percentage is used. |
+| `ai.zcode.coding_plan.tools.reset_at` | DateTimeOffset / timestamp | Explicitly zoned reset timestamp for that bucket. |
+| `ai.zcode.coding_plan.tools.bucket_metadata` | string / JSON / quota_bucket_metadata | Source type/unit, actual bucket `number`, and bounded model details. |
+
+Buckets are selected by source type, unit, and documented number where the family requires it; the parser does not infer reset units or rewrite the source bucket number. A numeric reset value is Unavailable because its unit is unverified. Invalid or ambiguous source values fail closed to valueless Error; absent fields are Unavailable.
+
+## CER-M3-004 — GitHub Copilot quota
+
+The accepted provider reuses the official GitHub CLI owner for bounded read-only authentication-status, user-identity, and Copilot quota requests, and accepts the github.com account route only. It checks that the authenticated identity is unchanged around acquisition. A bounded live check used the built production provider constructor and `PollOnceAsync` with the existing official CLI credential owner, without synthetic transport/parser substitutions, and compared available remaining-percent fields against the same account's official included-usage UI; those percentages agreed. This is `LIVE_VERIFIED` for those comparable observations only. The live source omitted per-bucket reset instants, which remain valueless `Unavailable`; a general UI billing reset is not assigned to individual buckets. Credential class/lifetime and automatic renewal remain UNKNOWN, and this evidence does not validate every bucket, entitlement, billing mode, or plan.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.github_copilot.billing.token_based` | boolean / none / billing_mode | Direct `token_based_billing` indicator. |
+| `ai.github_copilot.quota.chat.percent_remaining` | double / % / quota_percent_remaining | Direct chat `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.chat.reset_at` | DateTimeOffset / timestamp | Direct chat `quota_reset_at`. |
+| `ai.github_copilot.quota.chat.unlimited` | boolean / none / quota_unlimited | Direct chat `unlimited` flag. |
+| `ai.github_copilot.quota.chat.has_quota` | boolean / none / quota_source_flag | Raw chat `has_quota`; not an admission decision. |
+| `ai.github_copilot.quota.completions.percent_remaining` | double / % / quota_percent_remaining | Direct completions `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.completions.reset_at` | DateTimeOffset / timestamp | Direct completions `quota_reset_at`. |
+| `ai.github_copilot.quota.completions.unlimited` | boolean / none / quota_unlimited | Direct completions `unlimited` flag. |
+| `ai.github_copilot.quota.completions.has_quota` | boolean / none / quota_source_flag | Raw completions `has_quota`; not an admission decision. |
+| `ai.github_copilot.quota.premium_interactions.percent_remaining` | double / % / quota_percent_remaining | Direct premium-interactions `percent_remaining`; no amount is inferred. |
+| `ai.github_copilot.quota.premium_interactions.reset_at` | DateTimeOffset / timestamp | Direct premium-interactions `quota_reset_at`. |
+| `ai.github_copilot.quota.premium_interactions.unlimited` | boolean / none / quota_unlimited | Direct premium-interactions `unlimited` flag. |
+| `ai.github_copilot.quota.premium_interactions.has_quota` | boolean / none / quota_source_flag | Raw premium-interactions `has_quota`; not an admission decision. |
+
+`token_based_billing`, `quota_remaining`, and `credits_used` retain separate source meanings. Entitlement and legacy premium-request fields also remain distinct; amount fields are parser-only until their units and semantics are verified. `has_quota` is not authoritative under token-based billing. No credential-renewal class or silent future renewal is claimed.
+
+## CER-M3-004 — OpenCode Go quota
+
+The accepted provider reads the official OpenCode Go static API-key owner and makes bounded read-only requests to `https://opencode.ai/zen/go/v1/usage`. A non-empty `OPENCODE_AUTH_CONTENT` is the selected source; otherwise the reader uses `XDG_DATA_HOME/opencode/auth.json` or its built-in user-profile store. An invalid selected source fails closed without falling back to an older store. Only the API-key auth type is supported. A source or key change clears incompatible cache and cancels in-flight acquisition and pending publication. Setup and live-account validation remain pending; no MFA was encountered.
+
+| MetricId | Kind / unit / semantic type | Source meaning |
+| --- | --- | --- |
+| `ai.opencode-go.quota.rolling.used` | double / % / quota_used | Direct rolling-window `usage.rolling.percent`; used percentage. |
+| `ai.opencode-go.quota.weekly.used` | double / % / quota_used | Direct weekly `usage.weekly.percent`; used percentage. |
+| `ai.opencode-go.quota.monthly.used` | double / % / quota_used | Direct monthly `usage.monthly.percent`; used percentage. |
+| `ai.opencode-go.quota.rolling.reset` | DateTimeOffset / timestamp | Explicit-offset rolling `resetsAt`. |
+| `ai.opencode-go.quota.weekly.reset` | DateTimeOffset / timestamp | Explicit-offset weekly `resetsAt`. |
+| `ai.opencode-go.quota.monthly.reset` | DateTimeOffset / timestamp | Explicit-offset monthly `resetsAt`. |
+
+Used percentages are not inverted into remaining capacity. Missing values remain Unavailable; malformed values fail independently as valueless Error. Balance, billing, and service-status fields do not become quota metrics.
+
+## CER-M3-004 — Kiro credits
+
+The accepted provider uses the official Kiro CLI's ACP usage operation and separately brackets acquisition with owner observations. It performs no auth writes and does not claim that synthetic recovery tests establish automatic token renewal. Renewal remains empirically unverified/deferred.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.kiro.credits.included.remaining` | decimal / credits / quota_remaining | `usageBreakdownList[]` entry with `resourceType=CREDIT`: `usageLimitWithPrecision - currentUsageWithPrecision` (legacy numeric aliases are accepted by the parser). |
+| `ai.kiro.credits.included.reset` | DateTimeOffset / timestamp | `subscriptionInfo.nextDateReset`, Unix seconds. |
+| `ai.kiro.credits.addon.remaining` | decimal / credits / quota_remaining | `addOnMetadata.addOnTotalLimit - addOnTotalUsage`. |
+| `ai.kiro.credits.bonus.remaining` | decimal / credits / quota_remaining | Sum of `freeTrialInfo.bonuses[]` `usageLimit - currentUsage` for allocations not expired at observation time. |
+
+Included, add-on and bonus balances remain separate. Missing source pools remain Unavailable; invalid or ambiguous pools are valueless errors. The bounded official-client/account checks on the validation host found no compatible signed-in Kiro session, so same-account comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`; this does not imply the user has no Kiro account elsewhere. No MFA, registration, agreement acceptance or paid usage was attempted.
+
+## CER-M3-004 — Command Code quota and subscription
+
+The accepted provider makes bounded read-only requests to the fixed Command Code API using the existing environment-key or official local auth-file owner. It does not write credentials or claim automatic renewal.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.commandcode.quota.5h.used_percent` | double / % / quota_used | `windowLimits.fiveHour.used / cap × 100`. |
+| `ai.commandcode.quota.5h.reset` | DateTimeOffset / timestamp | `windowLimits.fiveHour.resetAt`, Unix milliseconds. |
+| `ai.commandcode.quota.weekly.used_percent` | double / % / quota_used | `windowLimits.weekly.used / cap × 100`. |
+| `ai.commandcode.quota.weekly.reset` | DateTimeOffset / timestamp | `windowLimits.weekly.resetAt`, Unix milliseconds. |
+| `ai.commandcode.subscription.status` | string / none / subscription_status | Validated source `status` value. |
+| `ai.commandcode.subscription.plan` | string / none / subscription_plan | Known display label mapped from source `planId`; unknown plans remain Unavailable. |
+
+Used is not inverted into remaining quota; subscription status/plan are not quota. The auth-file, environment, CLI and browser checks on the validation host found no compatible signed-in account/session, so same-account comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. This does not imply the user has no account elsewhere. No login, registration, agreement acceptance, credential mutation or paid usage was attempted, and no renewal behavior is claimed.
+
+## CER-M3-004 — Qoder CN credits
+
+The accepted regional provider uses the existing Qoder CN CLI when its signed executable is present on `PATH`. It verifies the executable before launch, applies a bounded read-only usage request and shuts down the child within fixed limits; Cerith does not install the CLI or write its credentials. Qoder CN remains a distinct provider from Qoder International.
+
+The bounded validation host had no compatible local CLI/session or official browser session for a same-account comparison, so live comparison is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. This does not imply an account is absent elsewhere and does not establish quota/UI equality. No login, registration, account creation, consent, paid usage or credential mutation was performed.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.qoder-cn.quota.included.total` | double / Credits / quota_limit | Direct `usage.userQuota.total`. |
+| `ai.qoder-cn.quota.included.used` | double / Credits / quota_used | Direct `usage.userQuota.used`. |
+| `ai.qoder-cn.quota.included.remaining` | double / Credits / quota_remaining | Direct `usage.userQuota.remaining`. |
+| `ai.qoder-cn.quota.add_on.total` | double / Credits / quota_limit | Direct `usage.addOnQuota.total`. |
+| `ai.qoder-cn.quota.add_on.used` | double / Credits / quota_used | Direct `usage.addOnQuota.used`. |
+| `ai.qoder-cn.quota.add_on.remaining` | double / Credits / quota_remaining | Direct `usage.addOnQuota.remaining`. |
+| `ai.qoder-cn.plan.expires_at` | DateTimeOffset / none / timestamp | `usage.expiresAt`, Unix milliseconds. |
+| `ai.qoder-cn.org_resource_package.cap` | double / Credits / quota_limit | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+| `ai.qoder-cn.org_resource_package.used` | double / Credits / quota_used | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+| `ai.qoder-cn.org_resource_package.remaining` | double / Credits / quota_remaining | Reserved for `usage.orgResourcePackage`; remains unavailable while scope/units are unverified. |
+
+Missing CLI/source fields remain valueless `Unavailable`; invalid signatures or malformed fields remain sanitized errors. Organization-package values are deliberately not published as quota until their ownership, unit and semantics are verified. No reset instant or same-account live agreement is claimed.
+
+## CER-M3-004 — Qoder International (deferred)
+
+Qoder International remains distinct from Qoder CN. Current first-party documentation describes the CLI `/usage` panel and the Agent SDK `getUsageInfo()` account-quota method ([CLI usage](https://docs.qoder.com/cli/usage), [SDK cost and usage](https://docs.qoder.com/cli/sdk/cost-usage)). The SDK documentation describes a JSONL stdio control protocol ([SDK transport](https://docs.qoder.com/cli/sdk/how-it-works)).
+
+The preserved `codex/CER-M3-004-qoder` branch instead queries the signed desktop process over local named-pipe methods `auth/status` and `credit/usage`. I found no first-party contract for those desktop IPC methods, so their support/versioning remains unresolved. Switching to the documented SDK would require a separate SDK/runtime integration and is outside this low-dependency reconciliation. The branch remains preserved at `7a1a89e9f88ea1de57f5bf180f4e8bfd382c88fb`, is not registered or imported, and has no candidate MetricIds. The Qoder CLI/process was not found on this validation host; no local or same-account live comparison was run.
+
+## CER-M3-004 — Volcengine Ark Agent Plan
+
+The provider uses the official Ark CLI control-plane path. `usage plan --product agent-plan --format json --profile=<viewer.profile>` supplies the personal plan's 5-hour, weekly and monthly periods and the viewer scope. The CLI's registered `api usage.get_afp_usage --params {} --format json --profile=<viewer.profile>` action supplies the backend daily period omitted by the product projection. After acquisition Cerith runs an unforced `usage plan` read and publishes only if account, user, profile, region, project, auth method, root status, plan tier and subscription still match. The profile is validated and pinned only for the documented CLI calls; Cerith does not read, store, renew or rewrite Ark credentials.
+
+The official [personal `GetAFPUsage` API](https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh) defines rolling 5-hour, daily, weekly and monthly Agent Plan windows. `Quota` and `Used` are AFP, and `ResetTime` is Unix milliseconds. The pinned [Ark CLI v1.0.37 usage-plan contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md) identifies the personal product projection and its omitted daily field; the pinned [API Explorer contract](https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-api-explorer/references/arkcli-api.md) documents registered control-plane API actions. Official [auth-mode documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md) assigns SSO/STS renewal to the Ark CLI/Go SDK, which may refresh expired STS credentials. Cerith delegates that ownership to the official CLI and does not invoke a separate auth command. Custom data-plane API-key/base-URL overrides and ambient proxy variables are removed from the child environment.
+
+The preserved provider branch `codex/CER-M3-004-ark-agent` is accepted for staging at `0c9ba1c04b1899a502f5fc554a7dc8196a41dd5f`; its history is imported in merge `1d5cb488e56600124ced8e6e8b3cf537ff3783e2`. No compatible CLI/profile or authenticated session exists on this host, and the official console showed its login page. Live validation is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`. Evidence otherwise used: first-party API/CLI/auth documentation, pinned CLI route and profile behavior, a network-blocked dry-run of the registered action, deterministic parser/identity/lifecycle tests, and source inspection. This does not imply that the user lacks an account elsewhere. The Ark CLI does not expose the HTTP `Retry-After` header to Cerith; Cerith adds no transport retry and does not claim header-aware behavior. Provider polling is one minute.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.ark.agent_plan.5h.used` | decimal / AFP / quota_used | `periods[label=5h].used`. |
+| `ai.ark.agent_plan.5h.total` | decimal / AFP / quota_limit | `periods[label=5h].total`. |
+| `ai.ark.agent_plan.5h.used_percent` | decimal / % / quota_used_percent | `periods[label=5h].percent`, used percentage. |
+| `ai.ark.agent_plan.5h.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=5h].reset_at`. |
+| `ai.ark.agent_plan.daily.used` | decimal / AFP / quota_used | `Result.AFPDaily.Used`. |
+| `ai.ark.agent_plan.daily.total` | decimal / AFP / quota_limit | `Result.AFPDaily.Quota`. |
+| `ai.ark.agent_plan.daily.used_percent` | decimal / % / quota_used_percent | `Used / Quota × 100`; unavailable when either input is absent or quota is zero. |
+| `ai.ark.agent_plan.daily.reset` | DateTimeOffset / timestamp / timestamp | `Result.AFPDaily.ResetTime`, Unix milliseconds. |
+| `ai.ark.agent_plan.weekly.used` | decimal / AFP / quota_used | `periods[label=weekly].used`. |
+| `ai.ark.agent_plan.weekly.total` | decimal / AFP / quota_limit | `periods[label=weekly].total`. |
+| `ai.ark.agent_plan.weekly.used_percent` | decimal / % / quota_used_percent | `periods[label=weekly].percent`, used percentage. |
+| `ai.ark.agent_plan.weekly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=weekly].reset_at`. |
+| `ai.ark.agent_plan.monthly.used` | decimal / AFP / quota_used | `periods[label=monthly].used`. |
+| `ai.ark.agent_plan.monthly.total` | decimal / AFP / quota_limit | `periods[label=monthly].total`. |
+| `ai.ark.agent_plan.monthly.used_percent` | decimal / % / quota_used_percent | `periods[label=monthly].percent`, used percentage. |
+| `ai.ark.agent_plan.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`. |
+
+## CER-M3-004 — Volcengine Ark Coding Plan
+
+The provider uses the official Ark CLI `usage plan --product coding-plan --profile <profile> --env prod --format json` route, with `auth whoami` before and after acquisition. The parser accepts the personal Coding Plan product only, compares the profile/account/user identity across the read, and currently accepts `auth_method=sso`; other auth methods remain unavailable. Official [usage-plan documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md) defines Coding Plan as a quota snapshot with session, weekly and monthly windows. The official [auth-mode documentation](https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md) assigns SSO/STS renewal to the CLI/SDK. Cerith does not read or persist credentials; the official CLI remains their owner and may renew its own session.
+
+The validation host has no `arkcli` command on `PATH`, so no live command, account comparison or credential-side-effect probe was run. Live validation is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`; this does not imply an account is absent elsewhere. No login, consent, credential mutation, account creation or paid usage was attempted.
+
+| MetricId | Kind / unit / semantic type | Exact source meaning |
+| --- | --- | --- |
+| `ai.ark-coding-plan.quota.session.used` | double / % / quota_used | `items[product=coding-plan].periods[label=session].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.weekly.used` | double / % / quota_used | `items[product=coding-plan].periods[label=weekly].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.monthly.used` | double / % / quota_used | `items[product=coding-plan].periods[label=monthly].percent`; used percentage. |
+| `ai.ark-coding-plan.quota.session.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=session].reset_at`, explicit UTC or numeric offset. |
+| `ai.ark-coding-plan.quota.weekly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=weekly].reset_at`, explicit UTC or numeric offset. |
+| `ai.ark-coding-plan.quota.monthly.reset` | DateTimeOffset / timestamp / timestamp | `periods[label=monthly].reset_at`, explicit UTC or numeric offset. |
+
+The percentages are used values and are not inverted into remaining. Missing fields remain `Unavailable`; invalid percentages or reset timestamps are valueless errors. An elapsed reset makes both metrics for that period unavailable. Team products and unsupported auth methods are not inferred or substituted. The preserved provider branch is `codex/CER-M3-004-ark-coding-plan` at `c5841bf2ee6140d61ee517db62d8b176a996ce21`; integration and automated validation are recorded in `.agent/TASKS.md` and `.agent/WORKLOG.md`.
+
+Missing values remain unavailable; malformed values are errors. Values are not rounded or clamped, and account/profile transitions fail closed before publication. No direct API request, account creation, login, credential mutation, or paid usage was performed.
+
+## CER-M3-004 — Antigravity first integration wave
+
+The accepted provider consumes the local Antigravity language server's observed `RetrieveUserQuotaSummary` response after verifying the current-user process, session generation, listener, and account owner. It does not treat this internal HTTPS loopback RPC as a supported public API. A sanitized bounded local-RPC observation recognized four quota buckets and a stable before/after status identity. This establishes source RPC shape and identity only; production parser-to-MetricSnapshot agreement, installed-version validation, backend-cache behavior, and UI comparison remain unverified, so full live validation remains NOT RUN.
+
+| MetricId | Kind / unit / semantic type | Exact source field |
+| --- | --- | --- |
+| `ai.antigravity.quota.3p-weekly.remaining` | double / % / quota_remaining | `response.groups[].buckets[]` where `bucketId` is `3p-weekly`; `remainingFraction × 100`. |
+| `ai.antigravity.quota.3p-5h.remaining` | double / % / quota_remaining | Same `remainingFraction` mapping for `3p-5h`. |
+| `ai.antigravity.quota.gemini-weekly.remaining` | double / % / quota_remaining | Same mapping for `gemini-weekly`. |
+| `ai.antigravity.quota.gemini-5h.remaining` | double / % / quota_remaining | Same mapping for `gemini-5h`. |
+| `ai.antigravity.quota.3p-weekly.reset` | DateTimeOffset / timestamp | `resetTime` for `3p-weekly`. |
+| `ai.antigravity.quota.3p-5h.reset` | DateTimeOffset / timestamp | `resetTime` for `3p-5h`. |
+| `ai.antigravity.quota.gemini-weekly.reset` | DateTimeOffset / timestamp | `resetTime` for `gemini-weekly`. |
+| `ai.antigravity.quota.gemini-5h.reset` | DateTimeOffset / timestamp | `resetTime` for `gemini-5h`. |
+
+`remainingFraction` must be finite and in 0–1; conversion to percent is exact. Missing fractions/resets are Unavailable; malformed values are valueless Error. `resetTime` must include an explicit UTC or numeric offset. An elapsed reset invalidates both remaining and reset values for that bucket. Each bucket is keyed independently; do not clone a shared group value into per-model quotas. Valid returned quota values are Stale/Measured because the local RPC exposes no authoritative backend observation time and may serve backend-cached data. Do not relabel them Fresh.
+
+The provider checks ownership every five seconds, polls every five minutes, bounds each source request to eight seconds and the response to 1 MiB, and expires cache after 15 minutes or at reset. Profile-verification uncertainty remains distinct from a positively observed account/session change. During positive Retry-After when ownership cannot be reverified, cached and pending quota publications are cleared; an immutable MetricBus sample already buffered before the transition cannot be retracted.
+
+Live validation remains NOT RUN. Before claiming it, verify the actual installed Antigravity version, current response schema, and backend-cache freshness behavior against the official local language server.
 
 ## UI contract
 

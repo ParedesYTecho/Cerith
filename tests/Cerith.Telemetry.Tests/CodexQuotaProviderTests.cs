@@ -13,7 +13,13 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Cerith.Telemetry.Tests.Providers.AI.Antigravity;
 using Cerith.TelemetryService;
+using Cerith.TelemetryService.Providers.AI.Antigravity;
+using Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
+using Cerith.TelemetryService.Providers.AI.CommandCode;
+using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
+using Cerith.TelemetryService.Providers.AI.Kiro;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cerith.Telemetry.Tests;
@@ -547,8 +553,10 @@ public sealed class CodexQuotaProviderTests
             return JsonResponse(harness.Fixture);
         });
         using var stop = new CancellationTokenSource();
-        var run = harness.Provider.RunAsync(stop.Token);
+        var run = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
         await entered.Task;
+        Assert.IsFalse(run.IsCompleted);
 
         var initial = await Task.WhenAll(initialReads);
         Assert.IsTrue(initial.All(result => result));
@@ -564,6 +572,425 @@ public sealed class CodexQuotaProviderTests
         try { await run; }
         catch (OperationCanceledException) { }
         foreach (var reader in readers) await reader.DisposeAsync();
+    }
+
+    [TestMethod]
+    public async Task MissingCodexAuthKeepsServiceRunnerAliveUntilShutdown()
+    {
+        using var harness = new Harness();
+        File.Delete(Path.Combine(harness.Home, "auth.json"));
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        using var stop = new CancellationTokenSource();
+        var first = reader.MoveNextAsync().AsTask();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
+
+        Assert.IsTrue(await first.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.IsFalse(runner.IsCompleted);
+
+        var stopped = reader.MoveNextAsync().AsTask();
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+    }
+
+    [TestMethod]
+    public async Task RejectedCodexAuthKeepsServiceRunnerAliveUntilShutdown()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueStatus(HttpStatusCode.Unauthorized);
+        await harness.Provider.PollOnceAsync();
+
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        using var stop = new CancellationTokenSource();
+        var first = reader.MoveNextAsync().AsTask();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            () => harness.Provider.RunAsync(stop.Token), "codex", stop.Token);
+
+        Assert.IsTrue(await first.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Error, reader.Current.State);
+        Assert.AreEqual("auth_required", reader.Current.ErrorCode);
+        Assert.IsFalse(runner.IsCompleted);
+
+        var stopped = reader.MoveNextAsync().AsTask();
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+    }
+
+    [TestMethod]
+    public async Task UnexpectedCodexRunnerFailureDoesNotCompleteServiceWait()
+    {
+        using var harness = new Harness();
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        var stopped = reader.MoveNextAsync().AsTask();
+        harness.Time.ThrowOnNextTimestamp = true;
+        using var stop = new CancellationTokenSource();
+        Task? providerRun = null;
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(() =>
+        {
+            providerRun = harness.Provider.RunAsync(stop.Token);
+            return providerRun;
+        }, "codex", stop.Token);
+        Assert.IsNotNull(providerRun);
+        try
+        {
+            await providerRun.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.Fail("The injected clock failure should fault the provider runner.");
+        }
+        catch (InvalidOperationException) { }
+
+        var serviceTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var serviceWait = Task.WhenAny(serviceTask.Task, runner);
+        Assert.IsTrue(await stopped.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Stopped, reader.Current.State);
+        Assert.IsFalse(serviceWait.IsCompleted);
+
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+        serviceTask.SetResult();
+        await serviceWait.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    public async Task SynchronousProviderStartFailureDoesNotEscapeServiceRunner()
+    {
+        using var stop = new CancellationTokenSource();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            static () => throw new InvalidOperationException("Synthetic start failure."), "codex", stop.Token);
+
+        Assert.IsFalse(runner.IsCompleted);
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    [DataRow("codex")]
+    [DataRow("cursor")]
+    [DataRow("antigravity")]
+    [DataRow("zcode")]
+    [DataRow("github-copilot")]
+    [DataRow("opencode-go")]
+    [DataRow("kiro")]
+    [DataRow("command-code")]
+    [DataRow("qoder-cn")]
+    [DataRow("ark-agent-plan")]
+    [DataRow("ark-coding-plan")]
+    public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
+    {
+        using var stop = new CancellationTokenSource();
+        var runner = Program.KeepServiceAliveAfterProviderExitAsync(
+            static () => Task.FromException(new InvalidOperationException("Synthetic provider failure.")),
+            providerId, stop.Token);
+
+        Assert.IsFalse(runner.IsCompleted);
+        stop.Cancel();
+        await runner.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [TestMethod]
+    [DataRow("success")]
+    [DataRow("missing")]
+    [DataRow("auth-failed")]
+    [DataRow("slow")]
+    public async Task HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus(
+        string cursorOutcome)
+    {
+        using var codexHarness = new Harness();
+        var registry = codexHarness.Registry;
+        var bus = codexHarness.Bus;
+        using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
+
+        await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
+        await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
+        await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
+        await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        await using var cursorReader = bus.Subscribe(new MetricId("ai.cursor.quota.plan.total.used_percent"))
+            .GetAsyncEnumerator();
+        await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
+            .GetAsyncEnumerator();
+        var cpuRead = cpuReader.MoveNextAsync().AsTask();
+        var memoryRead = memoryReader.MoveNextAsync().AsTask();
+        var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
+        var codexRead = codexReader.MoveNextAsync().AsTask();
+        var cursorRead = cursorReader.MoveNextAsync().AsTask();
+        var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
+
+        codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
+        await hardwareProvider.PublishNextAsync();
+        await PresentMonTelemetryProviderTests.PublishSyntheticReadingAsync(registry, bus);
+        await codexHarness.Provider.PollOnceAsync();
+        await codexHarness.Provider.PublishCurrentAsync();
+        await CursorQuotaProviderTests.PublishSyntheticOutcomeAsync(registry, bus, cursorOutcome);
+        await AntigravityQuotaProviderTests.PublishSyntheticQuotaAsync(registry, bus);
+
+        var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, cursorRead, antigravityRead)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsTrue(received.All(result => result), "Every provider should deliver through the subscribed shared bus.");
+
+        var cpu = cpuReader.Current;
+        var cpuMeasured = cpu.State == MetricState.Fresh && cpu.Value.HasValue &&
+            cpu.Confidence == MetricConfidence.Measured;
+        var cpuUnavailable = cpu.State == MetricState.Unavailable && !cpu.Value.HasValue &&
+            cpu.Confidence == MetricConfidence.Unknown;
+        Assert.IsTrue(cpuMeasured || cpuUnavailable,
+            $"Real CPU telemetry must be measured or truthfully unavailable; received {cpu.State}/{cpu.Confidence}.");
+
+        Assert.AreEqual(MetricState.Fresh, memoryReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, memoryReader.Current.Confidence);
+        Assert.IsTrue(memoryReader.Current.Value.HasValue);
+        Assert.AreEqual("GlobalMemoryStatusEx", memoryReader.Current.Source);
+
+        Assert.AreEqual(MetricState.Fresh, presentMonReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, presentMonReader.Current.Confidence);
+        Assert.IsTrue(presentMonReader.Current.Value.HasValue);
+        Assert.AreEqual(MetricState.Fresh, codexReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
+        switch (cursorOutcome)
+        {
+            case "success":
+                Assert.AreEqual(MetricState.Fresh, cursorReader.Current.State);
+                Assert.AreEqual(MetricConfidence.Measured, cursorReader.Current.Confidence);
+                Assert.IsTrue(cursorReader.Current.Value.HasValue);
+                break;
+            case "missing":
+                Assert.AreEqual(MetricState.Unavailable, cursorReader.Current.State);
+                Assert.AreEqual(MetricConfidence.Unknown, cursorReader.Current.Confidence);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+            case "auth-failed":
+                Assert.AreEqual(MetricState.Error, cursorReader.Current.State);
+                Assert.AreEqual("auth_rejected", cursorReader.Current.ErrorCode);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+            case "slow":
+                Assert.AreEqual(MetricState.Error, cursorReader.Current.State);
+                Assert.IsNull(cursorReader.Current.Value);
+                break;
+        }
+        Assert.AreEqual(MetricState.Stale, antigravityReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Measured, antigravityReader.Current.Confidence);
+    }
+
+    [TestMethod]
+    public async Task HardwareAndAcceptedProvidersPublishTwiceWhileCursorRequestIsGated()
+    {
+        using var codexHarness = new Harness();
+        var registry = codexHarness.Registry;
+        var bus = codexHarness.Bus;
+        using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
+        using var presentMonProvider = PresentMonTelemetryProviderTests.CreateSyntheticProvider(registry, bus);
+        using var antigravityProvider = AntigravityQuotaProviderTests.CreateSyntheticProvider(registry, bus);
+        using var zcodeHarness = new ZCodeQuotaProviderTests.Harness(registry, bus);
+        using var arkCodingPlanFixture = new ArkCodingPlanQuotaProviderTests.Fixture(registry, bus);
+        _ = new QoderCnQuotaProvider(registry, bus, new QoderCnCliClient(null), TimeProvider.System);
+        const string arkUsage = """
+            {"viewer":{"auth_method":"sso","is_root":false,"user_id":"synthetic-user","account_id":"synthetic-account","profile":"synthetic-profile","region":"cn-beijing","project_name":"default"},
+             "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+               {"label":"5h","used":2,"total":10,"percent":20},
+               {"label":"weekly","used":8,"total":40,"percent":20},
+               {"label":"monthly","used":18,"total":100,"percent":18}
+             ]}]}
+            """;
+        const string arkDaily = """
+            {"ResponseMetadata":{"Action":"GetAFPUsage","Service":"ark","Version":"2024-01-01","Region":"cn-beijing","Error":null},
+             "Result":{"PlanType":"Medium","AFPDaily":{"Quota":"100","Used":"22.5","ResetTime":1800000000000}}}
+            """;
+        var arkUsagePayload = Encoding.UTF8.GetBytes(arkUsage);
+        var arkDailyPayload = Encoding.UTF8.GetBytes(arkDaily);
+        using var arkAgentPlanProvider = new ArkAgentPlanProvider(registry, bus,
+            _ => Task.FromResult(ArkCliResult.Success(arkUsagePayload, arkDailyPayload, null, false, arkUsagePayload)),
+            TimeProvider.System);
+        arkCodingPlanFixture.EnqueueSuccessfulCycle();
+        await arkCodingPlanFixture.Provider.PollOnceAsync();
+        var copilotResponses = new Queue<string>();
+        const string accountId = "24680";
+        const string authStatus = "{\"state\":\"success\",\"tokenSource\":\"keyring\"}";
+        const string copilotIdentity = "{\"id\":" + accountId + "}";
+        const string copilotQuota = "{\"id\":" + accountId +
+            ",\"token_based_billing\":true,\"quota_snapshots\":{" +
+            "\"chat\":{\"token_based_billing\":true,\"entitlement\":50,\"credits_used\":10," +
+            "\"quota_remaining\":40,\"percent_remaining\":80,\"quota_reset_at\":4102444800," +
+            "\"unlimited\":false,\"has_quota\":false}}}";
+        for (var round = 0; round < 2; round++)
+        {
+            copilotResponses.Enqueue(authStatus);
+            copilotResponses.Enqueue(copilotIdentity);
+            copilotResponses.Enqueue(copilotQuota);
+            copilotResponses.Enqueue(copilotIdentity);
+        }
+        var copilotTime = new TestTimeProvider(DateTimeOffset.UtcNow);
+        var copilotAcquirer = new CopilotQuotaAcquirer((_, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Encoding.UTF8.GetBytes(copilotResponses.Dequeue()));
+        });
+        using var copilotProvider = new CopilotQuotaProvider(registry, bus, copilotAcquirer, copilotTime);
+
+        const string kiroUsage = """
+            {"userInfo":{"userId":"synthetic-user","accountId":"synthetic-account"},
+             "subscriptionInfo":{"nextDateReset":1893456000},
+             "usageBreakdownList":[{"resourceType":"CREDIT","currentUsageWithPrecision":"12.75","usageLimitWithPrecision":"100"}]}
+            """;
+        using var kiroProvider = new KiroQuotaProvider(registry, bus,
+            _ => Task.FromResult(KiroAcquisition.Ready(Encoding.UTF8.GetBytes(kiroUsage))), TimeProvider.System,
+            _ => Task.FromResult(KiroIdentityObservation.Ready(new byte[32])));
+
+        using var commandHandler = new RecordingHandler();
+        commandHandler.EnqueueJson("{\"data\":{\"org\":{\"id\":\"synthetic-org\"}}}");
+        commandHandler.EnqueueJson("""
+            {"windowLimits":{"fiveHour":{"used":25,"cap":100,"resetAt":4102444800000},
+              "weekly":{"used":5,"cap":20,"resetAt":4103049600000}}}
+            """);
+        commandHandler.EnqueueJson("{\"data\":{\"planId\":\"individual-pro-v1\",\"status\":\"active\"}}");
+        commandHandler.EnqueueJson("{\"data\":{\"org\":{\"id\":\"synthetic-org\"}}}");
+        using var commandClient = new HttpClient(commandHandler) { Timeout = Timeout.InfiniteTimeSpan };
+        var commandAuthReader = new CommandCodeQuotaAuthReader(
+            () => "synthetic-command-code-key", () => null, () => null, _ => null);
+        using var commandCodeProvider = new CommandCodeQuotaProvider(
+            registry, bus, commandAuthReader, commandClient, TimeProvider.System);
+
+        const string authContent = "{\"opencode-go\":{\"type\":\"api\",\"key\":\"synthetic-opencode-go-key\"}}";
+        var authReader = new OpenCodeGoAuthReader(getEnvironmentVariable: name =>
+            StringComparer.Ordinal.Equals(name, "OPENCODE_AUTH_CONTENT") ? authContent : null);
+        using var openCodeHandler = new RecordingHandler();
+        openCodeHandler.EnqueueJson("""
+            {"usage":{
+              "rolling":{"percent":37.5,"resetsAt":"2099-10-01T00:00:00Z"},
+              "weekly":{"percent":12.5,"resetsAt":"2099-10-08T00:00:00Z"},
+              "monthly":{"percent":4,"resetsAt":"2099-11-01T00:00:00Z"}
+            }}
+            """);
+        using var openCodeProvider = new OpenCodeGoQuotaProvider(registry, bus, authReader,
+            openCodeHandler, TimeProvider.System, _ => 0);
+        zcodeHarness.Handler.EnqueueJson(zcodeHarness.Fixture);
+        await zcodeHarness.Provider.PollOnceAsync();
+        await kiroProvider.PollOnceAsync();
+        await commandCodeProvider.PollOnceAsync();
+        await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
+        await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
+        await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
+        await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
+            .GetAsyncEnumerator();
+        await using var copilotReader = bus.Subscribe(new MetricId(
+            "ai.github_copilot.quota.chat.percent_remaining")).GetAsyncEnumerator();
+        await using var openCodeReader = bus.Subscribe(new MetricId(
+            "ai.opencode-go.quota.rolling.used")).GetAsyncEnumerator();
+        await using var zcodeReader = bus.Subscribe(new MetricId(
+            "ai.zcode.coding_plan.five_hour.remaining_percent")).GetAsyncEnumerator();
+        await using var kiroReader = bus.Subscribe(new MetricId(
+            "ai.kiro.credits.included.remaining")).GetAsyncEnumerator();
+        await using var commandCodeReader = bus.Subscribe(new MetricId(
+            "ai.commandcode.quota.5h.used_percent")).GetAsyncEnumerator();
+        await using var qoderCnReader = bus.Subscribe(new MetricId(
+            QoderCnQuotaProviderTests.IncludedRemainingMetricId)).GetAsyncEnumerator();
+        await using var arkAgentPlanReader = bus.Subscribe(new MetricId(
+            "ai.ark.agent_plan.daily.used")).GetAsyncEnumerator();
+        await using var arkCodingPlanReader = bus.Subscribe(new MetricId(
+            "ai.ark-coding-plan.quota.session.used")).GetAsyncEnumerator();
+
+        codexHarness.Handler.EnqueueJson(codexHarness.Fixture);
+        await codexHarness.Provider.PollOnceAsync();
+        await antigravityProvider.PollOnceAsync();
+        await openCodeProvider.PollOnceAsync();
+
+        async Task PublishAndReadRoundAsync()
+        {
+            var cpuRead = cpuReader.MoveNextAsync().AsTask();
+            var memoryRead = memoryReader.MoveNextAsync().AsTask();
+            var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
+            var codexRead = codexReader.MoveNextAsync().AsTask();
+            var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
+            var copilotRead = copilotReader.MoveNextAsync().AsTask();
+            var openCodeRead = openCodeReader.MoveNextAsync().AsTask();
+            var zcodeRead = zcodeReader.MoveNextAsync().AsTask();
+            var kiroRead = kiroReader.MoveNextAsync().AsTask();
+            var commandCodeRead = commandCodeReader.MoveNextAsync().AsTask();
+            var qoderCnRead = qoderCnReader.MoveNextAsync().AsTask();
+            var arkAgentPlanRead = arkAgentPlanReader.MoveNextAsync().AsTask();
+            var arkCodingPlanRead = arkCodingPlanReader.MoveNextAsync().AsTask();
+
+            await hardwareProvider.PublishNextAsync();
+            await presentMonProvider.PublishNextAsync();
+            await codexHarness.Provider.PublishCurrentAsync();
+            await antigravityProvider.PublishCurrentAsync();
+            await copilotProvider.PollOnceAsync();
+            await openCodeProvider.PublishCurrentAsync();
+            await zcodeHarness.Provider.PublishCurrentAsync();
+            await kiroProvider.PublishOnceAsync();
+            await commandCodeProvider.PublishCurrentAsync();
+            await QoderCnQuotaProviderTests.PublishSyntheticQuotaAsync(bus);
+            await arkAgentPlanProvider.PollOnceAsync();
+            await arkCodingPlanFixture.Provider.PublishCurrentAsync();
+
+            var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, antigravityRead,
+                    copilotRead, openCodeRead, zcodeRead, kiroRead, commandCodeRead, qoderCnRead, arkAgentPlanRead,
+                    arkCodingPlanRead)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.IsTrue(received.All(result => result), "Every independent source must publish during the gated Cursor request.");
+
+            var cpu = cpuReader.Current;
+            var cpuMeasured = cpu.State == MetricState.Fresh && cpu.Value.HasValue &&
+                cpu.Confidence == MetricConfidence.Measured;
+            var cpuUnavailable = cpu.State == MetricState.Unavailable && !cpu.Value.HasValue &&
+                cpu.Confidence == MetricConfidence.Unknown;
+            Assert.IsTrue(cpuMeasured || cpuUnavailable,
+                $"Real CPU telemetry must be measured or truthfully unavailable; received {cpu.State}/{cpu.Confidence}.");
+
+            var memory = memoryReader.Current;
+            Assert.AreEqual(MetricState.Fresh, memory.State);
+            Assert.AreEqual(MetricConfidence.Measured, memory.Confidence);
+            Assert.IsTrue(memory.Value.HasValue);
+            Assert.AreEqual("GlobalMemoryStatusEx", memory.Source);
+
+            Assert.AreEqual(MetricState.Fresh, presentMonReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, presentMonReader.Current.Confidence);
+            Assert.IsTrue(presentMonReader.Current.Value.HasValue);
+            Assert.AreEqual(MetricState.Fresh, codexReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
+            Assert.AreEqual(MetricState.Stale, antigravityReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, antigravityReader.Current.Confidence);
+            Assert.AreEqual(MetricState.Fresh, copilotReader.Current.State);
+            Assert.AreEqual(80d, copilotReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual(MetricState.Fresh, openCodeReader.Current.State);
+            Assert.AreEqual(37.5d, openCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual(MetricState.Fresh, zcodeReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, zcodeReader.Current.Confidence);
+            Assert.AreEqual(75d, zcodeReader.Current.Value!.Value.AsDouble(), 0.001);
+            Assert.AreEqual(MetricState.Fresh, kiroReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, kiroReader.Current.Confidence);
+            Assert.AreEqual(87.25m, kiroReader.Current.Value!.Value.AsDecimal());
+            Assert.AreEqual("Kiro.Usage.ACP.v3", kiroReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, commandCodeReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, commandCodeReader.Current.Confidence);
+            Assert.AreEqual(25d, commandCodeReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("CommandCode.ObservedBillingApi.v1", commandCodeReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, qoderCnReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, qoderCnReader.Current.Confidence);
+            Assert.AreEqual(75d, qoderCnReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("QoderCN.CliControl.v1", qoderCnReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, arkAgentPlanReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, arkAgentPlanReader.Current.Confidence);
+            Assert.AreEqual(22.5m, arkAgentPlanReader.Current.Value!.Value.AsDecimal());
+            Assert.AreEqual("ArkCli.AgentPlanUsage.v1", arkAgentPlanReader.Current.Source);
+            Assert.AreEqual(MetricState.Fresh, arkCodingPlanReader.Current.State);
+            Assert.AreEqual(MetricConfidence.Measured, arkCodingPlanReader.Current.Confidence);
+            Assert.AreEqual(50d, arkCodingPlanReader.Current.Value!.Value.AsDouble(), 0.000001);
+            Assert.AreEqual("ArkCodingPlan.Usage.Plan.ReadOnly.v1", arkCodingPlanReader.Current.Source);
+        }
+
+        await CursorQuotaProviderTests.RunWithPendingQuotaRequestAsync(registry, bus, async () =>
+        {
+            await PublishAndReadRoundAsync();
+            copilotTime.Advance(CopilotQuotaProvider.PollInterval);
+            await PublishAndReadRoundAsync();
+        });
     }
 
     [TestMethod]
@@ -896,10 +1323,22 @@ public sealed class CodexQuotaProviderTests
         private readonly ConcurrentBag<ManualTimer> _timers = new();
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
+        public bool ThrowOnNextTimestamp { get; set; }
 
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
-        public override long GetTimestamp() { lock (_gate) return _timestamp; }
+        public override long GetTimestamp()
+        {
+            lock (_gate)
+            {
+                if (ThrowOnNextTimestamp)
+                {
+                    ThrowOnNextTimestamp = false;
+                    throw new InvalidOperationException("Synthetic clock failure.");
+                }
+                return _timestamp;
+            }
+        }
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             var timer = new ManualTimer(this, callback, state);

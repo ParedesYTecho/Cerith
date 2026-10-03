@@ -365,3 +365,341 @@ Summary: final bounded GPT-6.1 Sol High review PASS on head `5b38464ed1313d44cb3
 Next: CER-M3-004 — AI quota expansion wave 1, targeting the 16 remaining reference-backed usage-limit integrations with one Luna Max write owner per provider boundary and one integration owner for shared files. No generic runtime foundation is introduced before evidence proves it necessary; provider implementation can run concurrently while integration remains staged and verified.
 Files: `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`, `docs/ROADMAP.md`.
 Result: docs-only reconciliation; no provider/product/test/dependency implementation started.
+
+## 2026-09-30 — Codex — CER-M3-004 lifecycle seam and integration progress
+
+Event: minimal provider-runner failure isolation committed; shared integration remains staged for reviewed provider commits.
+Summary: commit `6e99d608c7df039c4c591420ec80b845e5fb6d22` wraps Codex construction and `RunAsync`; Codex seam tests cover startup/runtime faults and shutdown. No provider wave coexistence PASS is claimed. Five first-batch drafts remain under implementation/coordinator review. Kimi's draft telemetry test command passed before owner-monitor revisions; final provider checks are pending. No verified individual result is recorded for the other four. No provider commit or shared identity/token change was imported.
+Verification: Release build PASS (0 warnings/errors); Core 39/39, Telemetry 62/62, Integration 10/10; hygiene PASS (84 tracked paths); `git diff --check` PASS. Baseline before the seam: Core 39/39, Telemetry 58/58, Integration 10/10; Release build and hygiene PASS.
+Files: `Program.cs`, Codex telemetry tests, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Status: CER-M3-004 IN PROGRESS; awaiting coordinator-reviewed provider SHA. The detailed coexistence gate is in `.agent/TASKS.md`; no provider draft imported or main merge performed.
+
+## 2026-09-30 — Codex — CER-M3-004 two-gate cadence checkpoint
+
+Event: preserved clean `66fcbce` checkpoint; recorded user-directed MID/FINAL cadence and reviewed multi-provider correctness checklist once in TASKS.
+Status: one integration owner plus five original active providers; Kiro queued at preservation checkpoint, branch not created, agent closed. Awaiting MID handoffs or explicit coordinator FINALPASS SHA; no provider import, main merge, graph refresh or auth action.
+Files: `.agent/TASKS.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`; documentation only.
+Verification: final diff inspected; git diff --check and tracked-file hygiene PASS (84 paths).
+
+## 2026-09-30 21:01 — Codex — CER-M3-004 routing correction
+
+Event: decision
+Summary: The routing audit verified all six resumed implementation workers (integration plus five providers) were running GPT-6.1 Sol Medium. They were closed with all work preserved; six fresh GPT-6 Luna Max receipts were then verified.
+Files: `.agent/MODEL_ROUTING.md`, `.agent/WORKLOG.md`.
+Result: Existing provider work and lifecycle checkpoint `6e99d60` remain preserved; canonical `main` is untouched. MID/FINAL reviews remain external and read-only; no provider commits imported pending coordinator FINALPASS.
+
+## 2026-10-01 — Dewey One — CER-M3-004 bounded integration follow-up
+
+Event: applied Sol's bounded coexistence correction on top of preserved integration HEAD `ce99046`; no provider implementation was reopened.
+
+Summary: the shared-bus regression now signals entry into a gated Cursor quota request and keeps it pending while two rounds each of real Hardware, PresentMon through its existing synthetic capture seam, Codex and accepted Antigravity publish and are read from the same bus. It asserts real RAM Fresh/Measured and CPU Fresh/Measured or valueless Unavailable, then bounds service-runner completion and Cursor cancellation/drain to one second. The existing unexpected-provider-failure rows continue to exercise `KeepServiceAliveAfterProviderExitAsync`. Cursor's desktop token lifetime/renewal remains UNRESOLVED: official CLI/ACP docs do not define the exact `state.vscdb` credential lifecycle, the accepted reader performs no renewal, and synthetic manual token rewrites prove reread/recovery only. This remains separate from live Cursor UI/quota comparison, NOT RUN.
+
+Verification: Release solution build 0 warnings/errors; Core 39/39, Telemetry 129/129, Integration 10/10 (178/178); focused coexistence/failure cases 8/8; `git diff --check` PASS; configured sensitive-filename hygiene PASS (93 tracked paths, no matches); targeted added-diff scan for personal paths, email addresses, bearer strings and credential assignments PASS (zero matches; not a comprehensive secret scan); isolated Graphify refresh PASS (1,622 nodes / 4,185 edges). No live Cursor auth/status/UI/quota action or Antigravity RPC was run.
+
+Files: coexistence test seams/tests, Cursor silent-startup acceptance note, and current `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`.
+
+Status: ready for Sol read-only review of this follow-up. Cursor and Antigravity remain the only accepted imports; the full 16-provider mission stays active, M3 remains incomplete, and canonical `main` is untouched.
+
+## 2026-10-01 — Dewey One — CER-M3-004 bounded follow-up review and Cursor auth trace
+
+Event: Sol bounded review PASS on integration checkpoint 2640d434cbd515fb04edec8ba0d8e06f85370ea6; lifecycle/coexistence correction accepted for this checkpoint.
+
+Summary: Sol independently verified the deterministic entered-gate coexistence correction (focused Release 8/8), reviewed the complete nine-file diff, and reported diffcheck clean; shared production is unchanged by that correction. Existing full Release evidence remains build 0 warnings/errors, Core 39/39, Telemetry 129/129, Integration 10/10 (178 total), with configured hygiene and targeted diff privacy checks passed. The privacy check was scoped and is not a comprehensive secret scan.
+
+Cursor auth evidence: followed the official Windows x64 user-installer route from https://cursor.com/download to the versioned Cursor 3.22.12 artifact at downloads.cursor.com/production/3a92974361033b2051526321308c2740fe5912c5/win32/x64/user-setup/CursorUserSetup-x64-3.22.12.exe. Authenticode status Valid, signer Anysphere, Inc., SHA-256 0B76176E54FCD9B51302968AEEBCE3EE708E93DA61071ECC2FCD50F79C1C3E79. A SHA-256-manifest-verified official upstream innoextract 1.10-dev Windows build (package digest 8c472a72b944e9848f75c4fb1f47b4907f0a7924ad226cac1beb51d31621abd2) reports support through Inno Setup 6.3.3, detects Cursor's installer as Inno Setup 6.4.0.1, and fails parsing the newer setup headers. The public artifact therefore remained opaque before auth/session code; accessToken lifetime, renewability and an official owner operation remain unproven. No installer/client execution, installation, user-session access, credential inspection/copy, authentication or auth mutation occurred.
+
+Disposition: Cursor full product acceptance DEFERRED/UNRESOLVED; live UI/quota comparison remains separately NOT RUN. Do not import another provider group until current-group acceptance is resolved. No provider production edit, dependency, framework, PR or canonical-main merge. ZCode returned MID FIXES at 962ee24; Averroes remains Luna Max on the same branch. The full 16-provider CER-M3-004 mission remains active and M3 is incomplete.
+
+Files: .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md, docs/PROVIDERS_AI_QUOTAS.md.
+
+## 2026-10-01 — Dewey One — CER-M3-004 routing and queue checkpoint
+
+Event: corrected the current operational gate and recorded verified owner/coordinator/worker routing on the preserved integration branch.
+
+Runtime: integration owner GPT-6 Luna Max verified from authoritative `turn_context` at 2026-10-01 11:53:02.136 UTC. Main coordinator/reviewer GPT-6.1 Sol Medium was verified at 11:45:23.649 UTC and remains external/read-only. The five existing worker receipts were checked as Luna Max: Kiro 11:50:58.056Z, Grok Build 11:51:07.930Z, Copilot 11:51:18.258Z, ZCode 11:51:29.260Z, and OpenCode Go 11:58:03.827Z.
+
+Status: Cursor implementation FINALPASS `24ca7027e204fb1361cb79f573ddf132c9490994` and Antigravity FINALPASS `8889e4b34da1445c2bafe08093c11dc8c63fd1e3` remain imported. Cursor silent-startup auth is DEFERRED/UNRESOLVED; live UI/quota comparison is separately NOT RUN. This terminal Cursor disposition does not block importing other exact provider FINALPASS commits. The five retained workers are Kiro MID FOLLOW-UP PASS (focused 11/11), Grok Build MID FIXES, Copilot MID PASS (17/17), ZCode MID PASS (22/22), and OpenCode Go MID PASS with a final-refactor compile issue (`CachedPoint`) under investigation. No FINALPASS was reported for them. Claude, Gemini and Kimi remain BLOCKED at preserved tips.
+
+Queue: based on existing route/cost evidence, next dispatch priority is Command Code, Devin, Qoder, Qoder CN, Ark Coding Plan, then Ark Agent Plan. This records priority only; no worker was started. Retain the current five workers; future queue concurrency defaults to three and expands only with clear route evidence and no shared-auth/review backlog. MID/FINAL remain the only scheduled review gates.
+
+Authorization-gate policy: exhaust safe existing official session, browser and local-owner routes before classifying a human gate. Reserve `HUMAN_GATE_PENDING` for a concrete user action such as MFA or consent; it does not pause other objective work and must not mask an architectural or credential-ownership blocker.
+
+Verification: documentation-only checkpoint; no provider tests or unchanged accepted-provider reviews were rerun. The last implementation verification remains the 2640d43 evidence above. No provider code, dependency, main merge or M3 completion.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-01 — Dewey One — ZCode FINAL PASS integration checkpoint
+
+Event: imported only ZCode FINAL PASS source tip `0a8dca3555e6c523ab7c40f4ba1e4303c9b13df9` into the preserved integration branch. The no-fast-forward merge is `198d25b23fc996cb992b5e7331b179b09f9a7be1`; the four provider-owned commits and files remain intact. Integration-owned changes wire ZCode through the existing provider runner isolation seam and document its ten typed MetricIds and source semantics. No shared abstraction, dependency, provider credential, or auth-renewal writer was added.
+
+Runtime and ownership: actual provider/integration runtime GPT-6 Luna Max, max, verified from authoritative `turn_context` at 2026-10-01T12:51:12.154Z. Main reviewer remains external GPT-6.1 Sol Medium/read-only at the previously verified 11:45:23.649Z. ZCode's independent focused Release suite was 23/23 PASS. Grok Build is BLOCKED at `d51fba3184b606c36b141e2f9c232c85ef03d0ff` for `auth_provenance_unavailable` and was not imported; its reported focused 12/12 and full Release 70/70 remain preserved. Kiro, Copilot and OpenCode Go remain pending explicit FINALPASS.
+
+Sanitized live-observation dispositions: Cursor browser-only access with no local desktop database/config is UI_ONLY and does not establish same-account quota equality or renewal; silent-startup auth remains DEFERRED/UNRESOLVED and the live quota comparison NOT RUN. A signed-in Claude Free product does not validate paid Claude Code quota; no MFA was encountered. No private paths, quota values, credentials or raw payloads were recorded.
+
+Verification: restore passed. The default parallel Release build exited on MSBuild worker-node failures; the serial Release build passed with 0 warnings/errors. Core 39/39, Telemetry 152/152, Integration 10/10 (201/201 total) passed. Focused shared-bus coexistence, provider-failure isolation, cancellation and bounded shutdown passed 11/11. Graphify refreshed (1,816 nodes, 4,451 edges, 73 communities); configured hygiene passed (97 tracked paths); `git diff --check` and targeted added-diff privacy checks passed. Privacy review is scoped, not a comprehensive secret scan. No live provider quota/RPC request was made.
+
+Status: PR #47 stays draft; no canonical-main merge. The 16-provider CER-M3-004 mission remains active and M3 incomplete.
+
+Files: `src/Cerith.TelemetryService/Program.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-01 — Dewey One — Copilot and OpenCode Go integration
+
+Event: imported only the exact Sol FINALPASS tips Copilot `6c59c3437f8b23692bab8d338c67c3ca0941827f` and OpenCode Go `d102d7d301d523acbf4c107c09e8ccd04229b157`. Separate no-fast-forward merges `71fdb4989db63667dabf26e40c1aad369032c735` and `1b49128176c39759aaa866512e52340e713bcee5` preserve the provider-owned commits and tests. Integration adds both providers through the existing runner isolation seam and registers 19 exact metric IDs (13 Copilot, 6 OpenCode Go) with canonical source semantics. No dependency, generic auth framework, or shared primitive was added.
+
+Coexistence: extended the gated same-bus regression to two rounds of real Hardware, synthetic PresentMon, Codex, Antigravity, Copilot, and OpenCode Go publication while Cursor acquisition remains pending. The existing runner wrapper still bounds cancellation/drain after the gated callback. Focused coexistence passed 1/1; local Copilot tests passed 33/33 across acquirer/parser/provider classes; OpenCode Go tests passed 26/26. External final evidence remains Copilot 33/33 and OpenCode Go 26/26.
+
+Verification: serial Release solution build passed with 0 warnings/errors; Core 39/39, Telemetry 211/211, and Integration 10/10 passed. Focused Antigravity and ZCode worker-fault shutdown tests also pass. Actions run [`36908452080`](https://github.com/ParedesYTecho/Cerith/actions/runs/36908452080) at `86156c0` failed after 159 Telemetry cases passed with an unhandled `System.Threading.PeriodicTimer.Dispose` finalizer `NullReferenceException`; IPC was skipped. The fault fixtures were adjusted to throw after successful PeriodicTimer construction, preserving worker-fault/Stopped assertions; no provider production code changed. Latest Actions run [`36910877660`](https://github.com/ParedesYTecho/Cerith/actions/runs/36910877660) at `4ab8fc8` passed Build, Core, Telemetry, IPC integration, and hygiene. The project-level `dotnet test` invocation reported zero tests in this environment, so direct MTP test executables were used. Graphify refreshed to 2,251 nodes / 5,774 edges / 88 communities. Configured obvious-private-artifact path hygiene passed for 107 tracked paths; `git diff --check` and scoped targeted diff privacy patterns passed with no matches. These checks are not a comprehensive secret scan.
+
+Current limits: Copilot credential renewal class is unknown; do not claim renewal. OpenCode Go setup/live validation is pending; no MFA was encountered. The sanitized Antigravity local-RPC probe is schema/identity evidence only; parser-to-snapshot, version, backend-cache and UI comparisons remain open. Cursor auth remains DEFERRED/UNRESOLVED and live UI comparison NOT RUN. Kiro awaits FINAL review; Command Code MID handoff awaits Sol; Grok Build remains BLOCKED at `auth_provenance_unavailable`. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains `72b43b268b4992d0b0ea45b6e29067d10450274f`. PR #47 remains draft; no canonical-main merge or M3/16-provider completion claim.
+
+Files: `src/Cerith.TelemetryService/Program.cs`, `tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/Antigravity/AntigravityQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, plus the imported Copilot/OpenCode Go provider source and tests.
+
+## 2026-10-01 — Dewey One — ZCode coexistence and shared QA checkpoint
+
+Runtime: integration writer GPT-6 Luna Max, max, verified from authoritative turn_context at 2026-10-01T19:18:17.505Z. The user-requested external reviewer route is GPT-5.6 Sol via Web; the actual reviewer runtime is not verified in this checkpoint.
+
+Change: closed the remaining gated same-bus integration gap with ZCode through its existing synthetic auth/HTTP/time seams. The registered ZCode provider publishes its accepted synthetic 75% remaining value in both rounds alongside real Hardware, synthetic PresentMon, Codex, Antigravity, Copilot and OpenCode Go while Cursor acquisition is held pending. Provider-failure isolation cases now cover all six accepted registered AI providers. No provider production code, cadence, dependency or shared primitive changed.
+
+Shared QA: recorded once in docs/TESTING_QA.md that worker-fault tests must let PeriodicTimer finish construction before injecting timestamp faults. The partial-construction/disposal failure on .NET 10.0.12 was independently reproduced without Cerith code and surfaced by both Antigravity and ZCode fixtures.
+
+Verification: serial Release solution build passed with 0 warnings/errors. Core 39/39, Telemetry 214/214, Integration 10/10; focused gated coexistence 1/1 and provider failure isolation 6/6. Configured obvious-private-artifact hygiene passed for 107 tracked files; targeted added-diff privacy patterns and git diff --check passed. These checks are scoped and are not a comprehensive secret scan. No Graphify refresh was needed because no product structure changed.
+
+GitHub Actions Build and Test run [36915798758](https://github.com/ParedesYTecho/Cerith/actions/runs/36915798758) and Repository Quality run [36915798869](https://github.com/ParedesYTecho/Cerith/actions/runs/36915798869) passed at code/test commit 283f182; CodeQL was skipped under workflow policy.
+
+Provider checkpoint: Command Code MID PASS at 939bd24; FINAL fixes are active Luna at 12bf7f0cf782c5724ba0be8b6f4a8172ae6a17e8. Kiro has an active bounded follow-up at 98a1a0d3fa5c50bc4a3ac6c8a3b82adca85159f2 for propagation of unexpected child/dependency cleanup faults. Devin is BLOCKED at MID tip 1a8e169e2bf73f7650ed22c630cb01a63739eafb for unresolved product/team scope/provenance. Qoder International is active at MID; Qoder CN and Ark Coding/Agent remain pending. Other accepted, deferred and blocked dispositions are unchanged; no new provider import is authorized without exact FINAL PASS.
+
+PR #47 remains draft. Local main remains 3f5ca74a26edf88a02e6bda05f759ee3c74032cd and origin/main remains 72b43b268b4992d0b0ea45b6e29067d10450274f. No canonical-main merge or M3/mission completion claim.
+
+Files: tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs, tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs, docs/TESTING_QA.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md.
+
+## 2026-10-01 — Dewey One — Kiro and Command Code integration
+
+Runtime: GPT-6 Luna, max effort, authoritative `turn_context` verified at 2026-10-01 19:26:31 Europe/Madrid. The current user-requested reviewer route is GPT-5.6 Sol via Web; it is not runtime evidence.
+
+Imports: merged only Kiro FINALPASS `ca2b2c388be9b608fa96d8fdc3228d8da6ab7aac` and Command Code FINALPASS `3919521a3615e2a7ee72cefd811e3572e3bf4124`, preserving provider histories in no-fast-forward commits `4d7f0ada9b09b339d22afaa750010dd318d8e4d3` and `82da0b3b4f3013811480d2a5562b152e62d3ca6f`. Existing supervisor wiring owns both runners. Canonical docs register four Kiro and six Command Code MetricIds with raw units, reset semantics and subscription distinctions. The validation outcome rubric is recorded once in `docs/PROVIDERS_AI_QUOTAS.md`.
+
+Coexistence: the gated same-bus test now receives synthetic Kiro 87.25 included credits and Command Code 25% used with their source labels, twice while Cursor acquisition is held pending, alongside real Hardware, synthetic PresentMon, Codex and all prior accepted providers. The existing supervisor isolation test has all eight registered IDs. ZCode's delegating wrapper/factory was removed; the shared test reuses its existing Harness. No new shared abstraction, dependency, provider auth writer or provider-owned edits were added.
+
+Validation: Release solution build passed with 0 warnings/errors. Guarded direct MTP aggregate exited 0: Core 39/39, Telemetry 295/295, Integration 10/10; focused coexistence 1/1 and supervisor isolation 8/8. `dotnet test` on this host returned exit 5 with zero tests for each project, so the compiled test applications were invoked directly with a minimum-expected-tests guard. Graphify refreshed to 2,734 nodes / 8,002 edges. Repository path hygiene passed for 117 tracked files; scoped added-diff privacy checks and `git diff --check` passed. These are not a comprehensive secret scan. Hosted CI for the new head is pending after push.
+
+Live evidence: Kiro and Command Code same-account comparisons are `LIVE_NOT_AVAILABLE_ON_THIS_HOST` after the relevant safe existing-owner, CLI and browser routes found no compatible signed-in session. This does not establish account absence elsewhere. Kiro silent renewal remains empirically deferred; no Command renewal behavior is claimed. No MFA, login, consent, credential/security mutation, registration or paid quota use was triggered. Cursor auth remains DEFERRED/UNRESOLVED and live comparison NOT RUN. The 16-provider mission remains active.
+
+Files: `src/Cerith.TelemetryService/Program.cs`, `tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs`, `tests/Cerith.Telemetry.Tests/Providers/AI/ZCode/ZCodeQuotaProviderTests.cs`, `docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, plus the imported Kiro and Command Code source and tests.
+
+## 2026-10-02 — Dewey One — Copilot validation and staged integration handoff
+
+Runtime: the latest authoritative `turn_context` persisted for the integration-owner session reports GPT-6 Luna, max, at 2026-10-01 23:15:34 Europe/Madrid. Dewey One remains sole shared-file writer; external reviewer route remains GPT-5.6 Sol via Web, without treating route as runtime proof.
+
+Checkpoint review: resumed clean local HEAD `6430669da8102f1d2f90212bf6d0643aed31a429`; remote integration/PR #47 still pointed to `34b79c0090606f4f831d386107dd958688d7e07b`. The exact staged delta is the accepted Kiro and Command Code histories plus the existing supervisor wiring, four and six metric registrations, complete gated same-bus coexistence/failure isolation, and direct ZCode Harness reuse. The ZCode wrapper was already removed. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains mission base `72b43b268b4992d0b0ea45b6e29067d10450274f`. No re-import, reset, or main merge.
+
+Live disposition: the sanitized Copilot receipt records the built production `CopilotQuotaProvider` constructor and `PollOnceAsync` using the existing official CLI owner, with identity bracketing and no synthetic transport/parser substitution, compared with the same account's official included-usage UI. Available remaining-percent observations agreed, so that scope is `LIVE_VERIFIED`. The live source omitted per-bucket reset instants; those values remain null/Unavailable and no general UI billing reset is mapped to individual buckets. The result does not establish credential class/lifetime or automatic renewal; those remain unknown. No account identifiers, quota values, credentials, raw payloads or private paths were copied into the repository. Kiro/Command host-limited comparisons and all prior auth/live gates remain unchanged.
+
+Verification carried forward from exact code/test HEAD `6430669`: serial Release build 0 warnings/errors; guarded direct MTP aggregate Core 39/39, Telemetry 295/295, Integration 10/10; gated coexistence 1/1 and supervisor isolation 8/8. The local `dotnet test` bridge returned exit 5 with zero tests, so the built test applications ran directly with minimum-count guards. Graphify refreshed at 2,734 nodes / 8,002 edges. Configured path hygiene passed for 117 tracked files; scoped added-diff privacy and `git diff --check` passed, not a comprehensive secret scan. Hosted CI at remote PR tip `34b79c0` passed Build and Test and Repository Quality; CodeQL was skipped by policy. New local HEAD hosted checks remained pending before push. No same-semantics pair with harmful duplication justified a shared primitive; no framework or dependency was added.
+
+Status: PR #47 remains draft; no main merge. Seven new accepted providers plus the separate Codex slice remain staged; unresolved Cursor, Antigravity, auth/renewal and provider-wave gates remain explicit. CER-M3-004, the 16-provider objective and M3 remain active/incomplete.
+
+Files: `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — hosted Kiro subprocess test correction
+
+Actions at docs checkpoint `5a91da436d1864295975822a4d8a307046221099`: Release build and Core 39/39 passed; Telemetry failed 2 of 295 in `AcpClientSuppressesRetriesOnV3RateLimitNotificationWithoutParsingTiming` and `AcpClientSendsInitializeAndUsageOnlyWithoutPrompting`. Both hit the five-second test-injected request deadline and returned Error; IPC tests were skipped after that failure. Repository Quality passed; CodeQL was skipped under workflow policy.
+
+Correction: changed only those two accepted Kiro test fixtures to use the existing ten-second production `RequestTimeout` bound rather than a shorter five-second injected limit. No Kiro production code, cadence, auth behavior or provider source history changed.
+
+Validation: Release solution rebuild passed with 0 warnings/errors; the two tests passed 2/2, and the full Telemetry MTP DLL suite passed 295/295 under a minimum-count guard. Core 39/39, Integration 10/10, coexistence 1/1 and supervisor isolation 8/8 had already passed at the preceding source/test checkpoint; they are unaffected by the test-only bound adjustment. New-head hosted Build and Test remains pending after push. No main merge; PR #47 stays draft and the mission remains active.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Kiro ACP hosted-fixture correction
+
+Runtime: authoritative current-turn `turn_context` verifies GPT-6 Luna, max, at 2026-10-02T00:06:54.957Z (UTC). Sole shared integration owner; no provider worker resumed.
+
+Reconciliation: the user-supplied `6430669` checkpoint had advanced through preserved commits to local and remote integration tip `a87487c3c9240612a14352c75bf0bf5b3b050fbb`; the working tree had only the current Kiro test-fixture correction pending. Kiro and Command Code imports remain present; no re-import or reset. PR #47 remains open/draft. Local `main` is `3f5ca74a26edf88a02e6bda05f759ee3c74032cd` and `origin/main` is mission base `72b43b268b4992d0b0ea45b6e29067d10450274f`.
+
+Hosted finding: Build and Test run `36943386917` passed build and Core but failed two Kiro ACP subprocess tests. On the Windows runner, the PowerShell fake process started but did not consume its first redirected stdin line; both tests reached `request_timeout`. Repository Quality passed; CodeQL was skipped under workflow policy.
+
+Correction: replaced only those two test fake processes with temporary `cmd.exe` batch fixtures that read the initialize and usage requests, validate their expected method names, and return fixed synthetic ACP replies. The existing ten-second request limit remains; provider production code, cadence, auth and imported history are unchanged. Each temporary script is deleted in `finally`.
+
+Validation: serial Release solution build passed with 0 warnings/errors. Direct MTP applications passed Core 39/39, Telemetry 295/295 and Integration 10/10; `dotnet test` returned exit 5 / zero tests locally, so the built applications were invoked directly with minimum-count guards. The full Telemetry run includes the gated coexistence and supervisor isolation tests, previously focused at 1/1 and 8/8. Configured filename hygiene passed for 117 tracked paths; scoped added-diff privacy patterns and `git diff --check` passed. These checks are scoped, not a comprehensive secret scan. Graphify remains at the prior meaningful source refresh (2,734 nodes / 8,002 edges); this test/docs-only correction does not require a refresh. Hosted validation of the correction awaits push.
+
+No shared primitive is justified: these accepted providers do not yet demonstrate at least two implementations with identical semantics and harmful duplication. PR #47 stays draft. No canonical-main merge or 16-provider/M3 completion claim.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Kiro ACP fixture stream encoding
+
+Hosted Build and Test at `c6c7390262030453898ecfb2fd66ccb603be697b` reproduced the same two Kiro ACP test timeouts at the aligned ten-second bound; build/Core and Repository Quality passed, CodeQL was skipped, and IPC was skipped after Telemetry failed 2/295. Increasing the deadline alone was insufficient.
+
+The fake ACP server now reads the redirected client request stream through an explicit UTF-8 `StreamReader`, matching `KiroAcpUsageClient.WriteRequestAsync`. Its ten-second test bound remains. This is confined to the two Kiro subprocess tests; production code and runtime timeout are unchanged.
+
+Verification: Release solution build 0 warnings/errors; the two targeted cases 2/2 and full direct MTP Telemetry 295/295 passed. The corrected hosted Build and Test and repository hygiene runs are pending after the next push. No provider acceptance history changed; no main merge or mission-completion claim.
+
+Files: `tests/Cerith.Telemetry.Tests/Providers/AI/Kiro/KiroQuotaProviderTests.cs`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+Hosted verification follow-up: after the test-only correction was pushed as `87d46108421b9bc67ec4ae0c09d7a8cb41efb50a`, Build and Test run [36945947340](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947340) passed, including IPC integration; Repository Quality run [36945947323](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947323) passed; CodeQL run [36945947343](https://github.com/ParedesYTecho/Cerith/actions/runs/36945947343) was skipped under workflow policy. PR #47 remains open/draft and canonical `main` remains untouched.
+
+## 2026-10-02 — Dewey One — integration checkpoint reconciliation
+
+Runtime: authoritative current-turn turn_context verifies GPT-6 Luna, max, at 2026-10-02T00:05:51.862Z (UTC); sole shared integration owner.
+
+Reconciliation: the existing worktree and branch are codex/CER-M3-004-integration, clean at local/remote PR tip f9a1396eaed119dc62c966b5e0eceeed728f0940 before this documentation checkpoint. The user-supplied 6430669da8102f1d2f90212bf6d0643aed31a429 is an ancestor. The six commits since it (5a91da4, c6c7390, e8187f7, a87487c, 87d4610, f9a1396) contain the Copilot validation record, Kiro test-fixture corrections and checkpoint documents; no provider production edit or import was needed. Kiro and Command Code histories remain preserved. Local main is 3f5ca74a26edf88a02e6bda05f759ee3c74032cd; origin/main is 72b43b268b4992d0b0ea45b6e29067d10450274f; neither moved. PR #47 is open/draft at the same remote tip.
+
+Live evidence: the sanitized validation policy and Copilot receipt confirm LIVE_VERIFIED for actual production CopilotQuotaProvider acquisition compared with the same account's official included-usage UI for available remaining-percent observations. Missing per-bucket reset instants remain null/Unavailable; credential class, lifetime and automatic renewal remain unknown. These limits were already represented in the provider contract and PR body; no private paths, account identifiers, amounts, payloads or credentials were copied.
+
+Verification at integration PR tip f9a1396 (provider code/test content at 87d4610): serial Release solution build passed with 0 warnings/errors; guarded direct MTP DLL suites passed Core 39/39, Telemetry 295/295 and Integration 10/10. Focused gated coexistence passed 1/1 and supervisor failure isolation 8/8. Configured filename hygiene passed for 117 tracked files; scoped added-diff privacy checks found no machine paths or token-shaped values and only reserved .example.com identities in synthetic fixtures; git diff --check passed. Graphify was refreshed after its graph lacked the Kiro fixture helper: 2,742 nodes, 7,490 edges, 98 communities. At PR head f9a1396, Build and Test run 36946498585 and Repository Quality run 36946498590 passed; CodeQL run 36946498601 was skipped by policy.
+
+No shared primitive is justified: no pair of accepted providers demonstrates both identical semantics and harmful duplication. PR #47 remains draft; the 16-provider objective and M3 remain active/incomplete. No main merge.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Kiro/Command Code integration checkpoint
+
+Runtime: authoritative current-session `turn_context` verifies GPT-6 Luna, max. Sole shared integration owner; provider worktrees and accepted histories were not resumed or recreated.
+
+Reconciliation: resumed the existing `codex/CER-M3-004-integration` worktree. Supplied checkpoint `6430669da8102f1d2f90212bf6d0643aed31a429` is an ancestor. Before this docs-only checkpoint, local HEAD and PR #47 remote tip were both `c9ba4f1286e7c76ad35148c4d3a025dade6966b0`, clean. PR #47 is open/draft. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains mission baseline `72b43b268b4992d0b0ea45b6e29067d10450274f`. No main merge.
+
+Integration remains limited to the already-imported exact Kiro and Command Code FINALPASS histories in `4d7f0ada` and `82da0b3`. Their existing registration, metric catalog, supervisor failure-isolation coverage, gated same-bus coexistence and bounded cancel/drain are preserved. ZCode's coexistence fixture directly reuses the existing Harness; no wrapper or shared primitive is needed. Cursor auth remains DEFERRED/UNRESOLVED and live comparison NOT RUN. The sanitized validation receipt records Copilot `LIVE_VERIFIED` only for actual production-provider versus same-account official UI available remaining-percent observations; absent bucket resets remain null/Unavailable, and credential class/lifetime/renewal are unknown. No private account data or paths were copied.
+
+The hosted Kiro identity-test timeout was not fixed by increasing its injected deadline from five to ten seconds. The final test-only correction replaces the synthetic PowerShell child with a bounded temporary `cmd.exe` fixture; provider production code and cadence are unchanged. At `c9ba4f1`, serial Release build passed with 0 warnings/errors; guarded MTP suites passed Core 39/39, Telemetry 295/295 and Integration 10/10; focused coexistence passed 1/1 and supervisor isolation 8/8. The local `dotnet test` bridge yielded zero tests, so the built test applications ran directly with minimum-count guards. Hosted Build and Test `36952045701` and Repository Quality `36952045748` passed; CodeQL `36952045695` was skipped by policy. Graphify was refreshed after the source/test change (2,743 nodes, 7,491 edges, 99 communities). Configured filename hygiene passed for 117 tracked files; scoped privacy patterns and `git diff --check` passed. These checks are not a comprehensive secret scan.
+
+No shared primitive is justified: no two accepted providers show the same relevant semantics plus harmful duplication. Updated the operational checkpoint and PR #47 evidence while retaining the draft. CER-M3-004 and the 16-provider mission remain active/incomplete.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Qoder CN acceptance and routing reconciliation
+
+Runtime: this integration session's authoritative `turn_context` verifies GPT-6 Luna, max. GPT-6 Luna Max owns mission coordination, research, implementation, hostile provider self-review, and integration. Current policy has no per-provider Sol gate; one global read-only GPT-5.6 Sol High Web review may occur at candidate completion only if its route/model receipt is verifiable. Earlier Sol gates remain historical; global `.agent/MODEL_ROUTING.md` was not changed.
+
+Qoder CN's provider handoff and exact clean branch tip confirm FINAL PASS / READY FOR INTEGRATION at `b2bc2f59018e63aad5938e92a3494b9ded5e4baf`, with provider-local Release build 0 warnings/errors and Telemetry 232/232. Its bounded live disposition is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`: neither official CLI command is on PATH or running and no compatible local product/config/browser route was found. No install, login, account creation, or usage occurred; this does not imply accounts are absent elsewhere. Positive verification against the official binary and same-account UI remains unverified. Qoder CN remains unimported and queued for a separate small group after Qoder International completes its own FINAL PASS. Qoder International and Ark Coding Plan remain at MID; Ark Agent Plan remains NOT STARTED. Other provider dispositions are unchanged.
+
+Before this docs checkpoint, integration branch and PR #47 remote tip were clean at `24f8488b448e48e8ff09540c09714556b7298fc5`; Build and Test `36953109826` and Repository Quality `36953109811` passed, and CodeQL `36953109831` was skipped by policy. Local `main` remains `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`; `origin/main` remains `72b43b268b4992d0b0ea45b6e29067d10450274f`. No provider source or global routing file changed; no Qoder implementation was imported and no main merge occurred.
+
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`.
+
+## 2026-10-02 — Dewey One — Qoder CN integration and Release verification
+
+Event: handoff
+Summary: Integrated the exact Qoder CN FINAL PASS tip as an independent small group, retaining its provider history and using existing registration/supervision seams.
+Files: `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/TASKS.md`, `.agent/WORKLOG.md`, Qoder CN registration/catalog/coexistence tests.
+Result: Provider tip `b2bc2f59018e63aad5938e92a3494b9ded5e4baf` is preserved by no-fast-forward merge `88ea7ba6d28f0441ebcc59ac00089c3b16ae1a5d`; integration wiring is `c4df8c173996621f8fe522461153fb3175d2063f`. Release build passed with 0 warnings/errors. The completed guarded direct MTP suites passed Core 39/39, Telemetry 315/315, Integration 10/10; focused Qoder CN 19/19, gated same-bus coexistence 1/1, supervisor failure isolation 9/9. The provider handoff's inconsistent local Telemetry summary was excluded from current reporting. Graphify code refresh: 2,894 nodes / 8,450 edges; configured filename hygiene passed for 123 tracked paths; scoped privacy checks covered 1,721 added lines; `git diff --check` passed. Hosted Build and Test `36956426549` and Repository Quality `36956426539` passed at `c4df8c1`; CodeQL `36956426510` was skipped by policy. Copilot remains LIVE_VERIFIED only for available same-account remaining-percent comparison; absent resets remain unavailable and credential lifetime/renewal unknown. Qoder CN is LIVE_NOT_AVAILABLE_ON_THIS_HOST. Qoder International remains active MID and unimported; Ark Agent Plan's worktree exists clean at mission baseline `72b43b268b4992d0b0ea45b6e29067d10450274f`, with no implementation/test handoff. PR #47 remains draft. Local `main` `3f5ca74a26edf88a02e6bda05f759ee3c74032cd` and `origin/main` `72b43b268b4992d0b0ea45b6e29067d10450274f` remain unchanged; no main merge or M3/mission completion claim.
+
+
+## 2026-10-02 06:09 — Dewey One — Ark Agent Plan disposition
+
+Event: decision
+Summary: Preserved the provider branch and classified it EVIDENCE_BLOCKED because no safe current-owner boundary is established across an in-flight profile switch.
+Files: .agent/TASKS.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/WORKLOG.md.
+Result: Branch codex/CER-M3-004-ark-agent is clean at 680622c5df8b6fee4be989f15745d840b62a0db9. Focused Release tests passed 13/13 and the Release build had 0 warnings/errors. The response viewer binds the returned snapshot but does not prove the active profile at publication. First-party auth status/whoami can refresh, so no auth command was run. The host lacks a compatible CLI/session, but LIVE_NOT_AVAILABLE_ON_THIS_HOST is not valid while identity remains unresolved. No provider import, credential mutation, or canonical-main change.
+
+
+## 2026-10-02 06:34 — Dewey One — bounded Ark identity research
+
+Event: discovery
+Summary: Current first-party Ark docs recommend auth whoami for the ordinary identity summary, specify profile selection precedence, and assign STS renewal to the official CLI; they do not guarantee whoami never refreshes.
+Files: .agent/WORKLOG.md.
+Result: Luna checked usage-plan, profile, config and auth-mode references directly. A narrow external research request explicitly selected chatgpt-web/gpt-5.6-sol at high effort, but the dispatch/result exposed no execution receipt; WEB_SOL_ROUTE_UNVERIFIED. Its output is not counted as a provider review or gate. The preserved Ark Agent Plan worker is evaluating a bounded post-acquisition identity check. No local auth command, credential access, or refresh was performed.
+Sources: https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-profile/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-config/SKILL.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md
+
+## 2026-10-02 — Ark Agent Plan coverage disposition
+
+Event: handoff
+Summary: Re-reviewed the preserved provider candidate after its post-query identity check and verified the personal daily-window contract against the official API and pinned CLI documentation.
+Files: `docs/PROVIDERS_AI_QUOTAS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: Candidate branch `codex/CER-M3-004-ark-agent` remains clean at `b06818ce6f21c25eb1c3f1424eea30965ca22af6`; its account/user/auth/region/project comparison is implemented. Official `GetAFPUsage` has rolling 5h/daily/weekly/monthly AFP windows, while Ark CLI v1.0.37 and its balance alias expose only 5h/weekly/monthly. The candidate's 12 proposed metrics therefore do not satisfy the original full-window scope and remain unimported at `EVIDENCE_BLOCKED`. Focused Release tests passed 15/15; full solution tests passed 122/122; Release build passed with 0 warnings/errors; branch `git diff --check` passed. No direct API call, credential inspection, live auth command, provider import, dependency, or main merge.
+Sources: https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-balance.md
+
+## 2026-10-02 — Integration owner — Ark Agent Plan integration
+
+Event: integration
+Summary: Resolved the preserved daily-window evidence gap through the official Ark CLI's registered `usage.get_afp_usage` control-plane action, kept credential and STS renewal ownership with the official CLI, and added the provider to the existing service supervisor and same-bus coexistence coverage.
+Files: `src/Cerith.TelemetryService/Program.cs`, `tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs`, `docs/PROVIDERS_AI_QUOTAS.md`, `docs/AI_QUOTA_REFERENCE_MATRIX.md`, `docs/METRICS.md`, `.agent/TASKS.md`, `.agent/STATE.md`, `.agent/HANDOFF.md`, `.agent/WORKLOG.md`.
+Result: Provider commit `0c9ba1c04b1899a502f5fc554a7dc8196a41dd5f` was imported with its history in merge `1d5cb488e56600124ced8e6e8b3cf537ff3783e2`. The 16 MetricIds cover personal 5h, daily, weekly and monthly AFP used, total, used percentage and reset. Release build passed with 0 warnings/errors; guarded direct MTP suites passed Core 39/39, Telemetry 335/335 and Integration 10/10; Ark Agent focused tests 19/19, gated coexistence 1/1 and supervisor failure isolation 10/10. Graphify code graph refreshed to 3,028 nodes / 8,283 edges / 120 communities; configured tracked-file hygiene checked 128 files; `git diff --check` passed; scoped diff secret/path/email patterns matched zero lines. Live validation is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`: no compatible local Ark CLI/profile or authenticated session; the official console showed a login page. First-party docs, CLI dry-run/source inspection and deterministic tests remain the evidence. The CLI does not expose `Retry-After`, so no header-aware transport claim is made. The previous EVIDENCE_BLOCKED disposition remains in the earlier entry as historical evidence and is superseded by the current route/identity implementation. PR #47 remains draft; hosted CI for this update is pending. No credential mutation, direct live API request, account creation, paid usage, dependency, secret, or canonical-main merge.
+Sources: https://docs.volcengine.com/docs/ark/get-afp-usage-api?lang=zh ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/v1.0.37/skills/arkcli-api-explorer/references/arkcli-api.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md
+## 2026-10-02 — Integration owner — Ark Coding Plan and quota-wave candidate
+
+Event: integration
+Summary: Integrated the exact Ark Coding Plan provider tip through the existing supervisor and MetricBus seams, added its six quota IDs to the catalog, and removed the temporary Qoder International import after its undocumented desktop IPC path failed the support-contract check.
+Files: src/Cerith.TelemetryService/Program.cs, tests/Cerith.Telemetry.Tests/CodexQuotaProviderTests.cs, tests/Cerith.Telemetry.Tests/Providers/AI/ArkCodingPlan/ArkCodingPlanQuotaProviderTests.cs, docs/METRICS.md, docs/PROVIDERS_AI_QUOTAS.md, docs/ROADMAP.md, .agent/TASKS.md, .agent/MODEL_ROUTING.md, .agent/STATE.md, .agent/HANDOFF.md.
+Result: Ark Coding Plan branch tip c5841bf2ee6140d61ee517db62d8b176a996ce21 is imported by merge ed1a6ec. Qoder International branch tip 7a1a89e9f88ea1de57f5bf180f4e8bfd382c88fb remains preserved; integration revert 9319474 removes its six-file implementation from the candidate. Release solution build passed with 0 warnings/errors. Guarded direct MTP suites passed Core 39/39, Telemetry 355/355 and Integration 10/10 (404 total). Tracked-filename hygiene and git diff --check passed. Scoped added-diff scans found no personal paths, known token patterns, or bearer values; synthetic .invalid fixture email matches were reviewed. This is not a comprehensive secret scan. No arkcli/qoder/qodercli executable was found on PATH, so no live comparison or auth command ran. Hosted CI is pending; PR #47 remains draft. No dependency, auth mutation, account creation, paid usage, or canonical-main merge.
+Sources: https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-usage/references/arkcli-usage-plan.md ; https://github.com/volcengine/ark-cli/blob/main/skills/arkcli-auth/references/auth-modes.md ; https://docs.qoder.com/cli/usage ; https://docs.qoder.com/cli/sdk/cost-usage ; https://docs.qoder.com/cli/sdk/how-it-works
+
+## 2026-10-02 — Integration owner — hosted candidate validation
+
+Event: validation
+Summary: Confirmed hosted checks on the pushed Ark Coding Plan integration candidate and recorded the single-review boundary.
+Files: .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md.
+Result: PR #47 candidate d3cfc24 passed Build and Test (run 37002245312) and Repository Quality (run 37002245300); CodeQL was skipped under workflow policy (run 37002245169). Graphify was refreshed without an external model: 3,272 nodes, 8,816 edges, 153 communities; the post-build integrity check reported zero missing/dangling endpoints, self-loops or collapsed edges. Graphify coalesced one duplicate shared C# namespace node across Program.cs and CodexQuotaAuthReader.cs. The final review-packet commit needs fresh hosted CI; PR #47 remains draft and no independent review or canonical-main merge has occurred.
+
+## 2026-10-02 — Autonomous marathon — truth, source recheck and bounded shutdown fix
+
+Event: checkpoint
+Summary: Reconstructed existing integration at 9b3056e rather than resetting to the older supplied snapshot; retained all 18 clean worktrees, twelve newer commits, ten staged non-Codex providers and Qoder International's justified revert. No competing active write owner was observed. Current-run Sol Medium/native/concurrency-one routing supersedes historical orchestration without changing durable architecture or historical logs.
+Files: .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/MODEL_ROUTING.md, docs/ROADMAP.md, docs/AI_QUOTA_REFERENCE_MATRIX.md, ArkAgentPlanProvider.cs and its existing tests.
+Result: Claude 18/18, Gemini CLI / Code Assist 25/25 and Grok Build 12/12 preserved focused tests pass. Current first-party rechecks leave all three EVIDENCE_BLOCKED; Grok's newly source-observed no-API-key policy narrows the required future deployment proof. Enterprise Gemini scope remains distinct from Antigravity. No branch imports, credential reads/writes, authenticated probes or inference. Ark Agent Plan's new non-cooperative acquisition shutdown test failed before the one-line cancellable wait correction, then focused 20/20 passed. Full Release build 0 warnings/errors; Core 39/39, Telemetry 356/356, Integration 10/10; coexistence 1/1; supervisor isolation 11/11. Dependency diff empty; 135 tracked filenames and diff-check pass. Scoped added-diff patterns match no known credentials or personal paths; eight synthetic .invalid emails only, not a comprehensive secret scan. Graph refresh preserves the prior corpus and replaces two changed AST files: 3,289 nodes, 8,793 edges, 160 communities; zero missing source files/dangling endpoints/self-loops. Shared namespace coalescing remains an extractor limitation; no external model or documentation semantic re-extraction. PR #47 stays draft; new checkpoint CI, complete review packet and candidate assessment remain. Main untouched.
+
+## 2026-10-02 — Autonomous marathon — preserved-source comparison and review packet
+
+Event: review preparation
+Summary: Compared all ten staged non-Codex source/test trees against their exact preserved tips; production sources match except the Ark Agent cancellable acquisition wait. Retained integration-only shared-bus and lifecycle/child-fixture corrections. Inspected registration/supervisor construction boundaries, bounded auth/acquisition/parser/cache/publication seams and canonical semantic/live limits; self-review is not independent approval.
+Files: .agent/CER-M3-004_REVIEW_PACKET.md, .agent/STATE.md, .agent/HANDOFF.md, .agent/TASKS.md, .agent/WORKLOG.md.
+Result: Complete future-context packet includes main/code checkpoint, lineage, provider source/product/auth/owner/refresh/identity and exact metric expansions, deferred/blocked evidence, real validation commands/counts, privacy/dependency boundaries and hostile review questions. Code checkpoint 96eefc59b704e6d6a34b683c7be9cfcf9f0a704f passed hosted Build and Test (37005658373) and Repository Quality (37005658310); CodeQL SKIPPED (37005658376). No new CRITICAL/HIGH implementation finding remains from this bounded self-review; existing explicit auth/live limitations remain for independent assessment. Final packet/docs head still requires CI and accurate draft PR body before candidate closure. No main merge or independent review was performed.
+
+## 2026-10-02 — Autonomous marathon — honest mission candidate and preservation backup
+
+Event: candidate
+Summary: Packet head 991187e605657256f0cff8f8d14af3998fbd8989 passed Build and Test (37006483453) and Repository Quality (37006483463); CodeQL SKIPPED (37006483519). PR #47 body was updated and remains draft. The wave is MISSION_CANDIDATE, not M3 DONE, independent approval or merge authorization. All accepted providers and explicit blockers/deferred limits remain preserved.
+Result: Backed up the exact previously local-only Claude/Gemini/Grok/Kimi/Devin branch tips remotely after scoped sensitive-diff and filename checks; no branch content/history changed. The official Grok 1.0.46 artifact had valid X.AI LLC signature and version-only output 1.0.46 (2765805b9442) [alpha], differing from its stable-endpoint selection. Presence of the policy string did not establish source-to-binary/renewal enforcement; EVIDENCE_BLOCKED remains. No installer, auth/ACP/billing operation, credential copy or inference was executed. Remaining authorized work is read-only Shadow evidence audit; final documentation commits require fresh exact-head CI. Main untouched.
+
+## 2026-10-02 — Autonomous marathon — bounded Shadow evidence audit
+
+Event: research audit
+Summary: Read preserved source/report/manifests without running research harnesses or modifying research trees. Added canonical evidence matrix to docs/REFERENCE_PROJECTS.md with inspected scope, limitations, safe-use conditions, remaining verification and six verified SHA-256 receipts; updated review packet/state/handoff. No new file/framework/dependency, architecture adoption or M4/M7 implementation.
+Result: Located mutation report contains 44/44 Ignored mutants, no executed mutation acceptance. Inspected 6–15-second/finite-workload soaks do not demonstrate required 30/45/60-minute gates. Differential runner never invokes either parser; drift fallback can report unchanged without valid revision; privacy scanner skips reports including default reports root. Two official sample refs fail; corpus inventory has 14 entries rather than claimed 38 fixtures. Python restart simulates phases without process death/checkpoint reread; separate C# test actually launches/kills child host and is USE_WITH_REVIEW pending reproduction. Stored M7 two-million-row rollup took 573,274 ms, so broad sub-millisecond claims are unsupported; no zero-leak/production guarantee. Useful input/crash/SQLite test ideas separated from untrusted acceptance claims; producer WSL/zero-idle-CPU retractions retained. Shadow trees clean; rehearsal solution/untracked collectors preserved dirty. Candidate task remains IN PROGRESS pending fresh independent review/Advisor decision. Final docs-only checkpoint requires exact-head CI; main untouched.
+
+Final preservation check: git ls-remote confirms exact remote tips for the five branches backed up during this run and the integration branch. Other pre-existing provider branch refs remain local, intact and clean; the review packet was narrowed accordingly rather than claiming every branch had been pushed. No accepted source or history was changed.
+
+## 2026-10-02 — Subscriber coverage and GitHub acquisition follow-up
+
+Event: bounded source research
+Summary: Same sole owner inspected three preserved reference clones plus six public GitHub snapshots, without executing/installing their code or inspecting local credentials. Exact pins/source/license distinctions and first-party links live in AI_QUOTA_REFERENCE_MATRIX.md; contract clarifies Claude subscriber coverage independently of validation-host subscriptions. Existing Claude valid-session/owner-update tests already address the supported reader portion; no reimplementation.
+Result: Official xAI FAQ establishes shared weekly consumer allowance, separate extra credits and free limits. Pinned x.ai/billing handler plus auth_gate/model reject ApiKey/WebLogin and return quota without bearer export, narrowing the previous source assessment. Official billing log emitter is a passive quota seam with source timestamp/PID/version but no account association; not production acceptance. Claude official statusline is another passive candidate after normal user activity, not forced inference or silent startup renewal. Foreign refresh/persistence, updater-as-auth assumptions, cookie routes, default-zero/inferred-weekly mappings and unsupported Gemini equivalence were rejected. Provider source/tests/branches/dependencies and research trees preserved; no architecture/milestone change, auth or live quota request. Prior 43aef2e CI green build/quality, CodeQL skipped; new docs checkpoint requires its own CI and future fresh review.
+
+
+## 2026-10-02 — Remaining-work closure and deployed Grok qualification
+
+Event: latest user authorization to finish remaining work; sole sequential owner retained.
+Summary: Qualified explicit official Grok 1.0.34/1.0.46 hashes using synthetic fixtures, isolated profiles and loopback backend. Added one repeatable stdlib manual check rather than unverified production acquisition. Repaired three stale pinned source paths to the login crate and updated canonical matrix/review packet/current task scope. Historical events remain intact.
+Result: Both binaries reject API-key/untrusted-issuer fixture auth before billing GET, but both commands exit 1 because auth/info did not observe replacement owner within three seconds. Earlier less-isolated success is retained as a disagreement, not an ownership guarantee. Official stdio proactive refresh plus hard deadline termination is not proven safe; --leader can spawn/evict a writer. These two avenues do not satisfy read-only owner-safe acquisition; Grok remains EVIDENCE_BLOCKED and its branch is unchanged. Claude SDK prior-approval and model-only setup-token scope were rechecked; missing host subscription is not the blocker. Gemini retains its current distinct enterprise disposition; Qoder International/Kimi/Devin remain explicitly deferred. No provider import, auth ownership, dependency, M4/M7 work or main merge. Final checkpoint requires hosted build/quality and remains draft pending fresh independent review.
+
+Closure validation: fresh Release build 0 warnings/errors; Core 39/39, Telemetry 356/356, Integration 10/10, zero skipped. Final manual binary commands both exit 1 as recorded. Syntax/hash guard, diff-check, 136-file hygiene and bounded added-diff privacy patterns pass; no production source/test/project/dependency delta from f1531e2. Tool-only AST graph refresh preserves original corpus/edges at 3,292 nodes / 8,795 edges / 153 communities; no missing files/self-loops or external model.
+
+
+Closure hostile self-review: rejected-auth owner cases alone did not exercise an admitted class. Expanded the same manual probe with synthetic xAI-issuer OIDC and a loopback mock billing payload: both versions acquire the fixture, yet neither observes B within three seconds (six owner failures across all cases, both commands exit 1). This does not prove real subscription validity or renewal. Added an optimization guard to prevent Python -O from bypassing qualification assertions; syntax/hash/optimization guards pass. Hosted checkpoint 82da884 Build and Test SUCCESS 37042555549 (0 warnings/errors, 39/356/10), Quality SUCCESS 37042555581, CodeQL SKIPPED 37042555555. Final tool/documentary delta must obtain its own hosted receipts; no runtime/provider change.
+
+Hosted code/tool checkpoint 113afc648c03b36c04c888b0c867d34f284ca958 (107 ahead / 0 behind main): Build and Test SUCCESS 37043424898, 0 warnings/errors, Core 39/39, Telemetry 356/356, Integration 10/10; Repository Quality SUCCESS 37043424940; CodeQL SKIPPED 37043424841, not a security pass. The final receipt-only documentation commit preserves that exact runtime/tool tree. Pin the current PR head and its checks for fresh review.
+
+## 2026-10-03 — CER-M3-004 final correction run
+
+Event: bounded implementation and verification of the nine actionable findings from the independent review of `0b9daad6534623d256b79bbd30f39387405793d2`. The original `FIXES REQUIRED — NO-GO FOR MERGE` verdict remains attached to that SHA.
+
+Corrections: Copilot now observes ownership during extended quota backoff and validates cache/reset/clock state independently of acquisition; owner changes cancel acquisition/publication generations. Command Code brackets billing with a final authenticated organization read, validates response scope when supplied, maps response-body transport failures to sanitized offline state, and rejects header control characters from both credential sources. ZCode owner changes reset poll admission and wake the sleeping run loop. Kiro identity accepts only the evidenced `userId` / `user_id` principal and fails closed on empty or opaque account objects. Ark Agent invalidates only elapsed windows, including daily, and revalidates while publication is blocked. The Grok manual tool attempts each cleanup action independently and preserves an earlier probe failure.
+
+Meaningful regressions were added for each finding. A first expanded Command Code fixture run caught that `AuthenticationHeaderValue.TryParse` alone accepts U+0001 and DEL; explicit control-character rejection closed those four environment/file cases. One initial Copilot isolated run exposed nondeterministic fake-clock advancement before the poll timer was armed; the test now waits for the exact scheduled timer, and the combined `RunAsync` A→B / 1200-second retry / blocked-publication scenario passes.
+
+Validation on the final local correction tree: Release solution build 0 warnings/errors; Core 39/39, Telemetry 381/381, Integration 10/10, total 430/430, no skips. Focused: Copilot 37/37; Command Code 51/51; ZCode 25/25; Kiro 44/44; Ark Agent Plan 23/23; shared-bus coexistence 1/1; supervisor failure isolation 11/11; Grok stdlib cleanup 1/1. `git diff --check` PASS; Repository Quality filename/path hygiene PASS (137 tracked paths); bounded sensitive-added-diff review PASS (zero credential/private-path matches); dependency/project diff EMPTY. Graphify refreshed code AST only: 3,366 nodes / 9,954 edges. Exact-head hosted CI must be checked after push. No red-before/green-after replay was run for findings 1–5 and 7–9; those original failures are supported by the independent review traces, while the new post-fix regressions pass. Finding 6's initial control-character gap was directly reproduced during this run.
+
+Self-review/test-harness notes: an initial Command Code backpressure fixture failed to activate its lazy MetricBus subscription; after adding the pending read and filling the one-slot queue, the combined org-switch/blocked-publication regression passed. One complete-suite attempt returned `request_timeout` instead of `response_too_large` in the unchanged Copilot child-output-limit test; its isolated rerun passed, and the subsequent complete Release run passed 430/430. No correction was made in that unrelated child-output path.
+
+PR #47 remains OPEN / DRAFT; main is untouched; no dependencies, live account probes, auth mutation, paid/reset-resource use, new provider integration or provider-status change. The next gate is exact-head Build and Test + Repository Quality, honest CodeQL reporting, then fresh bounded independent read-only re-review. This worklog entry records the correction owner's work, not independent approval.
+
+The review-packet opening now marks the first-wave checkpoint as historical, identifies the current Luna correction owner, and states the bounded correction-diff review scope. Exact correction SHA and hosted receipts remain to be pinned in the PR description after final-head CI.
+
+## 2026-10-03 — CER-M3-004 final ZCode finding closure
+
+Event: bounded correction of the sole residual finding from the fresh review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69`. The earlier `FIXES STILL REQUIRED — NO-GO FOR MERGE` verdict remains preserved; findings 1–4 and 6–9 remain closed, and this correction addresses finding 5 only.
+
+Finding: ZCode retained owner A's `_nextPollTimestamp` after A became unverifiable. Since `_activeAuth` was cleared, ready owner B missed the changed-owner/credential paths, inheriting A's one-hour admission delay and leaving the sleeping poll loop unwoken. The provider-local fix resets admission and wakes only on verified-owner→unverifiable and no-verified-owner→verified-owner transitions. Same-owner A→A backoff remains intact; continuous invalid observations do not emit repeated wakes.
+
+Regression evidence: `UnavailableAuthBetweenOwnersClearsLongRetryAdmissionForDirectPoll` failed before the fix (request count stayed 2 instead of 3; observed 3600-second admission) and passes after it. `RunWakesForNewOwnerAfterUnavailableAuthClearsSleepingOwnersRetry` failed before the fix (real `RunAsync` did not acquire B within the bounded check) and passes after it. `UnavailableAuthCancelsPendingOldOwnerPublication` passes while holding an A publication across the invalid-auth transition. The first two exercise the residual admission/wakeup defect; the second drives the actual sleeping loop and bounded cancellation. The publication test's initial manual-publish fixture did not fill the bounded channel; it was replaced with the established acquisition/backpressure sequence and then passed.
+
+Validation: Release solution build 0 warnings/errors; Core 39/39, Telemetry 384/384, Integration 10/10, total 433/433, zero skipped; ZCode focused 28/28; coexistence 1/1; supervisor failure isolation 11/11. `git diff --check`, 137-path hygiene, bounded sensitive-added-diff scan and dependency/project diff checks pass (zero matches, empty dependency/project delta). Exact pushed SHA and hosted run IDs/statuses are pinned in the current PR #47 description. PR remains OPEN / DRAFT, main untouched, provider statuses unchanged, M3 ACTIVE / INCOMPLETE. This owner self-review is not the final independent review.

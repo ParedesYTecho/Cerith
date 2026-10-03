@@ -151,11 +151,11 @@ DONE via PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`. It records th
 
 ### CER-M3-004 — AI quota expansion wave 1
 
-NEXT / NOT STARTED.
+IN PROGRESS. The integration branch has ten non-Codex quota providers staged, including Ark Coding Plan; Qoder International is explicitly deferred with its branch preserved. This wave is not a demand to implement every provider in the 16-provider reference catalog. A mission candidate requires safe accepted integrations, evidence-backed dispositions for unresolved targets, local Release validation and hosted CI; it does not claim M3 completion.
 
 The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
 
-The 16 remaining usage-limit targets may be researched and implemented concurrently from the same canonical base. Provider workers do not edit shared integration files. Integrate accepted providers in small verified groups with CI and coexistence checks between groups.
+The 16-provider usage-limit catalog remains research reference scope; current provider dispositions live in the active task record. Current unresolved priority is Claude, then Gemini CLI / Code Assist where enterprise scope remains distinct from Antigravity, then Grok Build. Marginal unresolved providers may be deferred after preserving their exact blockers; existing accepted integrations remain staged. Provider work uses one owner per provider path and one owner for shared integration files. Integrate accepted providers in small verified groups with CI and coexistence checks between groups. Do not treat 17/17 implementation parity as a CER-M3-004 candidate gate. Candidate status requires a later independent review and Advisor/user decision before approval or merge.
 
 A worker that proves one-time human authorization is necessary documents the exact mechanism and returns any shared setup/storage requirement to the integration owner instead of silently introducing a global auth system.
 

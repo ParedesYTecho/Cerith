@@ -481,4 +481,19 @@ public sealed class PresentMonTelemetryProviderTests
 
         public void Dispose() => IsDisposed = true;
     }
+
+    internal static async Task PublishSyntheticReadingAsync(MetricRegistry registry, MetricBus bus)
+    {
+        using var provider = CreateSyntheticProvider(registry, bus);
+        await provider.PublishNextAsync();
+    }
+
+    internal static PresentMonTelemetryProvider CreateSyntheticProvider(MetricRegistry registry, MetricBus bus)
+    {
+        var capture = new FakeCapture(
+            new PresentMonReading(MetricState.Fresh, 60, 16.6),
+            new PresentMonReading(MetricState.Fresh, 60, 16.6));
+        return new PresentMonTelemetryProvider(registry, bus, Environment.ProcessId,
+            _ => capture, static _ => "TelemetryTest");
+    }
 }

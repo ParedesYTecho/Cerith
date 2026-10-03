@@ -2,6 +2,12 @@
 
 Operational preference only. This may change frequently.
 
+## Current CER-M3-004 autonomous marathon override
+
+For this run, the sole execution/write owner is GPT-6.1 Sol, Medium effort, native Codex; fast mode disabled and default concurrency one. The general routing guidance below remains historical/default context and does not override this run. No routine swarm or per-provider Sol gates. A bounded read-only specialist is optional only for separable work that immediately reduces technical risk.
+
+The owner performs hostile self-review but cannot count it as independent review. At MISSION_CANDIDATE, prepare the packet for a fresh future read-only context, keep PR #47 draft, and do not merge canonical main. This is temporary operational routing, not a permanent product or architecture decision.
+
 ## Core rule
 
 Treat **model**, **reasoning effort** and **route** as separate decisions.
@@ -18,11 +24,11 @@ Current default:
 
 ```text
 model  = GPT-6 Luna
-effort = Max
+effort = Xhigh
 route  = native Codex
 ```
 
-Use Luna Max as the normal sole repository write owner for:
+Use Luna Xhigh as the normal sole repository write owner for:
 
 - implementation after the semantics are understood;
 - deterministic tests;
@@ -114,7 +120,7 @@ when the work warrants a strong reasoning model and the Web route is not the rig
 
 This tier does **not** require trying Sol Web first. Web and native are alternative routes chosen from task shape; they are not a mandatory ladder.
 
-After the difficult reasoning point is resolved, implementation normally returns to Luna Max.
+After the difficult reasoning point is resolved, implementation normally returns to Luna Xhigh.
 
 ## Exceptional native escalation: GPT-6.1 Sol High
 
@@ -141,12 +147,12 @@ There is no single mandatory linear ladder.
 Typical execution:
 
 ```text
-Luna Max native executes
+Luna Xhigh native executes
 → strong reasoning gate chosen by task shape:
    - GPT-5.6 Sol Web High for short bounded high-quality work, or
    - GPT-6.1 Sol Medium native for substantial/context-heavy strong reasoning
 → GPT-6.1 Sol High native only for a concrete unresolved critical issue
-→ Luna Max implements/fixes/finishes
+→ Luna Xhigh implements/fixes/finishes
 ```
 
 ## Ownership
@@ -157,11 +163,15 @@ Independent specialists/reviewers are read-only by default and must not silently
 
 Antigravity may take independent non-overlapping work or a second-pass review when useful.
 
+## Runtime continuity and review ownership
+
+Use the calling harness's authoritative runtime metadata when available; do not invent execution receipts. The current CER-M3-004 marathon follows the override above. Earlier Luna execution and provider-specific review events remain historical evidence. The next final review must use a fresh read-only context and must not be this execution owner's self-review.
+
 ## Quota and quality rule
 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
-- Use Luna Max for execution and ordinary work.
+- Use Luna Xhigh for execution and ordinary work in this task.
 - Use Sol Web High when a bounded problem benefits from stronger reasoning and Web's slower/smaller context is acceptable.
 - Use GPT-6.1 Sol Medium native when strong reasoning, larger context or the native harness is materially useful.
 - Use GPT-6.1 Sol High only when Medium leaves a critical issue unresolved.
