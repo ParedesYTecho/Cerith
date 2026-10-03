@@ -1,5 +1,15 @@
 # Tasks
 
+## Current model-routing policy reconciliation
+
+Status: DONE via PR #49
+Owner: Codex — sole repository writer for this workflow-only policy update.
+Branch: `codex/reconcile-current-model-routing-policy`
+Base: `d00d75d4ed1c22088510885b432add5640acdf24` (canonical `origin/main`).
+Scope: routing policy in `.agent/MODEL_ROUTING.md`; `.agent/TASKS.md` and `.agent/WORKLOG.md` contain only the ownership and completion receipt required by repository workflow. No product, provider, milestone or dependency work.
+Result: active routing is merge-stable: GPT-6 Luna Max is the default; GPT-5.6 Sol High via CodexGPT → ChatGPT Web is the bounded strong route; GPT-6.1 Sol Medium native handles substantial/context-heavy strong reasoning, with High exceptional only; Astra is excluded and CER-M3-004 routing is historical. No product or milestone state changed.
+Validation: `git diff --check`, tracked-artifact hygiene and added-diff privacy checks; exact-head hosted checks will be recorded by the PR.
+
 ## CER-M3-004 post-merge reconciliation
 
 Status: DONE via PR #48
