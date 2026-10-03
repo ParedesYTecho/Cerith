@@ -1,5 +1,15 @@
 # Tasks
 
+## Current model-routing policy reconciliation
+
+Status: READY FOR ADVISOR REVIEW
+Owner: Codex — sole repository writer for this workflow-only policy update.
+Branch: `codex/reconcile-current-model-routing-policy`
+Base: `d00d75d4ed1c22088510885b432add5640acdf24` (canonical `origin/main`).
+Scope: routing policy in `.agent/MODEL_ROUTING.md`; `.agent/TASKS.md` and `.agent/WORKLOG.md` contain only the ownership and completion receipt required by repository workflow. No product, provider, milestone or dependency work.
+Result: active routing policy reconciled; obsolete CER-M3-004 instructions are historical, default and strong-reasoning routes are current, and no product or milestone state changed.
+Validation: `git diff --check`, tracked-artifact hygiene and added-diff privacy checks; exact-head hosted checks will be recorded by the PR.
+
 ## CER-M3-004 post-merge reconciliation
 
 Status: DONE via PR #48

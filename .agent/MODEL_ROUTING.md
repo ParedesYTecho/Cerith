@@ -2,11 +2,9 @@
 
 Operational preference only. This may change frequently.
 
-## Current CER-M3-004 autonomous marathon override
+## Historical CER-M3-004 routing
 
-For this run, the sole execution/write owner is GPT-6.1 Sol, Medium effort, native Codex; fast mode disabled and default concurrency one. The general routing guidance below remains historical/default context and does not override this run. No routine swarm or per-provider Sol gates. A bounded read-only specialist is optional only for separable work that immediately reduces technical risk.
-
-The owner performs hostile self-review but cannot count it as independent review. At MISSION_CANDIDATE, prepare the packet for a fresh future read-only context, keep PR #47 draft, and do not merge canonical main. This is temporary operational routing, not a permanent product or architecture decision.
+The final ZCode correction on 2026-10-03 used GPT-6.1 Sol Medium. That task-specific route is historical and does not override the current policy below.
 
 ## Core rule
 
@@ -24,28 +22,28 @@ Current default:
 
 ```text
 model  = GPT-6 Luna
-effort = Xhigh
+effort = Max
 route  = native Codex
 ```
 
-Use Luna Xhigh as the normal sole repository write owner for:
+Use GPT-6 Luna Max by default as the normal sole repository write owner for:
 
-- implementation after the semantics are understood;
+- normal implementation after the semantics are understood;
 - deterministic tests;
 - routine debugging and evidence-driven retry loops;
-- runtime probes and validation;
+- bounded runtime validation;
 - CI/rebase/fix loops;
 - straightforward refactors;
 - documentation and repository maintenance;
-- broad-context and long-running bounded execution.
+- well-scoped work, including long-running tasks.
 
-Luna can own a task for hours. Long duration does not imply stronger reasoning is needed.
+GPT-6 Luna Max can own a task for hours. Duration or token volume alone does not imply stronger reasoning is needed.
 
-Ordinary low-risk subagents may also use Luna.
+Ordinary low-risk subagents may also use GPT-6 Luna Max.
 
 ## Strong reasoning work
 
-Historically Cerith deliberately uses Sol for work where stronger reasoning materially reduces technical risk. This is not merely a quota preference.
+Use GPT-6.1 Sol when stronger reasoning materially reduces technical risk. This is not merely a quota preference.
 
 Examples include:
 
@@ -59,43 +57,7 @@ Examples include:
 - hostile review of high-risk changes;
 - milestone-closing review where a semantic defect could invalidate the result.
 
-Do not downgrade one of these gates to Luna only to save quota.
-
-## Bounded strong worker: GPT-5.6 Sol Web High
-
-Use:
-
-```text
-model  = GPT-5.6 Sol
-effort = High
-route  = Web
-```
-
-when the work needs stronger reasoning than a Luna subagent **and** is short, tightly scoped and fits comfortably in the smaller/slower Web route.
-
-Good examples:
-
-- inspect one risky function or compact diff;
-- answer one subtle API/semantic question;
-- investigate one bug hypothesis;
-- review one bounded concurrency/security concern;
-- interpret a small set of upstream sources;
-- provide an independent second opinion.
-
-Sol Web High is a selective high-quality worker, not the default route for every review.
-
-Prefer a compact evidence packet:
-
-```text
-exact question
-+ relevant diff
-+ minimum required contracts/source
-+ runtime/test evidence
-```
-
-Do not force broad or context-heavy work through Web merely to save native quota.
-
-When another agent owns the repository task, Sol Web is read-only by default.
+Do not downgrade one of these gates to GPT-6 Luna solely to save quota.
 
 ## Strong native reasoning: GPT-6.1 Sol Medium
 
@@ -107,7 +69,7 @@ effort = Medium
 route  = native Codex
 ```
 
-when the work warrants a strong reasoning model and the Web route is not the right fit, including:
+when the work warrants a strong reasoning model and native Codex context/tooling is appropriate, including:
 
 - substantial architecture or contract work;
 - high-impact concurrency/security/IPC reasoning;
@@ -115,16 +77,13 @@ when the work warrants a strong reasoning model and the Web route is not the rig
 - difficult provider integration or semantic analysis;
 - context-heavy hostile review;
 - debugging where multiple components/evidence sources must be reconciled;
-- a critical gate whose quality bar should not be constrained by Web context/latency;
-- cases where the native harness/tool context materially matters.
+- a critical gate where the native harness or broader context materially helps.
 
-This tier does **not** require trying Sol Web first. Web and native are alternative routes chosen from task shape; they are not a mandatory ladder.
-
-After the difficult reasoning point is resolved, implementation normally returns to Luna Xhigh.
+After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max.
 
 ## Exceptional native escalation: GPT-6.1 Sol High
 
-Use GPT-6.1 Sol High only for a concrete unresolved high-risk question after Medium-level reasoning is insufficient, for example:
+Use GPT-6.1 Sol High only as an exceptional escalation for a concrete unresolved critical problem where Medium is insufficient, for example:
 
 - subtle ABI/interoperability ambiguity with conflicting evidence;
 - high-impact concurrency or security reasoning that remains unresolved;
@@ -134,11 +93,9 @@ Use GPT-6.1 Sol High only for a concrete unresolved high-risk question after Med
 
 Escalate the hard question, not the whole mission.
 
-## Frontier escalation
+## Astra routing
 
-GPT-6 Astra or another frontier/premium tier is outside the normal Cerith routing.
-
-Use it only after an explicit per-task decision for an exceptional unresolved problem where the lower tiers are demonstrably insufficient.
+GPT-6 Astra is not part of current Cerith routing.
 
 ## Preferred pattern
 
@@ -147,12 +104,10 @@ There is no single mandatory linear ladder.
 Typical execution:
 
 ```text
-Luna Xhigh native executes
-→ strong reasoning gate chosen by task shape:
-   - GPT-5.6 Sol Web High for short bounded high-quality work, or
-   - GPT-6.1 Sol Medium native for substantial/context-heavy strong reasoning
-→ GPT-6.1 Sol High native only for a concrete unresolved critical issue
-→ Luna Xhigh implements/fixes/finishes
+GPT-6 Luna Max native executes
+→ GPT-6.1 Sol Medium native when stronger reasoning materially reduces risk
+→ GPT-6.1 Sol High native only when a concrete critical issue remains unresolved after Medium
+→ GPT-6 Luna Max native implements/fixes/finishes
 ```
 
 ## Ownership
@@ -163,17 +118,16 @@ Independent specialists/reviewers are read-only by default and must not silently
 
 Antigravity may take independent non-overlapping work or a second-pass review when useful.
 
-## Runtime continuity and review ownership
+## Runtime continuity
 
-Use the calling harness's authoritative runtime metadata when available; do not invent execution receipts. The current CER-M3-004 marathon follows the override above. Earlier Luna execution and provider-specific review events remain historical evidence. The next final review must use a fresh read-only context and must not be this execution owner's self-review.
+Use the calling harness's authoritative runtime metadata when available; do not invent execution receipts.
 
 ## Quota and quality rule
 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
-- Use Luna Xhigh for execution and ordinary work in this task.
-- Use Sol Web High when a bounded problem benefits from stronger reasoning and Web's slower/smaller context is acceptable.
-- Use GPT-6.1 Sol Medium native when strong reasoning, larger context or the native harness is materially useful.
-- Use GPT-6.1 Sol High only when Medium leaves a critical issue unresolved.
+- Use GPT-6 Luna Max for execution and ordinary work.
+- Use GPT-6.1 Sol Medium native when strong reasoning, context or the native harness materially reduces risk.
+- Use GPT-6.1 Sol High only when Medium leaves a concrete critical issue unresolved.
 
 Quota optimization chooses between suitable routes; it does not redefine what level of reasoning the technical risk requires.
