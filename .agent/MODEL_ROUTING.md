@@ -59,6 +59,36 @@ Examples include:
 
 Do not downgrade one of these gates to GPT-6 Luna solely to save quota.
 
+## Bounded strong worker via CodexGPT → ChatGPT Web
+
+Use this route selectively when stronger reasoning than a normal Luna worker or subagent is useful, the task is short and tightly bounded, and its required context fits comfortably in ChatGPT Web.
+
+```text
+model  = GPT-5.6 Sol
+effort = High
+route  = CodexGPT → ChatGPT Web
+```
+
+Good examples:
+
+- inspect one risky function or compact diff;
+- answer one subtle API or semantic question;
+- investigate one bug hypothesis;
+- review one bounded concurrency or security concern;
+- interpret a small set of upstream sources;
+- provide a high-quality second opinion.
+
+This is not the default worker or the normal owner for broad/context-heavy missions. It is generally slower and has less practical context than the native route. When another agent owns the repository task, this worker is read-only by default.
+
+Prefer a compact evidence packet:
+
+```text
+exact question
++ relevant diff
++ minimum required contracts/source
++ runtime/test evidence
+```
+
 ## Strong native reasoning: GPT-6.1 Sol Medium
 
 Use:
@@ -80,6 +110,8 @@ when the work warrants a strong reasoning model and native Codex context/tooling
 - a critical gate where the native harness or broader context materially helps.
 
 After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max.
+
+CodexGPT Web and GPT-6.1 Sol native are alternative strong routes selected by task shape. There is no rule requiring Web first.
 
 ## Exceptional native escalation: GPT-6.1 Sol High
 
@@ -105,9 +137,11 @@ Typical execution:
 
 ```text
 GPT-6 Luna Max native executes
-→ GPT-6.1 Sol Medium native when stronger reasoning materially reduces risk
+→ when stronger reasoning is useful, choose by task shape:
+   - GPT-5.6 Sol High via CodexGPT → ChatGPT Web for short bounded work
+   - GPT-6.1 Sol Medium native for substantial/context-heavy reasoning
 → GPT-6.1 Sol High native only when a concrete critical issue remains unresolved after Medium
-→ GPT-6 Luna Max native implements/fixes/finishes
+→ GPT-6 Luna Max native normally implements/fixes/finishes
 ```
 
 ## Ownership
@@ -127,7 +161,8 @@ Use the calling harness's authoritative runtime metadata when available; do not 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
 - Use GPT-6 Luna Max for execution and ordinary work.
-- Use GPT-6.1 Sol Medium native when strong reasoning, context or the native harness materially reduces risk.
+- Use GPT-5.6 Sol High via CodexGPT → ChatGPT Web selectively for short, bounded strong-reasoning work.
+- Use GPT-6.1 Sol Medium native for substantial/context-heavy work where stronger reasoning materially reduces risk.
 - Use GPT-6.1 Sol High only when Medium leaves a concrete critical issue unresolved.
 
 Quota optimization chooses between suitable routes; it does not redefine what level of reasoning the technical risk requires.
