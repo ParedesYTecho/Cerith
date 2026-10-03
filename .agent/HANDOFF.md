@@ -1,4 +1,14 @@
-# CERITH CER-M3-004 MERGE HANDOFF — 2026-10-03
+# CERITH CER-M3-005 ACTIVE HANDOFF — 2026-10-04
+
+## Current task
+
+Phase A is complete: PR #49 was squash-merged from expected head `564b56e1d11b89fa95334c3f30181ee1654823c2` as `2441568f0899affdbc6e43d8359a6496c4c4dde7`. Exact-head Build and Test and Repository Quality were SUCCESS; CodeQL was SKIPPED. Local `main` matched `origin/main` at the result SHA and was clean before branching. Routing reconciliation is complete.
+
+CER-M3-005 is the sole-owner task on `codex/CER-M3-005-m3b-activity`, based on `2441568f0899affdbc6e43d8359a6496c4c4dde7`. The first-party OpenCode v1.17.9 local SQLite source was selected after bounded 5-candidate reconnaissance. The independent GPT-6.1 Sol Medium read-only design review returned PASS after six finding groups were resolved. Implementation currently has 11/11 focused tests passing and a bounded live-path probe of `Unavailable/activity_absent`; no host message content was read. No PR is open yet.
+
+The implementation received a hostile owner review; the independent Sol PASS was the required design gate. Release build passes with 0 warnings/errors, the full solution passes 445/445, focused acceptance is 11/11, and provider-failure isolation passes 12/12 with OpenCode included. Privacy/hygiene scans found zero flagged private artifacts, sensitive added content, or trailing whitespace. Graphify's code-only incremental update completed without LLM processing. One bounded commit/push/PR and exact-head Build and Test, Repository Quality and CodeQL verification remain; leave the PR unmerged. Keep M3 ACTIVE / INCOMPLETE; do not start another activity provider, M4 or M7. Live evidence is `LIVE_NOT_AVAILABLE_ON_THIS_HOST`, not synthetic evidence presented as live.
+
+## Historical — CER-M3-004 merge handoff — 2026-10-03
 
 PR #47 is MERGED by user-authorized SQUASH as `55a43fb02055e25ab60e18e0406aafd508ffd502`. Immediately before merge, head `03d9907b491d27bf0d23b67f2953cff17a4465f9`, base `72b43b268b4992d0b0ea45b6e29067d10450274f`, 110 ahead/0 behind, mergeability and required exact-head checks were verified. Merge used expected-head protection. Reviewed candidate and canonical squash trees are identical (`94a7132ed2e6bce0805757366030e6efa12c327b`); reviewed code/tests/dependencies are unchanged.
 

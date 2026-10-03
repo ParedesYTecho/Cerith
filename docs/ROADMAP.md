@@ -151,7 +151,7 @@ DONE via PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`. It records th
 
 ### CER-M3-004 — AI quota expansion wave 1
 
-DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after final independent PASS on `03d9907b491d27bf0d23b67f2953cff17a4465f9`; the reviewed and merged trees are identical. Eleven accepted quota integrations are canonical, counting Codex. Candidate Release validation passed 433/433 tests, zero skipped; Build and Test and Repository Quality passed, while CodeQL was SKIPPED, not a security PASS. M3 remains ACTIVE / INCOMPLETE. The next product boundary is M3.B passive/local AI activity acquisition, NOT STARTED.
+DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after final independent PASS on `03d9907b491d27bf0d23b67f2953cff17a4465f9`; the reviewed and merged trees are identical. Eleven accepted quota integrations are canonical, counting Codex. Candidate Release validation passed 433/433 tests, zero skipped; Build and Test and Repository Quality passed, while CodeQL was SKIPPED, not a security PASS. M3 remains ACTIVE / INCOMPLETE. CER-M3-005 is the first bounded M3.B OpenCode activity slice; its implementation, live-evidence status and remaining M3 exit criteria are recorded in `.agent/TASKS.md`.
 
 The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
 

@@ -1,5 +1,33 @@
 # Tasks
 
+## CER-M3-005 — First passive/local AI activity vertical slice
+
+Status: IN PROGRESS — implementation, local validation, hostile owner review, hygiene/privacy inspection and code Graphify update are complete; PR delivery and exact-head CI are pending.
+Owner: Codex — sole repository write owner for this task.
+Branch: `codex/CER-M3-005-m3b-activity`
+Base: `2441568f0899affdbc6e43d8359a6496c4c4dde7` (canonical `main` / `origin/main`).
+Scope: compare 3–5 realistic host-available passive/local AI activity sources, choose one evidence-backed collector, then route its directly observed fields through MetricSnapshot, MetricBus, existing IPC and a MetricId consumer. One collector only; no M4 UI, M7 history, quota inference, artificial model requests, credential mutation, or speculative shared framework.
+Gate receipt: GPT-6.1 Sol, Medium, native Codex, independent read-only review. Initial verdict FIXES REQUIRED; the owner resolved all six finding groups in the decision packet and returned the revision to the same reviewer. Final verdict PASS; reviewer confirmed design approval only and left live activity, runtime bounds, privacy canaries and coherent IPC as implementation acceptance requirements. No repository access or mutation, raw-record read, inference or auth change by the reviewer.
+Privacy: never retain or emit prompts, completions, source code, credentials, or raw provider records; use synthetic private-safe fixtures and inspect no real content unless schema evidence makes minimal scalar confirmation necessary.
+
+Candidate decision: OpenCode CLI 1.17.9 is selected. Its first-party v1.17.9 source defines the `session_message` SQLite table, V2 assistant usage fields, and database path/override behavior; the schema is internal rather than a stable public contract. The host has the standard database and matching schema/index, but the bounded collector probe found no recent assistant row (`activity_absent`); no user row content was read. The collector fails closed on schema/index/query errors and does not search channel-suffixed database names.
+
+| Host candidate | Evidence and limitation | Decision |
+| --- | --- | --- |
+| OpenCode CLI 1.17.9 | Local SQLite file; pinned first-party schema exposes assistant time, model/provider IDs and five token categories. Database `data` also contains conversation/tool content, so only guarded scalar JSON1 projections are used. No auth, network, inference or write. | Selected; best evidence-to-risk ratio. |
+| Codex CLI 0.160.0 | Official local rollout JSONL source exists, but host schema is not pinned to the installed version; corpus is large and content-bearing, with replay/resume/fork lifecycle complexity. | Rejected for this first slice. |
+| Claude Code 2.1.185 | Host session records exist, but a stable versioned passive usage schema was not established. `claude -p` would trigger inference. | Rejected for this first slice. |
+| Gemini CLI 0.59.0 | First-party docs describe transcript-bearing local chats and token stats, but no suitable host chat/activity was present. | Rejected; no artificial request to create evidence. |
+| Cursor | No host state database was present. | Not host-available. |
+
+Implementation contract: read at most the newest 64 `session_message` metadata rows ordered by `time_created DESC, rowid DESC`, then select the newest-created assistant within that window. Never fall back to an older assistant when the selected one is incomplete, failed or invalid. Publish only explicit source `input`, `output`, `reasoning`, `cache.read`, `cache.write`, model ID, model provider ID and `time.completed`. There is no V2 `total` field in this source schema; cost, session/project identity and raw row identifiers are omitted. Five source-reported categories remain independent; no additivity or quota relationship is asserted. Repeated polls are latest-state snapshots, not deltas or event history.
+
+New-file rationale: `OpenCodeActivityReader.cs` owns the native read-only SQLite/path/projection boundary so content-bearing source records stay out of provider lifecycle code. `OpenCodeActivityProvider.cs` owns this provider's descriptors, serial polling, state mapping and MetricBus publication; existing quota providers have different semantics and should not own it. `OpenCodeActivityProviderTests.cs` owns the synthetic SQLite fixture and end-to-end IPC/MetricId acceptance; there was no OpenCode-specific test surface. No generic abstraction or fixture file was added.
+
+The native SQLite boundary reads one file read-only per poll, uses the standard XDG data path or explicit `OPENCODE_DB` override (relative overrides resolve under the OpenCode data directory), has a 64 KiB SQLite value/row limit, 100 ms busy timeout, 250 ms SQL progress deadline every 1,000 VM opcodes, and cancellation via `sqlite3_interrupt`. Polls are serial at 5 seconds; there is no cursor/cache/replay. A successful `Fresh` poll does not mean the activity is recent. All eight snapshots from one read share `ObservedAt` and state, but MetricBus publishes per ID and is not an atomic tuple; consumers must group by `ObservedAt` and accept only a complete tuple.
+
+Local validation: `dotnet build Cerith.sln -c Release` PASS (0 warnings/errors); `dotnet test Cerith.sln -c Release --no-build --verbosity minimal` PASS (445/445, zero skipped); focused `OpenCodeActivityProviderTests` PASS (11/11); provider-failure isolation selection PASS (12/12, including `opencode-activity`). End-to-end IPC/MetricId, repeated-snapshot and missing-source transitions, bounded lock cancellation, source appearance/replacement, and hardware coexistence are covered by the focused suite. No quota-provider-specific concurrent coexistence test was added. `git diff --check` PASS. Hygiene scan covered 137 tracked paths plus all three new untracked files: zero private-artifact filename matches, zero sensitive-content matches, and zero trailing-whitespace lines. No runtime/package/project dependency was added; the test project only links the existing NamedPipeMetricClient source. Graphify code-only incremental update PASS (3,089 nodes / 9,895 edges; no LLM calls). Host probe remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST` / `activity_absent`. Exact-head hosted CI is pending PR delivery.
+
 ## Current model-routing policy reconciliation
 
 Status: DONE via PR #49
@@ -9,6 +37,7 @@ Base: `d00d75d4ed1c22088510885b432add5640acdf24` (canonical `origin/main`).
 Scope: routing policy in `.agent/MODEL_ROUTING.md`; `.agent/TASKS.md` and `.agent/WORKLOG.md` contain only the ownership and completion receipt required by repository workflow. No product, provider, milestone or dependency work.
 Result: active routing is merge-stable: GPT-6 Luna Max is the default; GPT-5.6 Sol High via CodexGPT → ChatGPT Web is the bounded strong route; GPT-6.1 Sol Medium native handles substantial/context-heavy strong reasoning, with High exceptional only; Astra is excluded and CER-M3-004 routing is historical. No product or milestone state changed.
 Validation: `git diff --check`, tracked-artifact hygiene and added-diff privacy checks; exact-head hosted checks will be recorded by the PR.
+Post-merge receipt: PR #49 was squash-merged at expected head `564b56e1d11b89fa95334c3f30181ee1654823c2`, producing canonical `main` SHA `2441568f0899affdbc6e43d8359a6496c4c4dde7`. Exact-head Build and Test and Repository Quality were SUCCESS; CodeQL was SKIPPED, not a security PASS. PR state was OPEN, non-draft and mergeable; only `.agent/MODEL_ROUTING.md`, `.agent/TASKS.md` and `.agent/WORKLOG.md` changed. Local `main` matched `origin/main` at the squash SHA, was clean, and `git diff --check` passed. PR branch was preserved.
 
 ## CER-M3-004 post-merge reconciliation
 

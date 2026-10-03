@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="Fixtures\Codex\usage.synthetic.fixture.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\NamedPipeMetricClient.cs" Link="NamedPipeMetricClient.cs" />
   </ItemGroup>
 </Project>

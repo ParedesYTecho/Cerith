@@ -1,4 +1,12 @@
-# State — CER-M3-004 post-merge reconciliation
+# State — CER-M3-005 first M3.B activity slice
+
+Current disposition (2026-10-04): Phase A completed safely. PR #49 squash-merged from authorized head `564b56e1d11b89fa95334c3f30181ee1654823c2` as canonical SHA `2441568f0899affdbc6e43d8359a6496c4c4dde7`; exact-head Build and Test and Repository Quality were SUCCESS, CodeQL was SKIPPED. Local `main` equaled `origin/main` at that SHA and was clean before the task branch was created. Routing reconciliation is DONE.
+
+CER-M3-005 is active on `codex/CER-M3-005-m3b-activity`, based on that canonical SHA. The independent GPT-6.1 Sol Medium read-only design review returned PASS after the owner resolved its findings; the owner also completed a hostile diff/privacy review. Release build passes with 0 warnings/errors, the full solution passes 445/445, the focused collector suite passes 11/11, and the provider-failure isolation selection passes 12/12 with OpenCode included. Hygiene/privacy scans found no private artifacts, sensitive added content, or trailing whitespace; Graphify's code-only update completed without LLM processing. The production-path bounded probe returned `Unavailable/activity_absent`; no real assistant row was eligible, and no row content was read. The task remains in progress pending the bounded commit/push/PR and exact-head CI.
+
+M3 remains ACTIVE / INCOMPLETE. The activity fields stay separate from quota, credits and billing. M4 and M7 have not started. Do not merge the M3.B PR in this task.
+
+## Historical — CER-M3-004 post-merge reconciliation
 
 Current disposition (2026-10-03): PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after user authorization and final independent verdict `PASS — ZCODE CORRECTION VERIFIED, READY FOR ADVISOR MERGE DECISION` on `03d9907b491d27bf0d23b67f2953cff17a4465f9`. Reviewed and merged Git trees are identical (`94a7132ed2e6bce0805757366030e6efa12c327b`). CER-M3-001/002/003/004 are DONE; M0/M1/M2 remain DONE. PR #48 records the completed post-merge reconciliation. M3 remains ACTIVE / INCOMPLETE: accepted passive/local AI activity acquisition is still required.
 

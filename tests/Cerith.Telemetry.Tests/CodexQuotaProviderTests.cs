@@ -681,6 +681,7 @@ public sealed class CodexQuotaProviderTests
     [DataRow("qoder-cn")]
     [DataRow("ark-agent-plan")]
     [DataRow("ark-coding-plan")]
+    [DataRow("opencode-activity")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
