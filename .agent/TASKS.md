@@ -2,13 +2,13 @@
 
 ## CER-M3-004 post-merge reconciliation
 
-Status: READY FOR REVIEW
-Owner: Codex — sole repository writer; concurrency one; no subagents.
+Status: DONE via PR #48
+Owner: Codex — sole repository writer for this bounded reconciliation; concurrency one; no subagents.
 Branch: `codex/CER-M3-004-post-merge-reconciliation`
 Base: `55a43fb02055e25ab60e18e0406aafd508ffd502` (PR #47 squash merge; tree identical to reviewed head `03d9907b491d27bf0d23b67f2953cff17a4465f9`).
 Scope: current operational state and roadmap receipt only; preserve review history, provider dispositions and all provider/research worktrees. No product code, dependencies, architecture or M3.B work.
-Acceptance: docs-only diff, diff-check and configured repository hygiene; push one small PR for review. M3 remains ACTIVE / INCOMPLETE.
-Validation: diff-check PASS; configured private-artifact filename hygiene PASS (137 tracked files); bounded added-diff privacy patterns PASS. No local build/test rerun; unchanged product code is covered by candidate and merged-main hosted CI. Merge main `55a43fb` passed Build and Test (37137454491) and Repository Quality (37137454524); CodeQL SKIPPED (37137454510). Reconciliation PR CI is a separate receipt.
+Result: current operational state reconciled through PR #48; historical provider and review evidence is preserved. M3 remains ACTIVE / INCOMPLETE. M3.B is NEXT / NOT STARTED; M4 must not start. The 11 accepted integrations and blocked/deferred provider dispositions remain unchanged.
+Validation: docs-only diff, `git diff --check`, configured repository hygiene and added-diff privacy checks. No local build/test rerun; product code is unchanged. Exact-head hosted checks are reported on PR #48; CodeQL remains SKIPPED, not a security PASS.
 
 ## CER-M3-001 — AI quota source reconnaissance and first-provider decision
 
