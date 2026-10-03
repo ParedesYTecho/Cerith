@@ -38,7 +38,7 @@ public sealed class OpenCodeActivityProviderTests
     public async Task ActivityTupleUsesMetricIdsAcrossNamedPipeWithoutTranscriptContent()
     {
         using var database = new SyntheticOpenCodeDatabase();
-        database.Insert("assistant", 1, CreateMessage(1_790_000_000_000, PrivateCanary));
+        database.Insert("assistant", 1, CreateMessage(1_790_000_000_000, PrivateCanary), "1.17.9");
 
         var registry = new MetricRegistry();
         using var bus = new MetricBus(1);
@@ -149,6 +149,33 @@ public sealed class OpenCodeActivityProviderTests
         Assert.AreEqual(OpenCodeActivityReadStatus.Unavailable, result.Status);
         Assert.AreEqual("activity_incomplete", result.ErrorCode);
         Assert.IsNull(result.Sample);
+    }
+
+    [TestMethod]
+    public void ReaderRequiresTheSelectedSessionsSupportedVersionAndNeverFallsBack()
+    {
+        using var database = new SyntheticOpenCodeDatabase();
+        database.Insert("assistant", 10, CreateMessage(1_790_000_000_000, "older supported"), "1.17.9");
+        database.Insert("assistant", 20, "not-json", "1.18.0");
+
+        var unsupported = new OpenCodeActivityReader(database.Path).Read();
+        Assert.AreEqual(OpenCodeActivityReadStatus.Unavailable, unsupported.Status);
+        Assert.AreEqual("source_version_unsupported", unsupported.ErrorCode);
+        Assert.IsNull(unsupported.Sample);
+
+        database.ClearMessages();
+        database.InsertWithoutSession("assistant", 30, CreateMessage(1_790_000_000_002, "missing parent"));
+        var missingVersion = new OpenCodeActivityReader(database.Path).Read();
+        Assert.AreEqual(OpenCodeActivityReadStatus.Error, missingVersion.Status);
+        Assert.AreEqual("source_version_missing", missingVersion.ErrorCode);
+        Assert.IsNull(missingVersion.Sample);
+
+        database.ClearMessages();
+        database.Insert("assistant", 40, CreateMessage(1_790_000_000_003, "empty version"), string.Empty);
+        var unusableVersion = new OpenCodeActivityReader(database.Path).Read();
+        Assert.AreEqual(OpenCodeActivityReadStatus.Error, unusableVersion.Status);
+        Assert.AreEqual("source_version_invalid", unusableVersion.ErrorCode);
+        Assert.IsNull(unusableVersion.Sample);
     }
 
     [TestMethod]
@@ -403,16 +430,28 @@ public sealed class OpenCodeActivityProviderTests
             Path = path ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"cerith-opencode-{Guid.NewGuid():N}.db");
             var result = SqliteOpen(Path, out _database, SqliteOpenReadWrite | SqliteOpenCreate, IntPtr.Zero);
             if (result != 0 || _database == IntPtr.Zero) throw new InvalidOperationException("Could not create synthetic database.");
-            Execute("CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, type TEXT NOT NULL, seq INTEGER NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, data TEXT NOT NULL);");
+            Execute("CREATE TABLE session (id TEXT PRIMARY KEY, version TEXT NOT NULL);");
+            Execute("CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES session(id) ON DELETE CASCADE, type TEXT NOT NULL, seq INTEGER NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, data TEXT NOT NULL);");
             Execute("CREATE INDEX session_message_time_created_idx ON session_message(time_created DESC);");
             Execute("CREATE INDEX session_message_session_seq_idx ON session_message(session_id, seq);");
         }
 
-        public void Insert(string type, long created, string data)
+        public void Insert(string type, long created, string data, string sessionVersion = "1.17.9")
+        {
+            var sessionId = $"synthetic-session-{Guid.NewGuid():N}";
+            var escapedVersion = sessionVersion.Replace("'", "''", StringComparison.Ordinal);
+            Execute($"INSERT INTO session(id, version) VALUES('{sessionId}', '{escapedVersion}');");
+            InsertMessage(type, created, data, sessionId);
+        }
+
+        public void InsertWithoutSession(string type, long created, string data) =>
+            InsertMessage(type, created, data, $"missing-parent-{Guid.NewGuid():N}");
+
+        private void InsertMessage(string type, long created, string data, string sessionId)
         {
             var escaped = data.Replace("'", "''", StringComparison.Ordinal);
             Execute($"INSERT INTO session_message(id, session_id, type, seq, time_created, time_updated, data) " +
-                $"VALUES('synthetic-{Guid.NewGuid():N}', 'synthetic-session', '{type}', {created.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
+                $"VALUES('synthetic-{Guid.NewGuid():N}', '{sessionId}', '{type}', {created.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
                 $"{created.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {created.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{escaped}');");
         }
 

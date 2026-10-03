@@ -50,6 +50,7 @@ internal sealed class OpenCodeActivityReader
     internal const int SqlProgressInterval = 1000;
     internal static readonly TimeSpan SqlExecutionLimit = TimeSpan.FromMilliseconds(250);
     internal const long MaxExactJsonInteger = 9_007_199_254_740_991;
+    private const string SupportedOpenCodeVersion = "1.17.9";
 
     private const int SqliteOpenReadOnly = 0x00000001;
     private const int SqliteOk = 0;
@@ -83,10 +84,12 @@ internal sealed class OpenCodeActivityReader
     private const int ModelValueColumn = 18;
     private const int ProviderTypeColumn = 19;
     private const int ProviderValueColumn = 20;
+    private const int SessionVersionTypeColumn = 21;
+    private const int SessionVersionValueColumn = 22;
 
     private const string ProjectionSql = """
         WITH recent AS MATERIALIZED (
-            SELECT rowid, type, time_created
+            SELECT rowid, session_id, type, time_created
             FROM session_message INDEXED BY session_message_time_created_idx
             ORDER BY time_created DESC, rowid DESC
             LIMIT 64
@@ -97,74 +100,85 @@ internal sealed class OpenCodeActivityReader
             FROM recent
         ),
         latest AS (
-            SELECT rowid
+            SELECT rowid, session_id
             FROM recent
             WHERE type = 'assistant'
             ORDER BY time_created DESC, rowid DESC
             LIMIT 1
+        ),
+        selected AS MATERIALIZED (
+            SELECT CASE WHEN source_session.id IS NULL OR source_session.version IS NULL THEN 0
+                        WHEN typeof(source_session.version) = 'text' THEN 1 ELSE 2 END AS session_version_type,
+                   source_session.version AS session_version,
+                   CASE WHEN source_session.version = '1.17.9' THEN message.data END AS data
+            FROM latest
+            LEFT JOIN session_message AS message ON message.rowid = latest.rowid
+            LEFT JOIN session AS source_session ON source_session.id = latest.session_id
         )
         SELECT stats.row_count,
                stats.assistant_count,
-               CASE coalesce(json_type(message.data, '$.time.completed'), 'missing')
+               CASE coalesce(json_type(selected.data, '$.time.completed'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.time.completed') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.time.completed') END,
-               CASE WHEN json_type(message.data, '$.error') IS NOT NULL
-                          AND json_type(message.data, '$.error') <> 'null' THEN 1 ELSE 0 END,
-               CASE WHEN json_type(message.data, '$.finish') IS NULL THEN 0
-                    WHEN json_type(message.data, '$.finish') = 'null' THEN 1
-                    WHEN json_type(message.data, '$.finish') = 'text' THEN 2 ELSE 3 END,
-               CASE WHEN json_type(message.data, '$.finish') = 'text'
-                          AND json_extract(message.data, '$.finish') = 'error' THEN 1 ELSE 0 END,
-               CASE coalesce(json_type(message.data, '$.tokens.input'), 'missing')
+               CASE WHEN json_type(selected.data, '$.time.completed') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.time.completed') END,
+               CASE WHEN json_type(selected.data, '$.error') IS NOT NULL
+                          AND json_type(selected.data, '$.error') <> 'null' THEN 1 ELSE 0 END,
+               CASE WHEN json_type(selected.data, '$.finish') IS NULL THEN 0
+                    WHEN json_type(selected.data, '$.finish') = 'null' THEN 1
+                    WHEN json_type(selected.data, '$.finish') = 'text' THEN 2 ELSE 3 END,
+               CASE WHEN json_type(selected.data, '$.finish') = 'text'
+                          AND json_extract(selected.data, '$.finish') = 'error' THEN 1 ELSE 0 END,
+               CASE coalesce(json_type(selected.data, '$.tokens.input'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.tokens.input') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.tokens.input') END,
-               CASE coalesce(json_type(message.data, '$.tokens.output'), 'missing')
+               CASE WHEN json_type(selected.data, '$.tokens.input') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.tokens.input') END,
+               CASE coalesce(json_type(selected.data, '$.tokens.output'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.tokens.output') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.tokens.output') END,
-               CASE coalesce(json_type(message.data, '$.tokens.reasoning'), 'missing')
+               CASE WHEN json_type(selected.data, '$.tokens.output') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.tokens.output') END,
+               CASE coalesce(json_type(selected.data, '$.tokens.reasoning'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.tokens.reasoning') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.tokens.reasoning') END,
-               CASE coalesce(json_type(message.data, '$.tokens.cache.read'), 'missing')
+               CASE WHEN json_type(selected.data, '$.tokens.reasoning') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.tokens.reasoning') END,
+               CASE coalesce(json_type(selected.data, '$.tokens.cache.read'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.tokens.cache.read') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.tokens.cache.read') END,
-               CASE coalesce(json_type(message.data, '$.tokens.cache.write'), 'missing')
+               CASE WHEN json_type(selected.data, '$.tokens.cache.read') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.tokens.cache.read') END,
+               CASE coalesce(json_type(selected.data, '$.tokens.cache.write'), 'missing')
                    WHEN 'missing' THEN 0
                    WHEN 'integer' THEN 1 WHEN 'real' THEN 2 WHEN 'null' THEN 3
                    WHEN 'text' THEN 4 WHEN 'true' THEN 5 WHEN 'false' THEN 6
                    WHEN 'object' THEN 7 WHEN 'array' THEN 8 ELSE 9 END,
-               CASE WHEN json_type(message.data, '$.tokens.cache.write') IN ('integer', 'real')
-                    THEN json_extract(message.data, '$.tokens.cache.write') END,
-               CASE WHEN json_type(message.data, '$.model.id') IS NULL THEN 0
-                    WHEN json_type(message.data, '$.model.id') = 'text' THEN 1 ELSE 2 END,
-               CASE WHEN json_type(message.data, '$.model.id') = 'text'
-                    THEN json_extract(message.data, '$.model.id') END,
-               CASE WHEN json_type(message.data, '$.model.providerID') IS NULL THEN 0
-                    WHEN json_type(message.data, '$.model.providerID') = 'text' THEN 1 ELSE 2 END,
-               CASE WHEN json_type(message.data, '$.model.providerID') = 'text'
-                    THEN json_extract(message.data, '$.model.providerID') END
+               CASE WHEN json_type(selected.data, '$.tokens.cache.write') IN ('integer', 'real')
+                    THEN json_extract(selected.data, '$.tokens.cache.write') END,
+               CASE WHEN json_type(selected.data, '$.model.id') IS NULL THEN 0
+                    WHEN json_type(selected.data, '$.model.id') = 'text' THEN 1 ELSE 2 END,
+               CASE WHEN json_type(selected.data, '$.model.id') = 'text'
+                    THEN json_extract(selected.data, '$.model.id') END,
+               CASE WHEN json_type(selected.data, '$.model.providerID') IS NULL THEN 0
+                    WHEN json_type(selected.data, '$.model.providerID') = 'text' THEN 1 ELSE 2 END,
+               CASE WHEN json_type(selected.data, '$.model.providerID') = 'text'
+                    THEN json_extract(selected.data, '$.model.providerID') END,
+               selected.session_version_type,
+               selected.session_version
         FROM stats
         LEFT JOIN latest ON 1 = 1
-        LEFT JOIN session_message AS message ON message.rowid = latest.rowid;
+        LEFT JOIN selected ON 1 = 1;
         """;
 
     private readonly string? _databasePath;
@@ -347,6 +361,22 @@ internal sealed class OpenCodeActivityReader
             return OpenCodeActivityReadResult.Unavailable(rowCount == WindowSize
                 ? "activity_window_exhausted"
                 : "activity_absent");
+
+        IdentifierRead version;
+        try
+        {
+            version = ReadIdentifier(statement, SessionVersionTypeColumn, SessionVersionValueColumn);
+        }
+        catch (DecoderFallbackException)
+        {
+            return OpenCodeActivityReadResult.Error("source_version_invalid");
+        }
+        if (version.Status == IdentifierReadStatus.Missing)
+            return OpenCodeActivityReadResult.Error("source_version_missing");
+        if (version.Status == IdentifierReadStatus.Invalid)
+            return OpenCodeActivityReadResult.Error("source_version_invalid");
+        if (!StringComparer.Ordinal.Equals(version.Value, SupportedOpenCodeVersion))
+            return OpenCodeActivityReadResult.Unavailable("source_version_unsupported");
 
         if (SqliteColumnInt64(statement, HasErrorColumn) != 0 ||
             SqliteColumnInt64(statement, FinishIsErrorColumn) != 0)
