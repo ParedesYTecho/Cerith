@@ -1,3 +1,15 @@
+# State — CER-M3-004 post-merge reconciliation
+
+Current disposition (2026-10-03): PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after user authorization and final independent verdict `PASS — ZCODE CORRECTION VERIFIED, READY FOR ADVISOR MERGE DECISION` on `03d9907b491d27bf0d23b67f2953cff17a4465f9`. Reviewed and merged Git trees are identical (`94a7132ed2e6bce0805757366030e6efa12c327b`). CER-M3-001/002/003/004 are DONE; M0/M1/M2 remain DONE. PR #48 records the completed post-merge reconciliation. M3 remains ACTIVE / INCOMPLETE: accepted passive/local AI activity acquisition is still required.
+
+Quota wave: 11 accepted integrations are canonical, counting Codex; provider dispositions and existing live/auth limitations are unchanged. Claude, Gemini CLI / Code Assist and Grok Build remain EVIDENCE_BLOCKED. Qoder International, Kimi and Devin remain DEFERRED_AFTER_M3_QUOTA_WAVE. No blanket live-validation or 17/17 claim.
+
+Candidate receipt: Release 0 warnings/errors; Core 39/39, Telemetry 384/384, Integration 10/10 (433/433, zero skipped); final independent focused ZCode 28/28. Exact-head Build and Test SUCCESS (37135720609), Repository Quality SUCCESS (37135720604), CodeQL SKIPPED (37135720599), not a security PASS. No local full-suite rerun during merge/reconciliation.
+
+Next action: use canonical `main` with this reconciliation, then plan the first bounded M3.B passive/local AI activity collector. M3.B is NEXT / NOT STARTED; M4 must not start; M7 has not started. CodeQL remains SKIPPED, not a security PASS. Historical branches/worktrees remain preserved.
+
+## Historical pre-merge state — preserved
+
 # State — CER-M3-004 final ZCode closure
 
 Current disposition: the remaining ZCode finding is corrected and locally verified; candidate readiness requires Build and Test and Repository Quality to succeed on the exact pushed PR head. The independent re-review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69` returned `FIXES STILL REQUIRED — NO-GO FOR MERGE`: findings 1–4 and 6–9 are closed, and finding 5 (ZCode auth becoming unverifiable between owners) remained partially unresolved. That verdict stays attached to that range. This owner has not issued independent approval. CER-M3-004 remains IN PROGRESS; M3 remains ACTIVE / INCOMPLETE; PR #47 remains OPEN / DRAFT. Canonical `origin/main` remains `72b43b268b4992d0b0ea45b6e29067d10450274f`, and local `main` remains untouched at `3f5ca74a26edf88a02e6bda05f759ee3c74032cd`.

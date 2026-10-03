@@ -1,5 +1,15 @@
 # Tasks
 
+## CER-M3-004 post-merge reconciliation
+
+Status: DONE via PR #48
+Owner: Codex — sole repository writer for this bounded reconciliation; concurrency one; no subagents.
+Branch: `codex/CER-M3-004-post-merge-reconciliation`
+Base: `55a43fb02055e25ab60e18e0406aafd508ffd502` (PR #47 squash merge; tree identical to reviewed head `03d9907b491d27bf0d23b67f2953cff17a4465f9`).
+Scope: current operational state and roadmap receipt only; preserve review history, provider dispositions and all provider/research worktrees. No product code, dependencies, architecture or M3.B work.
+Result: current operational state reconciled through PR #48; historical provider and review evidence is preserved. M3 remains ACTIVE / INCOMPLETE. M3.B is NEXT / NOT STARTED; M4 must not start. The 11 accepted integrations and blocked/deferred provider dispositions remain unchanged.
+Validation: docs-only diff, `git diff --check`, configured repository hygiene and added-diff privacy checks. No local build/test rerun; product code is unchanged. Exact-head hosted checks are reported on PR #48; CodeQL remains SKIPPED, not a security PASS.
+
 ## CER-M3-001 — AI quota source reconnaissance and first-provider decision
 
 Status: DONE
@@ -48,12 +58,17 @@ Result: first GPT-6.1 Sol High adversarial review returned FIXES REQUIRED / NO-G
 
 ## CER-M3-004 — AI quota expansion wave 1
 
-Status: IN PROGRESS
-Owner: GPT-6 Luna Xhigh — sole repository writer on native Codex for the authorized 2026-10-03 final ZCode correction, concurrency one, no subagents. The bounded independent re-review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69` returned `FIXES STILL REQUIRED — NO-GO FOR MERGE`: findings 1–4 and 6–9 are closed; finding 5 remains partially unresolved. This ZCode-only correction does not reopen the eight closures. Fresh final bounded read-only independent re-review remains pending; this owner's self-review is not approval. PR #47 remains DRAFT; canonical main stays untouched.
+Status: DONE
+Owner: completed implementation wave; post-merge reconciliation owner is recorded above.
+Historical correction owner: GPT-6 Luna Xhigh — sole repository writer on native Codex for the authorized 2026-10-03 final ZCode correction, concurrency one, no subagents. The bounded independent re-review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69` returned `FIXES STILL REQUIRED — NO-GO FOR MERGE`: findings 1–4 and 6–9 are closed; finding 5 remains partially unresolved. This ZCode-only correction does not reopen the eight closures. Fresh final bounded read-only independent re-review remains pending; this owner's self-review is not approval. PR #47 remains DRAFT; canonical main stays untouched.
 Priority: P0
 Depends on: CER-M3-003
 Branch: `codex/CER-M3-004-integration`
 Base: `72b43b268b4992d0b0ea45b6e29067d10450274f` (verified clean isolated worktree)
+
+Result (2026-10-03): final independent ZCode-only review PASS on `03d9907b491d27bf0d23b67f2953cff17a4465f9`; findings 1–9 closed within reviewed scopes. User-authorized PR #47 squash `55a43fb02055e25ab60e18e0406aafd508ffd502` has the identical reviewed tree. Eleven accepted quota integrations are canonical; blocked/deferred and live/auth dispositions remain unchanged. Candidate receipt 433/433, zero skipped; Build and Test and Repository Quality SUCCESS; CodeQL SKIPPED, not PASS. M3 remains ACTIVE / INCOMPLETE; next product boundary M3.B passive/local activity acquisition, NOT STARTED.
+
+### Historical pre-merge execution record
 
 Goal: stage evidence-backed safe integrations from this wave, preserve one writer per provider path and one owner for shared files, and record exact blockers for the rest. Follow-up authorized 2026-10-02: same sole owner researches the three preserved reference clones and additional GitHub monitors for Claude subscription availability and Grok weekly quotas; that research-only unit completed at f1531e2. The subsequent user instruction to finish remaining work authorizes bounded provider implementation on preserved branches and integration-owner registration/tests/docs work. This sole owner now evaluates the official Grok billing acquisition and remaining Claude contract; credentials and canonical main remain untouched, and PR #47 remains draft. The 16-provider reference catalog remains research scope; it is not a 17/17 candidate or completion gate.
 

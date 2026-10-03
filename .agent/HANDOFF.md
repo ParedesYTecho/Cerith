@@ -1,3 +1,19 @@
+# CERITH CER-M3-004 MERGE HANDOFF — 2026-10-03
+
+PR #47 is MERGED by user-authorized SQUASH as `55a43fb02055e25ab60e18e0406aafd508ffd502`. Immediately before merge, head `03d9907b491d27bf0d23b67f2953cff17a4465f9`, base `72b43b268b4992d0b0ea45b6e29067d10450274f`, 110 ahead/0 behind, mergeability and required exact-head checks were verified. Merge used expected-head protection. Reviewed candidate and canonical squash trees are identical (`94a7132ed2e6bce0805757366030e6efa12c327b`); reviewed code/tests/dependencies are unchanged.
+
+Review chain: initial `0b9daad6534623d256b79bbd30f39387405793d2` — FIXES REQUIRED (3 HIGH, 6 MEDIUM); first correction `84fbf84d1065ba859605cdd2dc83019a1b51fe69` — FIXES STILL REQUIRED, only residual ZCode finding 5; final correction `03d9907b491d27bf0d23b67f2953cff17a4465f9` — independent PASS — ZCODE CORRECTION VERIFIED, READY FOR ADVISOR MERGE DECISION. Findings 1–9 are closed within their reviewed scopes; findings 1–4 and 6–9 were preserved by the final bounded review.
+
+CER-M3-004 implementation wave is DONE, and PR #48 records the completed post-merge reconciliation. PR #47 is integrated as squash `55a43fb02055e25ab60e18e0406aafd508ffd502`; the reviewed candidate and squash trees are identical. M3 remains ACTIVE / INCOMPLETE because accepted passive/local activity acquisition remains an exit requirement. M0/M1/M2 and CER-M3-001/002/003 remain DONE.
+
+Canonical accepted quota integrations (11): Codex, Cursor, Antigravity quota, ZCode, GitHub Copilot, OpenCode Go, Kiro, Command Code, Qoder CN, Ark Agent Plan, Ark Coding Plan. EVIDENCE_BLOCKED: Claude; Gemini CLI / Code Assist; Grok Build. DEFERRED_AFTER_M3_QUOTA_WAVE: Qoder International; Kimi; Devin. Existing auth/live limits remain; no provider was reopened or upgraded during merge.
+
+Candidate receipt: Release 0 warnings/errors, Core 39/39, Telemetry 384/384, Integration 10/10 (433/433, zero skipped); ZCode 28/28 in the independent review, coexistence 1/1 and supervisor isolation 11/11 in the candidate receipt. Build and Test SUCCESS 37135720609; Repository Quality SUCCESS 37135720604; CodeQL SKIPPED 37135720599, not a security PASS. These are candidate receipts, not fresh local post-merge tests.
+
+Next action: use canonical `main` with this reconciliation, then plan the first bounded M3.B passive/local AI activity collector. M3.B remains NEXT / NOT STARTED. M4 must not start; M7 has not started. Preserve historical branches and worktrees. CodeQL remains SKIPPED, not a security PASS. No M3.B/M4/M7, real Grok, credential operation, branch/worktree deletion or new implementation occurred.
+
+## Historical pre-merge handoff — preserved
+
 # CERITH CER-M3-004 FINAL ZCODE CLOSURE HANDOFF
 
 ## Current review state — 2026-10-03
