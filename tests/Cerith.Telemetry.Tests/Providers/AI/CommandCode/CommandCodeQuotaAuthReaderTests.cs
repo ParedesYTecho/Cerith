@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Text.Json;
 using Cerith.TelemetryService.Providers.AI.CommandCode;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -102,6 +103,48 @@ public sealed class CommandCodeQuotaAuthReaderTests
 
         Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
         Assert.AreEqual(0, fileReads);
+    }
+
+    [TestMethod]
+    [DataRow("key\rInjected: value")]
+    [DataRow("key\nInjected: value")]
+    [DataRow("key\r\nInjected: value")]
+    [DataRow("key\u0001Injected")]
+    [DataRow("key\u007fInjected")]
+    public void HeaderUnsafeEnvironmentKeyIsInvalidAndDoesNotFallBackToFile(string apiKey)
+    {
+        var fileReads = 0;
+        var reader = new CommandCodeQuotaAuthReader(
+            () => apiKey,
+            () => "C:\\Users\\test",
+            () => null,
+            _ => { fileReads++; return "{\"apiKey\":\"file-key\"}"; });
+
+        var result = reader.Read();
+
+        Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
+        Assert.AreEqual("auth_invalid", result.ErrorCode);
+        Assert.AreEqual(0, fileReads);
+    }
+
+    [TestMethod]
+    [DataRow("key\rInjected: value")]
+    [DataRow("key\nInjected: value")]
+    [DataRow("key\r\nInjected: value")]
+    [DataRow("key\u0001Injected")]
+    [DataRow("key\u007fInjected")]
+    public void HeaderUnsafeCliAuthKeyIsInvalid(string apiKey)
+    {
+        var reader = new CommandCodeQuotaAuthReader(
+            () => null,
+            () => "C:\\Users\\test",
+            () => null,
+            _ => "{\"apiKey\":" + JsonSerializer.Serialize(apiKey) + "}");
+
+        var result = reader.Read();
+
+        Assert.AreEqual(CommandCodeAuthStatus.Invalid, result.Status);
+        Assert.AreEqual("auth_invalid", result.ErrorCode);
     }
 
     [TestMethod]

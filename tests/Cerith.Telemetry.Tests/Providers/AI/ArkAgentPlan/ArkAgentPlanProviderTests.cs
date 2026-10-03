@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -122,6 +123,109 @@ public sealed class ArkAgentPlanProviderTests
         var overQuota = ArkAgentPlanParser.ParseDaily(CreateDailyPayload(quota: "10", used: "12.5"),
             identity, "Medium");
         Assert.AreEqual(125m, overQuota[2].Value!.Value.AsDecimal());
+    }
+
+    [TestMethod]
+    public async Task ElapsedResetsInvalidateEveryPeriodIncludingBackendDailyAcquisition()
+    {
+        var expiredReset = ObservedAt.AddMinutes(-1).ToString("O");
+        var usage = Encoding.UTF8.GetBytes($$"""
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A",
+                "region":"cn-beijing","project_name":"default","profile":"profile-A"},
+              "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+                {"label":"5h","used":2,"total":10,"percent":20,"reset_at":"{{expiredReset}}"},
+                {"label":"weekly","used":3,"total":20,"percent":15,"reset_at":"{{expiredReset}}"},
+                {"label":"monthly","used":4,"total":30,"percent":13.3,"reset_at":"{{expiredReset}}"}
+              ]}]
+            }
+            """);
+        var daily = CreateDailyPayload(resetTime: ObservedAt.AddMinutes(-1).ToUnixTimeMilliseconds());
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.SuccessWithDaily(usage, daily)));
+
+        var snapshots = await ReadAfterPollAsync(harness);
+
+        for (var period = 0; period < MetricIds.Length / 4; period++)
+        {
+            var points = snapshots.Skip(period * 4).Take(4);
+            Assert.IsTrue(points.All(snapshot => snapshot.State == MetricState.Unavailable &&
+                snapshot.Value is null && snapshot.ErrorCode == "reset_elapsed"),
+                $"Period {ArkAgentPlanReading.Periods[period]} must not retain or refill expired quota.");
+        }
+    }
+
+    [TestMethod]
+    public async Task ExpiredPeriodDoesNotInvalidateStillActiveWindows()
+    {
+        var expiredReset = ObservedAt.AddMinutes(-1).ToString("O");
+        var activeReset = ObservedAt.AddHours(1).ToString("O");
+        var usage = Encoding.UTF8.GetBytes($$"""
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A",
+                "region":"cn-beijing","project_name":"default","profile":"profile-A"},
+              "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+                {"label":"5h","used":2,"total":10,"percent":20,"reset_at":"{{expiredReset}}"},
+                {"label":"weekly","used":3,"total":20,"percent":15,"reset_at":"{{activeReset}}"},
+                {"label":"monthly","used":4,"total":30,"percent":13.3,"reset_at":"{{activeReset}}"}
+              ]}]
+            }
+            """);
+        var daily = CreateDailyPayload(resetTime: ObservedAt.AddHours(1).ToUnixTimeMilliseconds());
+        using var harness = new Harness(_ => Task.FromResult(ArkCliResult.SuccessWithDaily(usage, daily)));
+
+        var snapshots = await ReadAfterPollAsync(harness);
+
+        Assert.IsTrue(snapshots.Take(4).All(snapshot => snapshot.State == MetricState.Unavailable &&
+            snapshot.Value is null && snapshot.ErrorCode == "reset_elapsed"));
+        Assert.IsTrue(snapshots.Skip(4).All(snapshot => snapshot.State == MetricState.Fresh &&
+            snapshot.Value is not null), "Active daily, weekly and monthly windows remain Fresh.");
+    }
+
+    [TestMethod]
+    public async Task ResetCrossingDuringBlockedPublicationPublishesUnavailableInsteadOfFresh()
+    {
+        var time = new FixedTimeProvider(ObservedAt);
+        var resetAt = ObservedAt.AddSeconds(10);
+        var usage = Encoding.UTF8.GetBytes($$"""
+            {
+              "viewer":{"auth_method":"sso","is_root":false,"user_id":"user-A","account_id":"account-A",
+                "region":"cn-beijing","project_name":"default","profile":"profile-A"},
+              "items":[{"product":"agent-plan","tier":"medium","subscribed":true,"periods":[
+                {"label":"5h","used":2,"total":10,"percent":20,"reset_at":"{{resetAt:O}}"}
+              ]}]
+            }
+            """);
+        var acquisitions = 0;
+        var blockedAcquisition = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var harness = new Harness(_ =>
+        {
+            if (Interlocked.Increment(ref acquisitions) == 3)
+                blockedAcquisition.TrySetResult();
+            return Task.FromResult(ArkCliResult.Success(usage));
+        }, timeProvider: time);
+        await using var reader = harness.Bus.Subscribe(new MetricId(MetricIds[0])).GetAsyncEnumerator();
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PollOnceAsync();
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        await harness.Provider.PollOnceAsync();
+
+        var pendingPoll = harness.Provider.PollOnceAsync();
+        await blockedAcquisition.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await Task.Delay(50);
+        Assert.IsFalse(pendingPoll.IsCompleted, "The second sample is held by subscriber backpressure.");
+        Assert.IsTrue(time.GetUtcNow() < resetAt, "The held publication must begin before reset.");
+        time.Advance(TimeSpan.FromSeconds(11));
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State,
+            "The sample queued before reset remains an accepted immutable bus value.");
+
+        await pendingPoll.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
     }
 
     [TestMethod]
@@ -731,7 +835,9 @@ public sealed class ArkAgentPlanProviderTests
 
     private static async Task<MetricSnapshot[]> ReadAfterPollAsync(Harness harness)
     {
-        var readers = MetricIds.Select(id => harness.Bus.Subscribe(new MetricId(id)).GetAsyncEnumerator()).ToArray();
+        using var readStop = new CancellationTokenSource();
+        var readers = MetricIds.Select(id => harness.Bus.Subscribe(new MetricId(id))
+            .GetAsyncEnumerator(readStop.Token)).ToArray();
         var pendingReads = readers.Select(reader => reader.MoveNextAsync().AsTask()).ToArray();
         try
         {
@@ -741,6 +847,12 @@ public sealed class ArkAgentPlanProviderTests
         }
         finally
         {
+            readStop.Cancel();
+            try { await Task.WhenAll(pendingReads); }
+            catch (OperationCanceledException) when (readStop.IsCancellationRequested)
+            {
+                Assert.IsTrue(readStop.IsCancellationRequested);
+            }
             foreach (var reader in readers) await reader.DisposeAsync();
         }
     }
@@ -749,11 +861,13 @@ public sealed class ArkAgentPlanProviderTests
     {
         public MetricRegistry Registry { get; } = new();
         public MetricBus Bus { get; } = new(1);
-        public FixedTimeProvider Time { get; } = new(ObservedAt);
+        public TimeProvider Time { get; }
         public ArkAgentPlanProvider Provider { get; }
 
         public Harness(Func<CancellationToken, Task<ArkCliResult>> acquire,
-            Func<ArkCliResult, byte[]?>? currentUsage = null) =>
+            Func<ArkCliResult, byte[]?>? currentUsage = null, TimeProvider? timeProvider = null)
+        {
+            Time = timeProvider ?? new FixedTimeProvider(ObservedAt);
             Provider = new ArkAgentPlanProvider(Registry, Bus, async token =>
             {
                 var result = await acquire(token).ConfigureAwait(false);
@@ -762,6 +876,7 @@ public sealed class ArkAgentPlanProviderTests
                     : currentUsage(result);
                 return result with { CurrentUsagePayload = currentUsagePayload };
             }, Time);
+        }
 
         public void Dispose()
         {
@@ -772,8 +887,73 @@ public sealed class ArkAgentPlanProviderTests
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => utcNow;
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
+        private DateTimeOffset _utcNow = utcNow;
+        private long _timestamp;
+
+        public override DateTimeOffset GetUtcNow() { lock (_gate) return _utcNow; }
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
-        public override long GetTimestamp() => utcNow.UtcTicks;
+        public override long GetTimestamp() { lock (_gate) return _timestamp; }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime,
+            TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state);
+            timer.Change(dueTime, period);
+            lock (_gate) _timers.Add(timer);
+            return timer;
+        }
+
+        public void Advance(TimeSpan elapsed)
+        {
+            ManualTimer[] timers;
+            long timestamp;
+            lock (_gate)
+            {
+                _utcNow += elapsed;
+                _timestamp += elapsed.Ticks;
+                timestamp = _timestamp;
+                timers = _timers.ToArray();
+            }
+            foreach (var timer in timers) timer.FireDue(timestamp);
+        }
+
+        private sealed class ManualTimer(FixedTimeProvider owner, TimerCallback callback, object? state) : ITimer
+        {
+            private readonly object _gate = new();
+            private long _due = long.MaxValue;
+            private long _period;
+            private bool _disposed;
+
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                lock (_gate)
+                {
+                    if (_disposed) return false;
+                    _due = dueTime == Timeout.InfiniteTimeSpan
+                        ? long.MaxValue
+                        : owner.GetTimestamp() + dueTime.Ticks;
+                    _period = period == Timeout.InfiniteTimeSpan || period <= TimeSpan.Zero ? 0 : period.Ticks;
+                    return true;
+                }
+            }
+
+            public void FireDue(long timestamp)
+            {
+                while (true)
+                {
+                    lock (_gate)
+                    {
+                        if (_disposed || _due > timestamp) return;
+                        _due = _period == 0 ? long.MaxValue : _due + _period;
+                    }
+                    callback(state);
+                }
+            }
+
+            public void Dispose() { lock (_gate) _disposed = true; }
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
     }
 }

@@ -286,6 +286,217 @@ public sealed class CopilotQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task OwnerObservationDuringLongRetryCancelsPendingOldOwnerPublication()
+    {
+        using var context = new RegistryAndBus(subscriberCapacity: 1);
+        var time = new TestTimeProvider(InitialUtc);
+        var requests = new List<CopilotGhRequest>();
+        var script = new Queue<ScriptedResponse>();
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 80));
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 70));
+        EnqueueRateLimitedRound(script, 24680, 1200);
+        EnqueueOwnerObservation(script, 24680);
+        EnqueueOwnerObservation(script, 13579);
+        EnqueueSuccessfulRound(script, 13579, QuotaPayload(13579, percentRemaining: 25));
+        var rateLimited = NewSignal();
+        using var provider = new CopilotQuotaProvider(context.Registry, context.Bus,
+            CreateScriptedAcquirer(script, requests, () =>
+            {
+                if (requests.Count == 12) rateLimited.TrySetResult();
+            }), time);
+        await using var reader = context.Bus.Subscribe(new MetricId(ChatPercentId)).GetAsyncEnumerator();
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await firstRead);
+        Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await provider.PollOnceAsync();
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        var pendingOldPublication = provider.PollOnceAsync();
+        await rateLimited.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await Task.Delay(25);
+        Assert.IsFalse(pendingOldPublication.IsCompleted,
+            "The rate-limited owner's stale publication is blocked behind its earlier queued sample.");
+
+        await provider.ObserveOwnerOnceAsync();
+        await provider.PollOnceAsync();
+        Assert.AreEqual(3, requests.Count(request => request == CopilotGhRequest.Quota),
+            "Confirming the same owner must preserve its Retry-After suppression.");
+        Assert.IsFalse(pendingOldPublication.IsCompleted);
+
+        await provider.ObserveOwnerOnceAsync();
+        await pendingOldPublication.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.AreEqual(5, requests.Count(request => request == CopilotGhRequest.AuthStatus));
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(70d, reader.Current.Value!.Value.AsDouble(),
+            "The sample accepted before observing the transition is already in the bus.");
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(25d, reader.Current.Value!.Value.AsDouble(),
+            "The pending stale A publication must not enter the bus after observing B.");
+    }
+
+    [TestMethod]
+    public async Task RunOwnerObserverEscapesLongRetryAndCancelsBlockedOldOwnerPublication()
+    {
+        using var context = new RegistryAndBus(subscriberCapacity: 1);
+        var time = new TestTimeProvider(InitialUtc);
+        var script = new Queue<ScriptedResponse>();
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 80));
+        EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, percentRemaining: 70));
+        EnqueueRateLimitedRound(script, 24680, 1200);
+        EnqueueOwnerObservation(script, 24680);
+        EnqueueOwnerObservation(script, 13579);
+        EnqueueSuccessfulRound(script, 13579, QuotaPayload(13579, percentRemaining: 25));
+        var requests = new List<CopilotGhRequest>();
+        var roundSignals = new[] { NewSignal(), NewSignal(), NewSignal(), NewSignal() };
+        var sameOwnerObserved = NewSignal();
+        var changedOwnerObserved = NewSignal();
+        var requestCount = 0;
+        var acquirer = CreateScriptedAcquirer(script, requests, () =>
+        {
+            switch (Interlocked.Increment(ref requestCount))
+            {
+                case 4: roundSignals[0].TrySetResult(); break;
+                case 8: roundSignals[1].TrySetResult(); break;
+                case 12: roundSignals[2].TrySetResult(); break;
+                case 15: sameOwnerObserved.TrySetResult(); break;
+                case 18: changedOwnerObserved.TrySetResult(); break;
+                case 22: roundSignals[3].TrySetResult(); break;
+            }
+        });
+        using var provider = new CopilotQuotaProvider(context.Registry, context.Bus, acquirer, time);
+        using var cancellation = new CancellationTokenSource();
+        using var readerCancellation = new CancellationTokenSource();
+        await using var reader = context.Bus.Subscribe(new MetricId(ChatPercentId))
+            .GetAsyncEnumerator(readerCancellation.Token);
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        var run = provider.RunAsync(cancellation.Token);
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
+        await roundSignals[0].Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await roundSignals[2].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await time.WaitForTimerScheduledAsync(TimeSpan.FromMinutes(14), TimeSpan.FromSeconds(3));
+
+        time.Advance(TimeSpan.FromSeconds(30));
+        await sameOwnerObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.AreEqual(3, requests.Count(request => request == CopilotGhRequest.Quota),
+            "A same-owner observation must preserve the long Retry-After.");
+
+        time.Advance(TimeSpan.FromSeconds(30));
+        await changedOwnerObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await roundSignals[3].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.AreEqual(4, requests.Count(request => request == CopilotGhRequest.Quota),
+            "The real RunAsync owner observer must wake B's acquisition without waiting for A's retry.");
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(70d, reader.Current.Value!.Value.AsDouble(),
+            "This A sample was queued before the owner transition was observed.");
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        Assert.AreEqual(25d, reader.Current.Value!.Value.AsDouble(),
+            "B must publish its own value after the already-queued A sample.");
+
+        var unexpectedOldValue = reader.MoveNextAsync().AsTask();
+        Assert.AreNotSame(unexpectedOldValue, await Task.WhenAny(unexpectedOldValue,
+            Task.Delay(TimeSpan.FromMilliseconds(100))),
+            "Draining the subscriber after the transition must not admit a pending A publication.");
+
+        readerCancellation.Cancel();
+        try { await unexpectedOldValue; }
+        catch (OperationCanceledException) { }
+        cancellation.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [TestMethod]
+    public async Task ValidityObservationCancelsPendingPublicationWhileAcquisitionIsHeld()
+    {
+        using var context = new RegistryAndBus(subscriberCapacity: 1);
+        var time = new TestTimeProvider(InitialUtc);
+        var resetAt = InitialUtc.AddSeconds(210);
+        var quotaRequests = 0;
+        var acquisitionStarted = NewSignal();
+        var releaseAcquisition = NewSignal();
+        var acquirer = new CopilotQuotaAcquirer(async (request, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            switch (request)
+            {
+                case CopilotGhRequest.AuthStatus:
+                    return Encoding.UTF8.GetBytes("{\"state\":\"success\"}");
+                case CopilotGhRequest.AuthenticatedUser:
+                    return Encoding.UTF8.GetBytes("{\"id\":24680}");
+                case CopilotGhRequest.Quota:
+                    var quotaRequest = Interlocked.Increment(ref quotaRequests);
+                    if (quotaRequest == 1)
+                        return Encoding.UTF8.GetBytes(QuotaPayload(24680, resetAt, 80));
+                    if (quotaRequest == 2)
+                        return Encoding.UTF8.GetBytes(QuotaPayload(24680, resetAt, 70));
+                    acquisitionStarted.TrySetResult();
+                    await releaseAcquisition.Task.WaitAsync(cancellationToken);
+                    return Encoding.UTF8.GetBytes(QuotaPayload(24680, resetAt, 60));
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(request));
+            }
+        });
+        using var provider = new CopilotQuotaProvider(context.Registry, context.Bus, acquirer, time);
+        using var readerCancellation = new CancellationTokenSource();
+        var reader = context.Bus.Subscribe(new MetricId(ChatPercentId)).GetAsyncEnumerator(readerCancellation.Token);
+
+        var firstRead = reader.MoveNextAsync().AsTask();
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        await provider.PollOnceAsync();
+        time.Advance(CopilotQuotaProvider.PollInterval);
+        var heldAcquisition = provider.PollOnceAsync();
+        await acquisitionStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        time.Advance(TimeSpan.FromSeconds(60));
+        var blockedStalePublication = provider.ObserveValidityOnceAsync();
+        await Task.Delay(25);
+        Assert.IsFalse(blockedStalePublication.IsCompleted,
+            "The existing Fresh snapshot occupies the only subscriber slot.");
+
+        time.Advance(TimeSpan.FromSeconds(30));
+        var resetPublication = provider.ObserveValidityOnceAsync();
+        await Task.Delay(25);
+        Assert.IsFalse(heldAcquisition.IsCompleted,
+            "Validity observation must proceed without waiting for the held request.");
+
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(70d, reader.Current.Value!.Value.AsDouble());
+        await resetPublication.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value);
+        Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+        await blockedStalePublication.WaitAsync(TimeSpan.FromSeconds(2));
+
+        releaseAcquisition.TrySetResult();
+        await heldAcquisition.WaitAsync(TimeSpan.FromSeconds(2));
+        await provider.PollOnceAsync();
+        Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+        Assert.IsNull(reader.Current.Value, "A late response with an elapsed reset cannot restore quota.");
+        readerCancellation.Cancel();
+    }
+
+    [TestMethod]
     public async Task RetryBackoffDoublesWithoutRetryAfterAndSuppressesEarlyRequests()
     {
         using var context = new RegistryAndBus();
@@ -372,6 +583,7 @@ public sealed class CopilotQuotaProviderTests
         EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, resetAt, 80));
         EnqueueSuccessfulRound(script, 24680, QuotaPayload(24680, resetAt, 70));
         EnqueueRateLimitedRound(script, 24680, 600);
+        EnqueueOwnerObservation(script, 24680);
         var requests = new List<CopilotGhRequest>();
         var roundSignals = new[] { NewSignal(), NewSignal(), NewSignal() };
         var requestCount = 0;
@@ -391,8 +603,12 @@ public sealed class CopilotQuotaProviderTests
 
         time.Advance(CopilotQuotaProvider.PollInterval);
         await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
         time.Advance(CopilotQuotaProvider.PollInterval);
-        await roundSignals[2].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var thirdRound = await Task.WhenAny(roundSignals[2].Task, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.AreSame(roundSignals[2].Task, thirdRound,
+            $"The third quota round did not start; requests={requests.Count}, run={run.Status}, " +
+            $"observed=[{string.Join(',', requests)}].");
         time.Advance(TimeSpan.FromSeconds(30));
         await Task.Delay(100);
 
@@ -405,6 +621,8 @@ public sealed class CopilotQuotaProviderTests
         Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
         Assert.IsNull(reader.Current.Value);
         Assert.AreEqual("reset_elapsed", reader.Current.ErrorCode);
+        Assert.AreEqual(4, requests.Count(request => request == CopilotGhRequest.AuthStatus),
+            "The lifecycle owner observer must run during the long Retry-After without acquiring quota.");
 
         cancellation.Cancel();
         await run.WaitAsync(TimeSpan.FromSeconds(3));
@@ -439,10 +657,18 @@ public sealed class CopilotQuotaProviderTests
 
         time.Advance(CopilotQuotaProvider.PollInterval);
         await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
         time.Advance(CopilotQuotaProvider.PollInterval);
-        await roundSignals[2].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var thirdQuotaRound = await Task.WhenAny(roundSignals[2].Task, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.AreSame(roundSignals[2].Task, thirdQuotaRound,
+            $"The third quota round did not start; requests={requests.Count}, run={run.Status}, " +
+            $"observed=[{string.Join(',', requests)}].");
+        await Task.Delay(50);
         time.Advance(CopilotQuotaProvider.PollInterval);
-        await roundSignals[3].Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var fourthRound = await Task.WhenAny(roundSignals[3].Task, Task.Delay(TimeSpan.FromSeconds(1)));
+        Assert.AreSame(roundSignals[3].Task, fourthRound,
+            $"The fourth quota round did not start; requests={requests.Count}, run={run.Status}, " +
+            $"observed=[{string.Join(',', requests)}].");
         await Task.Delay(50);
 
         Assert.IsTrue(await reader.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)));
@@ -586,6 +812,15 @@ public sealed class CopilotQuotaProviderTests
             "{\"id\":" + accountId.ToString(CultureInfo.InvariantCulture) + "}");
     }
 
+    private static void EnqueueOwnerObservation(Queue<ScriptedResponse> responses, long accountId)
+    {
+        Enqueue(responses, CopilotGhRequest.AuthStatus, "{\"state\":\"success\"}");
+        Enqueue(responses, CopilotGhRequest.AuthenticatedUser,
+            "{\"id\":" + accountId.ToString(CultureInfo.InvariantCulture) + "}");
+        Enqueue(responses, CopilotGhRequest.AuthenticatedUser,
+            "{\"id\":" + accountId.ToString(CultureInfo.InvariantCulture) + "}");
+    }
+
     private static void Enqueue(Queue<ScriptedResponse> responses, CopilotGhRequest request,
         string? payload = null, string? errorCode = null, TimeSpan? retryAfterDelay = null,
         DateTimeOffset? retryAfterAt = null) =>
@@ -627,6 +862,7 @@ public sealed class CopilotQuotaProviderTests
     {
         private readonly object _gate = new();
         private readonly List<ManualTimer> _timers = [];
+        private readonly SemaphoreSlim _timerCreated = new(0, 1);
         private DateTimeOffset _utcNow = utcNow;
         private long _timestamp;
 
@@ -648,7 +884,29 @@ public sealed class CopilotQuotaProviderTests
             {
                 var timer = new ManualTimer(this, callback, state, dueTime, period, _timestamp);
                 _timers.Add(timer);
+                try { _timerCreated.Release(); }
+                catch (SemaphoreFullException) { }
                 return timer;
+            }
+        }
+
+        internal async Task WaitForTimerScheduledAsync(TimeSpan dueTime, TimeSpan timeout)
+        {
+            using var deadline = new CancellationTokenSource(timeout);
+            while (true)
+            {
+                lock (_gate)
+                    if (_timers.Any(timer => timer.RemainingTicks(_timestamp) == dueTime.Ticks))
+                        return;
+                try { await _timerCreated.WaitAsync(deadline.Token); }
+                catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+                {
+                    string scheduled;
+                    lock (_gate)
+                        scheduled = string.Join(",", _timers.Select(timer =>
+                            TimeSpan.FromTicks(timer.RemainingTicks(_timestamp))));
+                    throw new TimeoutException($"Timer due in {dueTime} was not scheduled. Active due times: {scheduled}.");
+                }
             }
         }
 
@@ -687,6 +945,8 @@ public sealed class CopilotQuotaProviderTests
             private long _periodTicks = PeriodTicks(period);
 
             internal bool IsDisposed { get; private set; }
+            internal long RemainingTicks(long timestamp) =>
+                _dueTimestamp <= timestamp ? 0 : _dueTimestamp - timestamp;
 
             internal bool PrepareFire(long timestamp)
             {

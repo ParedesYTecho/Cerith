@@ -62,6 +62,58 @@ internal sealed class CopilotQuotaAcquirer
         _request = request ?? throw new ArgumentNullException(nameof(request));
     }
 
+    internal async Task<string> ObserveOwnerAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsDotComConfigurationSupported(
+                Environment.GetEnvironmentVariable("GH_HOST"),
+                CredentialEnvironmentVariables[2..].Any(IsEnvironmentVariableSet)))
+            throw new CopilotQuotaAcquisitionException("unsupported_host");
+
+        byte[]? authStatus = null;
+        byte[]? beforeIdentity = null;
+        byte[]? afterIdentity = null;
+        try
+        {
+            authStatus = await _request(CopilotGhRequest.AuthStatus, cancellationToken).ConfigureAwait(false);
+            if (!HasSuccessfulAuthStatus(authStatus))
+                throw new CopilotQuotaAcquisitionException("auth_unavailable");
+
+            beforeIdentity = await _request(CopilotGhRequest.AuthenticatedUser, cancellationToken)
+                .ConfigureAwait(false);
+            var beforeAccountId = CopilotQuotaParser.ReadAuthenticatedAccountId(beforeIdentity);
+            afterIdentity = await _request(CopilotGhRequest.AuthenticatedUser, cancellationToken)
+                .ConfigureAwait(false);
+            var afterAccountId = CopilotQuotaParser.ReadAuthenticatedAccountId(afterIdentity);
+            if (beforeAccountId != afterAccountId)
+                throw new CopilotQuotaAcquisitionException("identity_mismatch");
+
+            return CopilotQuotaParser.HashAccountId(beforeAccountId);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (CopilotQuotaAcquisitionException)
+        {
+            throw;
+        }
+        catch (CopilotQuotaParseException exception)
+        {
+            throw new CopilotQuotaAcquisitionException(exception.ErrorCode);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or
+                                          System.ComponentModel.Win32Exception)
+        {
+            throw new CopilotQuotaAcquisitionException("request_failed");
+        }
+        finally
+        {
+            Zero(authStatus);
+            Zero(beforeIdentity);
+            Zero(afterIdentity);
+        }
+    }
+
     internal async Task<CopilotQuotaReading> AcquireAsync(CancellationToken cancellationToken = default)
     {
         if (!IsDotComConfigurationSupported(

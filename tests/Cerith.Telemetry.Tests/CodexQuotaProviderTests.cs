@@ -848,6 +848,7 @@ public sealed class CodexQuotaProviderTests
               "weekly":{"used":5,"cap":20,"resetAt":4103049600000}}}
             """);
         commandHandler.EnqueueJson("{\"data\":{\"planId\":\"individual-pro-v1\",\"status\":\"active\"}}");
+        commandHandler.EnqueueJson("{\"data\":{\"org\":{\"id\":\"synthetic-org\"}}}");
         using var commandClient = new HttpClient(commandHandler) { Timeout = Timeout.InfiniteTimeSpan };
         var commandAuthReader = new CommandCodeQuotaAuthReader(
             () => "synthetic-command-code-key", () => null, () => null, _ => null);

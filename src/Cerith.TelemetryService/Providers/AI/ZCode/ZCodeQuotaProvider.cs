@@ -58,6 +58,7 @@ internal sealed class ZCodeQuotaProvider : IDisposable
     private readonly SemaphoreSlim _stateGate = new(1, 1);
     private readonly SemaphoreSlim _pollLock = new(1, 1);
     private readonly SemaphoreSlim _publishLock = new(1, 1);
+    private readonly SemaphoreSlim _pollWake = new(0, 1);
     private readonly ZCodeQuotaPoint[] _points = new ZCodeQuotaPoint[ZCodeQuotaParser.PointCount];
     private readonly CachedPoint?[] _cache = new CachedPoint?[ZCodeQuotaParser.PointCount];
     private readonly DateTimeOffset[] _pointObservedAt = new DateTimeOffset[ZCodeQuotaParser.PointCount];
@@ -424,9 +425,21 @@ internal sealed class ZCodeQuotaProvider : IDisposable
         {
             await PollOnceAsync(cancellationToken).ConfigureAwait(false);
             var delay = await GetPollDelayAsync(cancellationToken).ConfigureAwait(false);
-            await Task.Delay(delay > TimeSpan.FromDays(1) ? TimeSpan.FromDays(1) : delay,
-                _timeProvider, cancellationToken).ConfigureAwait(false);
+            await WaitForPollWakeOrDelayAsync(delay > TimeSpan.FromDays(1) ? TimeSpan.FromDays(1) : delay,
+                cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task WaitForPollWakeOrDelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        using var waitStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var delayTask = Task.Delay(delay, _timeProvider, waitStop.Token);
+        var wakeTask = _pollWake.WaitAsync(waitStop.Token);
+        _ = await Task.WhenAny(delayTask, wakeTask).ConfigureAwait(false);
+        waitStop.Cancel();
+        try { await Task.WhenAll(delayTask, wakeTask).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     private async Task PublishLoopAsync(CancellationToken cancellationToken)
@@ -484,6 +497,8 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             _rejectedCredentialFingerprint = null;
             _rateLimitFailures = 0;
             _retryNotBeforeTimestamp = 0;
+            _nextPollTimestamp = _timeProvider.GetTimestamp();
+            WakePollLoop();
         }
         else if (changedCredential)
         {
@@ -500,6 +515,12 @@ internal sealed class ZCodeQuotaProvider : IDisposable
         _authGeneration++;
         _activeRequestStop?.Cancel();
         _activePublishStop?.Cancel();
+    }
+
+    private void WakePollLoop()
+    {
+        try { _pollWake.Release(); }
+        catch (SemaphoreFullException) { }
     }
 
     private void ReplaceFromReadingLocked(ZCodeQuotaReading reading, DateTimeOffset observedAt, long timestamp)

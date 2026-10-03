@@ -199,22 +199,40 @@ public sealed class KiroQuotaProviderTests
     }
 
     [TestMethod]
-    public void IdentityParserTreatsAccountAsOpaqueAndRecognizesSignedOutState()
+    public void IdentityParserRequiresStablePrincipalAndRecognizesSignedOutState()
     {
         var signedOut = KiroAcpUsageClient.ParseIdentity(
             Encoding.UTF8.GetBytes("{\"account\":null}"), IdentityKey);
-        var first = KiroAcpUsageClient.ParseIdentity(
+        var unsupported = KiroAcpUsageClient.ParseIdentity(
             Encoding.UTF8.GetBytes("{\"account\":{\"synthetic\":\"account-a\"}}"), IdentityKey);
+        var missingPrincipal = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{}}"), IdentityKey);
+        var accountOnly = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"accountId\":\"account-a\"}}"), IdentityKey);
+        var profileOnly = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"profileArn\":\"arn:aws:synthetic:profile/test\"}}"), IdentityKey);
+        var first = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"userId\":\"user-a\",\"state\":\"active\"}}"), IdentityKey);
+        var samePrincipal = KiroAcpUsageClient.ParseIdentity(
+            Encoding.UTF8.GetBytes("{\"account\":{\"user_id\":\"user-a\",\"state\":\"expired\"}}"), IdentityKey);
         var second = KiroAcpUsageClient.ParseIdentity(
-            Encoding.UTF8.GetBytes("{\"account\":{\"synthetic\":\"account-b\"}}"), IdentityKey);
+            Encoding.UTF8.GetBytes("{\"account\":{\"userId\":\"user-b\"}}"), IdentityKey);
 
         Assert.AreEqual(KiroIdentityStatus.SignedOut, signedOut.Status);
+        Assert.AreEqual(KiroIdentityStatus.Unavailable, unsupported.Status);
+        Assert.AreEqual(KiroIdentityStatus.Unavailable, missingPrincipal.Status);
+        Assert.AreEqual(KiroIdentityStatus.Unavailable, accountOnly.Status);
+        Assert.AreEqual(KiroIdentityStatus.Unavailable, profileOnly.Status);
         Assert.AreEqual(KiroIdentityStatus.Ready, first.Status);
+        Assert.AreEqual(KiroIdentityStatus.Ready, samePrincipal.Status);
         Assert.AreEqual(KiroIdentityStatus.Ready, second.Status);
         Assert.AreEqual(32, first.Fingerprint!.Length);
+        Assert.IsTrue(System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            first.Fingerprint, samePrincipal.Fingerprint!));
         Assert.IsFalse(System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
             first.Fingerprint, second.Fingerprint!));
         System.Security.Cryptography.CryptographicOperations.ZeroMemory(first.Fingerprint);
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(samePrincipal.Fingerprint!);
         System.Security.Cryptography.CryptographicOperations.ZeroMemory(second.Fingerprint!);
     }
 
@@ -223,7 +241,7 @@ public sealed class KiroQuotaProviderTests
     {
         const string script = """
             @echo off
-            echo {"account":{"opaque":"synthetic"}}
+            echo {"account":{"userId":"synthetic-user"}}
             """;
 
         var (startInfo, scriptPath) = CreateCommandStartInfo(script);

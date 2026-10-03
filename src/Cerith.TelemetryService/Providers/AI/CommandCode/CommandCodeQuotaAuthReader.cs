@@ -2,6 +2,7 @@
 
 using System;
 using System.IO;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -128,7 +129,7 @@ internal sealed class CommandCodeQuotaAuthReader
 
         if (!string.IsNullOrEmpty(environmentKey))
         {
-            if (string.IsNullOrWhiteSpace(environmentKey) || environmentKey.Length > MaxAuthFileBytes)
+            if (!IsValidApiKey(environmentKey))
                 return CommandCodeAuthRead.Invalid();
             return CommandCodeAuthRead.Ready(new CommandCodeCredential(EnvironmentSource, environmentKey));
         }
@@ -173,7 +174,7 @@ internal sealed class CommandCodeQuotaAuthReader
                 return CommandCodeAuthRead.Invalid();
 
             var apiKey = apiKeyElement.GetString();
-            if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Length > MaxAuthFileBytes)
+            if (apiKey is null || !IsValidApiKey(apiKey))
                 return CommandCodeAuthRead.Invalid();
 
             return CommandCodeAuthRead.Ready(new CommandCodeCredential(
@@ -189,6 +190,19 @@ internal sealed class CommandCodeQuotaAuthReader
         var home = value.Trim();
         if (!Path.IsPathFullyQualified(home)) throw new ArgumentException("Home path must be absolute.");
         return Path.TrimEndingDirectorySeparator(Path.GetFullPath(home));
+    }
+
+    private static bool IsValidApiKey(string? apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Length > MaxAuthFileBytes)
+            return false;
+        foreach (var character in apiKey)
+            if (char.IsControl(character))
+                return false;
+
+        return AuthenticationHeaderValue.TryParse($"Bearer {apiKey}", out var authorization) &&
+            string.Equals(authorization.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(authorization.Parameter, apiKey, StringComparison.Ordinal);
     }
 
     private static string AuthFileIdentityOf(string path)

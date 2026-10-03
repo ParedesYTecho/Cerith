@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -264,9 +265,69 @@ internal static class KiroAcpUsageClient
             if (account.ValueKind == JsonValueKind.Null) return KiroIdentityObservation.SignedOut();
             if (account.ValueKind != JsonValueKind.Object) return KiroIdentityObservation.Unavailable();
 
-            return KiroIdentityObservation.Ready(HMACSHA256.HashData(identityKey, payload.Span));
+            var userId = ReadAccountIdentifier(account, "userId", "user_id", out var userInvalid);
+            if (userInvalid || userId is null)
+                return KiroIdentityObservation.Unavailable();
+
+            using var hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, identityKey);
+            AppendIdentityPart(hmac, "user", userId);
+            return KiroIdentityObservation.Ready(hmac.GetHashAndReset());
         }
         catch (JsonException) { return KiroIdentityObservation.Unavailable(); }
+    }
+
+    private static string? ReadAccountIdentifier(JsonElement account, string camelName, string snakeName,
+        out bool invalid)
+    {
+        invalid = false;
+        var hasCamel = account.TryGetProperty(camelName, out var camel);
+        var hasSnake = account.TryGetProperty(snakeName, out var snake);
+        if (!hasCamel && !hasSnake) return null;
+        if (hasCamel && hasSnake)
+        {
+            invalid = true;
+            return null;
+        }
+
+        var value = hasCamel ? camel : snake;
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            invalid = true;
+            return null;
+        }
+
+        var identifier = value.GetString();
+        if (string.IsNullOrWhiteSpace(identifier) || identifier.Length > 2048)
+        {
+            invalid = true;
+            return null;
+        }
+        foreach (var character in identifier)
+        {
+            if (!char.IsControl(character)) continue;
+            invalid = true;
+            return null;
+        }
+        return identifier;
+    }
+
+    private static void AppendIdentityPart(IncrementalHash hmac, string name, string? value)
+    {
+        hmac.AppendData(Encoding.UTF8.GetBytes(name));
+        Span<byte> marker = stackalloc byte[1];
+        marker[0] = value is null ? (byte)0 : (byte)1;
+        hmac.AppendData(marker);
+        if (value is null) return;
+
+        var bytes = Encoding.UTF8.GetBytes(value);
+        try
+        {
+            Span<byte> length = stackalloc byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
+            hmac.AppendData(length);
+            hmac.AppendData(bytes);
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 
     internal static bool AdvertisesUsageMethod(JsonElement initializeResult)

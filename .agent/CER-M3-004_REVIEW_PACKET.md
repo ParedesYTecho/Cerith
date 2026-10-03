@@ -1,11 +1,24 @@
-# CER-M3-004 — fresh independent hostile review packet
+# CER-M3-004 — bounded independent re-review packet
 
-## Exact target and authority
+## Current correction target and authority (2026-10-03)
+
+Canonical main: `72b43b268b4992d0b0ea45b6e29067d10450274f`.
+PR: [#47](https://github.com/ParedesYTecho/Cerith/pull/47), keep OPEN / DRAFT.
+Correction base: `0b9daad6534623d256b79bbd30f39387405793d2`; its independent verdict remains `FIXES REQUIRED — NO-GO FOR MERGE` (3 HIGH, 6 MEDIUM).
+Resolve the corrected SHA from the pushed PR head and review only that correction diff, directly affected contracts/regressions and exact-head CI. The exact SHA, ahead/behind count and hosted run IDs are added to the PR description after CI completes; earlier receipts do not qualify.
+
+Execution owner: GPT-6 Luna Xhigh, native Codex, sole writer. This correction owner's self-review is not independent approval. Use a fresh read-only context for re-review. Do not write code, perform auth/login/refresh operations, request secrets, change accounts, create paid activity, mark ready or merge. Candidate status is not M3 DONE or approval.
+
+## Preserved first-wave review context
+
+The following provider inventory, lineage and validation receipts describe the earlier first-wave review baseline. They are retained for provenance and are not claims about the corrected head; the current correction findings, regressions, local results and bounded scope are recorded in “Final correction run — bounded re-review packet” below.
+
+### Historical target and authority
 
 Canonical main: `72b43b268b4992d0b0ea45b6e29067d10450274f`.
 PR: [#47](https://github.com/ParedesYTecho/Cerith/pull/47), OPEN / DRAFT.
 Integration branch: `codex/CER-M3-004-integration`.
-Code and local/hosted validation checkpoint: `96eefc59b704e6d6a34b683c7be9cfcf9f0a704f` (101 ahead, zero behind main). Later packet/audit commits are documentary; review the exact final PR head, including those changes.
+Historical code and local/hosted validation checkpoint: `96eefc59b704e6d6a34b683c7be9cfcf9f0a704f` (101 ahead, zero behind main). Later packet/audit commits were documentary; the current bounded review target is the correction diff defined above.
 
 Resolve and pin PR HEAD before reviewing:
 
@@ -16,7 +29,7 @@ git rev-parse origin/main origin/codex/CER-M3-004-integration
 git diff --stat origin/main...origin/codex/CER-M3-004-integration
 ```
 
-Use a fresh, read-only context. This Sol execution owner's hostile self-review is not independent approval. Assume every implementation and claim may be wrong. Report findings with severity, exact file/line, trigger and consequence. Do not write code, perform auth/login/refresh operations, request secrets, change accounts, create paid activity, mark ready or merge. Candidate status is not M3 DONE or approval.
+Assume every implementation and claim may be wrong. Report findings with severity, exact file/line, trigger and consequence. The current task is limited to the correction diff and directly affected contracts, regressions and exact-head CI; do not re-review unrelated unchanged providers unless the correction changed shared architecture, auth ownership or lifecycle.
 
 ## Delta and preservation
 
@@ -158,3 +171,27 @@ Fresh local closure validation: Release solution build 0 warnings/errors; Core 3
 Closure self-review expanded the manual probe to an admitted xAI-issuer OIDC fixture: both binaries acquired only the loopback mock quota, but neither observed replacement owner in that case either. Six owner observations fail; this is still synthetic protocol evidence, not a valid subscription/renewal/live comparison. Hosted code/tool checkpoint 82da884 passed Build and Test (37042555549, 0 warnings/errors, 39/356/10 tests), Repository Quality (37042555581); CodeQL skipped (37042555555). The three-case tool checkpoint subsequently passed its own exact-head checks, recorded below.
 
 Hosted code/tool checkpoint 113afc648c03b36c04c888b0c867d34f284ca958 (107 ahead / 0 behind main): Build and Test SUCCESS 37043424898, 0 warnings/errors, Core 39/39, Telemetry 356/356, Integration 10/10; Repository Quality SUCCESS 37043424940; CodeQL SKIPPED 37043424841, not a security pass. The final receipt-only documentation commit preserves that exact runtime/tool tree. Pin the current PR head and its checks for fresh review.
+
+## Final correction run — bounded re-review packet (2026-10-03)
+
+Review base: `0b9daad6534623d256b79bbd30f39387405793d2`. Its independent verdict remains `FIXES REQUIRED — NO-GO FOR MERGE` (3 HIGH, 6 MEDIUM). The following correction diff addresses all nine findings. The new regressions and local checks below belong to the corrected candidate; they do not constitute independent approval. Pin the exact current PR head and its green hosted checks before starting review.
+
+| Finding | Severity | Root cause → fix | Regression | Pre-fix failure replay |
+| --- | --- | --- | --- | --- |
+| 1 | HIGH | Copilot owner observation was coupled to quota polling and could be suppressed by long Retry-After. A separate owner observer now runs during extended backoff, clears state on changed or unverifiable identity, cancels in-flight acquisition/publication, and wakes the poll loop while preserving same-owner retry suppression. | `RunOwnerObserverEscapesLongRetryAndCancelsBlockedOldOwnerPublication` proves actual `RunAsync` A success → 1200-second retry → blocked publication → same-owner suppression → A→B observation → immediate B acquisition; `OwnerObservationDuringLongRetryCancelsPendingOldOwnerPublication` covers direct transitions. | NO. Original independent-review trace was not replayed against the old binary/tree. |
+| 2 | HIGH | Copilot reset/TTL/clock validation shared the acquisition path. A separate state-gated validity observer now expires cache and invalidates pending publication without waiting for quota I/O; generation/cancellation rejects late results. | `ValidityObservationCancelsPendingPublicationWhileAcquisitionIsHeld` holds the request while reset crosses, drains the consumer, and verifies no expired or late value is published. | NO. Original independent-review trace was not replayed against the old binary/tree. |
+| 3 | HIGH | Command Code's last check reread the credential but not the authenticated organization. It now rereads `/whoami` after billing, discards changed/unverifiable scope, and validates authoritative response scope when present. | `OrgChangeDuringBillingDiscardsOldScopeAndKeepsNewScopeUnavailable`; `OrgChangeDuringBillingCancelsBlockedOldScopePublication` combines A→B during billing with a blocked A publication; `BillingResponseOrganizationScopeMustMatchAuthenticatedWhoAmI`; unchanged-org happy path remains covered by `PollUsesFixedRoutesBearerAuthAndObservedOrgScope`. | NO. The A→B in-flight trace was not rerun on the old candidate. |
+| 4 | MEDIUM | Body-stream `IOException` / `HttpRequestException` escaped the existing sanitized request-failure path. These transport failures now map to `offline`, while cancellation, timeout, bounds and unrelated faults retain their behavior. | `BodyReadIOExceptionMapsOfflineAndNextAcquisitionRecovers` covers no eligible cache; `BodyReadHttpRequestExceptionKeepsCachedValueAndRunRecovers` covers eligible stale cache and a live `RunAsync` recovery. | NO. The old response-body failure was not replayed on the old candidate. |
+| 5 | MEDIUM | ZCode owner transition cleared retry state but retained next-poll admission and a sleeping delay. Owner changes now reset that deadline and wake the poll loop. | `OwnerChangeClearsLongRetryAdmissionForDirectPoll`; `RunWakesFromLongRetryWhenConfiguredOwnerChanges`; same-owner backoff remains separately covered. | NO. The old one-hour transition trace was not replayed on the old candidate. |
+| 6 | MEDIUM | Command Code accepted controls that are unsafe in an Authorization header. Both environment and auth-file credentials now reject all Unicode control characters and require an exact bearer parse before becoming Available. | `HeaderUnsafeEnvironmentKeyIsInvalidAndDoesNotFallBackToFile` and `HeaderUnsafeCliAuthKeyIsInvalid` cover CR, LF, CRLF, U+0001 and DEL; `InvalidEnvironmentKeyKeepsRunAliveAndRecoversWithoutLeakingCredential` proves zero HTTP requests, sanitized `auth_invalid`, live lifecycle and corrected-key recovery. | YES, during correction. The first parser-only fix still returned Available for U+0001 and DEL from both sources (4 failing rows); explicit control rejection made all cases pass. |
+| 7 | MEDIUM | Kiro hashed arbitrary account JSON, so `{ "account": {} }` and opaque objects could appear to verify an owner. Identity now requires the documented `userId` / `user_id` principal and hashes only that identifier. | `IdentityParserRequiresStablePrincipalAndRecognizesSignedOutState` rejects empty, opaque, accountId-only and profileArn-only objects; accepts stable supported identity and detects a different user. | NO. The original empty-object path was not rerun on the old candidate. |
+| 8 | MEDIUM | Ark Agent could publish cached Fresh quota after its authoritative reset had elapsed, including if the reset crossed while MetricBus publication was blocked. Each window now invalidates independently; publication retries after reset expiry and never infers refill. | `ElapsedResetsInvalidateEveryPeriodIncludingBackendDailyAcquisition`; `ExpiredPeriodDoesNotInvalidateStillActiveWindows`; `ResetCrossingDuringBlockedPublicationPublishesUnavailableInsteadOfFresh`. | NO. Old reset traces were not replayed against the old candidate. |
+| 9 | MEDIUM | Grok's manual probe performed cleanup in a sequence that could stop when `stdin.close()` failed. Cleanup steps now fail independently; all remaining actions are attempted and an earlier probe exception is preserved. | `test_stdin_close_failure_does_not_skip_process_or_server_cleanup` uses a fake process/server and standard library only. | NO. Old cleanup behavior was not separately replayed; the regression verifies every cleanup action in the corrected helper. |
+
+### Corrected-tree validation
+
+Release build: 0 warnings/errors. Core 39/39; Telemetry 381/381; Integration 10/10; total 430/430; zero skipped. Focused: Copilot 37/37, Command Code 51/51, ZCode 25/25, Kiro 44/44, Ark Agent Plan 23/23, coexistence 1/1, shared supervisor failure isolation 11/11, Grok stdlib cleanup 1/1. `git diff --check` PASS; configured filename/path hygiene PASS (137 paths); bounded sensitive-added-diff scan PASS (zero credential/private-path matches); correction dependency/project diff EMPTY. No new dependency. Exact corrected SHA, ahead/behind, worktree status, hosted run IDs and CodeQL status are recorded in the current PR description/handoff after push; previous SHA `0b9daad` CI does not qualify the corrected head.
+
+### Bounded review scope and limitations
+
+Review the diff from `0b9daad6534623d256b79bbd30f39387405793d2` to the exact corrected PR head, plus directly affected contracts, regressions and current-head CI. Challenge owner-generation ordering, blocked MetricBus publication, cancellation, late acquisition, reset/TTL and same-owner retry behavior. No unrelated provider implementation was changed. Kiro still uses only documented principal IDs; no local signed-in session or live renewal was established. Existing provider/auth/account and live-validation limits remain as recorded above. Claude, Gemini CLI / Code Assist and Grok Build remain EVIDENCE_BLOCKED; Qoder International, Kimi and Devin remain DEFERRED_AFTER_M3_QUOTA_WAVE. PR #47 stays OPEN / DRAFT, canonical main untouched, M3 ACTIVE / INCOMPLETE. THIS WAS NOT THE FINAL INDEPENDENT RE-REVIEW.

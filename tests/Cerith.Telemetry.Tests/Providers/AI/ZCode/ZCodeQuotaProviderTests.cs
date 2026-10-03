@@ -447,6 +447,56 @@ public sealed class ZCodeQuotaProviderTests
         Assert.AreEqual(2, harness.Handler.Requests.Length);
     }
 
+    [TestMethod]
+    public async Task OwnerChangeClearsLongRetryAdmissionForDirectPoll()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        harness.Handler.EnqueueStatus(HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1));
+        await harness.Provider.PollOnceAsync();
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+
+        harness.WriteConfig("synthetic-zai-key-B", "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(3, harness.Handler.Requests.Length,
+            "The new credential owner can acquire immediately after local-state observation.");
+    }
+
+    [TestMethod]
+    public async Task RunWakesFromLongRetryWhenConfiguredOwnerChanges()
+    {
+        using var harness = new Harness();
+        var newOwnerPoll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        harness.Handler.EnqueueStatus(HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1));
+        await harness.Provider.PollOnceAsync();
+        harness.Handler.Enqueue((request, _) =>
+        {
+            newOwnerPoll.TrySetResult();
+            return Task.FromResult(JsonResponse(harness.Fixture));
+        });
+        using var stop = new CancellationTokenSource();
+        var run = harness.Provider.RunAsync(stop.Token);
+        await Task.Delay(50);
+
+        harness.WriteConfig("synthetic-zai-key-B", "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        await newOwnerPoll.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await Task.Delay(50);
+        Assert.AreEqual(3, harness.Handler.Requests.Length);
+
+        stop.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await run.WaitAsync(TimeSpan.FromSeconds(3)));
+    }
+
 
     [TestMethod]
     public async Task RunPublishesStoppedMetricsAfterCancellation()

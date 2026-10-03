@@ -12,6 +12,7 @@ internal sealed class ArkAgentPlanProvider : IDisposable
 {
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan ShutdownPublicationTimeout = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MaximumResetWait = TimeSpan.FromDays(1);
 
     private static readonly (string Suffix, string Name, string SemanticType, MetricValueKind ValueKind, string? Unit)[]
         MetricDefinitions =
@@ -132,13 +133,10 @@ internal sealed class ArkAgentPlanProvider : IDisposable
                     _descriptors.Length).ToArray();
             }
 
+            InvalidateElapsedPeriods(points, observedAt);
+
             for (var index = 0; index < _descriptors.Length; index++)
-            {
-                var point = points[index];
-                var confidence = point.Value.HasValue ? MetricConfidence.Measured : MetricConfidence.Unknown;
-                await _bus.PublishAsync(new MetricSnapshot(_descriptors[index].Id, point.Value, observedAt,
-                    point.State, confidence, ArkAgentPlanCli.Source, point.ErrorCode), stop.Token).ConfigureAwait(false);
-            }
+                await PublishPointAsync(index, points, observedAt, stop.Token).ConfigureAwait(false);
         }
         finally
         {
@@ -168,6 +166,64 @@ internal sealed class ArkAgentPlanProvider : IDisposable
             }
         }
         return descriptors;
+    }
+
+    private static void InvalidateElapsedPeriods(ArkAgentPlanPoint[] points, DateTimeOffset observedAt)
+    {
+        for (var period = 0; period < ArkAgentPlanReading.Periods.Length; period++)
+        {
+            var offset = period * ArkAgentPlanReading.MetricsPerPeriod;
+            var reset = points[offset + 3];
+            if (reset.State != MetricState.Fresh || reset.Value is not MetricValue resetValue ||
+                resetValue.Kind != MetricValueKind.DateTimeOffset ||
+                resetValue.AsDateTimeOffset() > observedAt)
+                continue;
+
+            for (var index = 0; index < ArkAgentPlanReading.MetricsPerPeriod; index++)
+                points[offset + index] = ArkAgentPlanPoint.Unavailable("reset_elapsed");
+        }
+    }
+
+    private async Task PublishPointAsync(int index, ArkAgentPlanPoint[] points, DateTimeOffset observedAt,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var now = _timeProvider.GetUtcNow();
+            InvalidateElapsedPeriods(points, now);
+            var point = points[index];
+            var periodOffset = index / ArkAgentPlanReading.MetricsPerPeriod *
+                               ArkAgentPlanReading.MetricsPerPeriod;
+            var reset = points[periodOffset + ArkAgentPlanReading.MetricsPerPeriod - 1];
+            var resetAt = point.State == MetricState.Fresh && reset.State == MetricState.Fresh &&
+                reset.Value is MetricValue resetValue && resetValue.Kind == MetricValueKind.DateTimeOffset
+                    ? resetValue.AsDateTimeOffset()
+                    : (DateTimeOffset?)null;
+            var confidence = point.Value.HasValue ? MetricConfidence.Measured : MetricConfidence.Unknown;
+            var snapshot = new MetricSnapshot(_descriptors[index].Id, point.Value, observedAt,
+                point.State, confidence, ArkAgentPlanCli.Source, point.ErrorCode);
+            if (resetAt is not DateTimeOffset deadline || deadline <= now)
+            {
+                await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var resetWait = deadline - now;
+            if (resetWait > MaximumResetWait) resetWait = MaximumResetWait;
+            using var expiry = new CancellationTokenSource(resetWait, _timeProvider);
+            using var publishStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,
+                expiry.Token);
+            try
+            {
+                await _bus.PublishAsync(snapshot, publishStop.Token).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (expiry.IsCancellationRequested &&
+                                                      !cancellationToken.IsCancellationRequested)
+            {
+                continue;
+            }
+        }
     }
 
     private async Task PublishStoppedAsync()

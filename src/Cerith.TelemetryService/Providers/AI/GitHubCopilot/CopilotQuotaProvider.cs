@@ -19,6 +19,7 @@ internal sealed class CopilotQuotaProvider : IDisposable
     internal static readonly TimeSpan StopPublishTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan MaximumSleepChunk = TimeSpan.FromDays(1);
     private static readonly TimeSpan LifecycleObservationInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan OwnerObservationInterval = TimeSpan.FromSeconds(30);
 
     private const string Source = "GitHubCopilot.GhCli.ReadOnly.v1";
 
@@ -30,6 +31,8 @@ internal sealed class CopilotQuotaProvider : IDisposable
     private readonly CopilotQuotaAcquirer _acquirer;
     private readonly TimeProvider _timeProvider;
     private readonly SemaphoreSlim _pollLock = new(1, 1);
+    private readonly SemaphoreSlim _ownerObservationLock = new(1, 1);
+    private readonly SemaphoreSlim _pollWake = new(0, 1);
     private readonly object _stateGate = new();
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Dictionary<string, CachedMetric> _cache = new(StringComparer.Ordinal);
@@ -47,6 +50,7 @@ internal sealed class CopilotQuotaProvider : IDisposable
     private int _consecutiveFailures;
     private int _runStarted;
     private int _disposed;
+    private CancellationTokenSource? _activeAcquisitionStop;
     private CancellationTokenSource? _activePublicationStop;
 
     internal CopilotQuotaProvider(MetricRegistry registry, MetricBus bus)
@@ -82,10 +86,11 @@ internal sealed class CopilotQuotaProvider : IDisposable
         try
         {
             var polling = RunPollingLoopAsync(stop.Token);
-            var observing = RunLifecycleObservationLoopAsync(stop.Token);
-            _ = await Task.WhenAny(polling, observing).ConfigureAwait(false);
+            var validity = RunValidityObservationLoopAsync(stop.Token);
+            var ownership = RunOwnerObservationLoopAsync(stop.Token);
+            _ = await Task.WhenAny(polling, validity, ownership).ConfigureAwait(false);
             if (!stop.IsCancellationRequested) stop.Cancel();
-            await Task.WhenAll(polling, observing).ConfigureAwait(false);
+            await Task.WhenAll(polling, validity, ownership).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
@@ -100,40 +105,223 @@ internal sealed class CopilotQuotaProvider : IDisposable
 
     private async Task RunPollingLoopAsync(CancellationToken cancellationToken)
     {
-        while (true)
+        var publications = new List<Task>();
+        try
         {
-            await PollOnceAsync(cancellationToken).ConfigureAwait(false);
-            var delay = GetNextWakeDelay();
-            if (delay > MaximumSleepChunk) delay = MaximumSleepChunk;
-            await Task.Delay(delay, _timeProvider, cancellationToken).ConfigureAwait(false);
+            while (true)
+            {
+                for (var index = publications.Count - 1; index >= 0; index--)
+                {
+                    if (!publications[index].IsCompleted) continue;
+                    await publications[index].ConfigureAwait(false);
+                    publications.RemoveAt(index);
+                }
+
+                var publication = await AcquirePublicationAsync(cancellationToken).ConfigureAwait(false);
+                if (publication is not null)
+                    publications.Add(PublishAsync(publication, cancellationToken));
+
+                var delay = GetNextWakeDelay();
+                if (delay > MaximumSleepChunk) delay = MaximumSleepChunk;
+                await WaitForPollWakeOrDelayAsync(delay, publications, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            foreach (var publication in publications)
+            {
+                try { await publication.ConfigureAwait(false); }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            }
         }
     }
 
-    private async Task RunLifecycleObservationLoopAsync(CancellationToken cancellationToken)
+    private async Task RunValidityObservationLoopAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(LifecycleObservationInterval, _timeProvider);
+        var publications = new List<Task>();
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            {
+                for (var index = publications.Count - 1; index >= 0; index--)
+                {
+                    if (!publications[index].IsCompleted) continue;
+                    await publications[index].ConfigureAwait(false);
+                    publications.RemoveAt(index);
+                }
+
+                var publication = BeginValidityPublication(cancellationToken);
+                if (publication is not null)
+                    publications.Add(PublishAsync(publication, cancellationToken));
+            }
+        }
+        finally
+        {
+            foreach (var publication in publications)
+            {
+                try { await publication.ConfigureAwait(false); }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            }
+        }
+    }
+
+    private async Task RunOwnerObservationLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(OwnerObservationInterval, _timeProvider);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
-            await PollOnceAsync(cancellationToken).ConfigureAwait(false);
+        {
+            if (HasExtendedBackoff())
+                await ObserveOwnerOnceAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private bool HasExtendedBackoff()
+    {
+        var timestamp = _timeProvider.GetTimestamp();
+        lock (_stateGate)
+            return RemainingUntil(_nextPollTimestamp, timestamp) > PollInterval;
+    }
+
+    private async Task WaitForPollWakeOrDelayAsync(TimeSpan delay, IReadOnlyCollection<Task> publications,
+        CancellationToken cancellationToken)
+    {
+        using var waitStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var delayTask = Task.Delay(delay, _timeProvider, waitStop.Token);
+        var wakeTask = _pollWake.WaitAsync(waitStop.Token);
+        var waits = new List<Task>(publications.Count + 2) { delayTask, wakeTask };
+        if (publications.Count > 0)
+            waits.Add(Task.WhenAny(publications));
+        var completed = await Task.WhenAny(waits).ConfigureAwait(false);
+        waitStop.Cancel();
+        try
+        {
+            await Task.WhenAll(delayTask, wakeTask).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        if (completed != delayTask && completed != wakeTask)
+            return;
+    }
+
+    private static void CancelIfActive(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null) return;
+        try { cancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void WakePollingLoop()
+    {
+        try { _pollWake.Release(); }
+        catch (SemaphoreFullException) { }
     }
 
     internal async Task PollOnceAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
-        await _pollLock.WaitAsync(stop.Token).ConfigureAwait(false);
+        var publication = await AcquirePublicationAsync(stop.Token).ConfigureAwait(false);
+        if (publication is not null)
+            await PublishAsync(publication, stop.Token).ConfigureAwait(false);
+    }
 
-        PendingPublication? publication;
+    private async Task<PendingPublication?> AcquirePublicationAsync(CancellationToken cancellationToken)
+    {
+        await _pollLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         try
         {
-            publication = await PollLockedAsync(stop.Token).ConfigureAwait(false);
+            return await PollLockedAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             _pollLock.Release();
         }
+    }
 
+    internal async Task ObserveOwnerOnceAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
+        await _ownerObservationLock.WaitAsync(stop.Token).ConfigureAwait(false);
+
+        string? observedAccountKey = null;
+        string? errorCode = null;
+        try
+        {
+            observedAccountKey = await _acquirer.ObserveOwnerAsync(stop.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (CopilotQuotaAcquisitionException exception)
+        {
+            errorCode = exception.ErrorCode;
+        }
+        finally
+        {
+            _ownerObservationLock.Release();
+        }
+
+        var now = _timeProvider.GetUtcNow();
+        var timestamp = _timeProvider.GetTimestamp();
+        CancellationTokenSource? cancelAcquisition = null;
+        CancellationTokenSource? cancelPublication = null;
+        var changed = false;
+        lock (_stateGate)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return;
+
+            _ = ObserveClockAndExpire(now, timestamp);
+            _ = MarkCacheStale(timestamp);
+            if (StringComparer.Ordinal.Equals(_activeAccountKey, observedAccountKey)) return;
+
+            _accountGeneration++;
+            _activeAccountKey = observedAccountKey;
+            ClearCacheLocked();
+            _missing.Clear();
+            _emptyState = observedAccountKey is null && errorCode is not null && !IsUnavailable(errorCode)
+                ? MetricState.Error
+                : MetricState.Unavailable;
+            _emptyErrorCode = _emptyState == MetricState.Error ? errorCode : null;
+            _emptyObservedAt = now;
+            _consecutiveFailures = 0;
+            _nextPollTimestamp = timestamp;
+            _publicationGeneration++;
+            cancelAcquisition = _activeAcquisitionStop;
+            cancelPublication = _activePublicationStop;
+            changed = true;
+        }
+
+        if (!changed) return;
+        CancelIfActive(cancelAcquisition);
+        CancelIfActive(cancelPublication);
+        WakePollingLoop();
+    }
+
+    internal async Task ObserveValidityOnceAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        var publication = BeginValidityPublication(cancellationToken);
         if (publication is not null)
-            await PublishAsync(publication, stop.Token).ConfigureAwait(false);
+            await PublishAsync(publication, cancellationToken).ConfigureAwait(false);
+    }
+
+    private PendingPublication? BeginValidityPublication(CancellationToken cancellationToken)
+    {
+        var now = _timeProvider.GetUtcNow();
+        var timestamp = _timeProvider.GetTimestamp();
+        lock (_stateGate)
+        {
+            if (Volatile.Read(ref _disposed) != 0) return null;
+            var changed = ObserveClockAndExpire(now, timestamp);
+            changed |= MarkCacheStale(timestamp);
+            return changed ? BeginPublicationLocked(now, timestamp, cancellationToken) : null;
+        }
     }
 
     public void Dispose()
@@ -162,15 +350,27 @@ internal sealed class CopilotQuotaProvider : IDisposable
                 return timedChange ? BeginPublicationLocked(now, timestamp, cancellationToken) : null;
         }
 
+        using var acquisitionStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        lock (_stateGate)
+        {
+            if (requestAccountGeneration != _accountGeneration || Volatile.Read(ref _disposed) != 0)
+                return null;
+            _activeAcquisitionStop = acquisitionStop;
+        }
+
         CopilotQuotaReading? reading = null;
         CopilotQuotaAcquisitionException? failure = null;
         try
         {
-            reading = await _acquirer.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            reading = await _acquirer.AcquireAsync(acquisitionStop.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (OperationCanceledException) when (acquisitionStop.IsCancellationRequested)
+        {
+            return null;
         }
         catch (CopilotQuotaAcquisitionException exception)
         {
@@ -179,6 +379,14 @@ internal sealed class CopilotQuotaProvider : IDisposable
         catch (Exception)
         {
             failure = new CopilotQuotaAcquisitionException("request_failed");
+        }
+        finally
+        {
+            lock (_stateGate)
+            {
+                if (ReferenceEquals(_activeAcquisitionStop, acquisitionStop))
+                    _activeAcquisitionStop = null;
+            }
         }
 
         cancellationToken.ThrowIfCancellationRequested();

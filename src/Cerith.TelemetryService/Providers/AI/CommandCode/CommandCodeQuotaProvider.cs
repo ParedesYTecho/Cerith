@@ -270,6 +270,26 @@ public sealed class CommandCodeQuotaProvider : IDisposable
                 await Task.WhenAll(creditsTask, subscriptionTask).ConfigureAwait(false);
                 credits = await creditsTask.ConfigureAwait(false);
                 subscription = await subscriptionTask.ConfigureAwait(false);
+                using var finalWhoAmI = await GetJsonAsync(WhoAmIEndpoint, credential.ApiKey, requestStop.Token)
+                    .ConfigureAwait(false);
+                var finalOrgScope = CommandCodeQuotaParser.ParseOrgScope(finalWhoAmI.RootElement);
+                if (!finalOrgScope.IsValid)
+                {
+                    ApplySchemaFailure(requestGeneration);
+                    return;
+                }
+
+                if (!ApplyOrgScope(credential, finalOrgScope.OrgId, ref requestGeneration) ||
+                    !string.Equals(orgScope.OrgId, finalOrgScope.OrgId, StringComparison.Ordinal))
+                    return;
+
+                if (!ResponseOrgScopeMatches(credits.RootElement, orgScope.OrgId) ||
+                    !ResponseOrgScopeMatches(subscription.RootElement, orgScope.OrgId))
+                {
+                    ApplySchemaFailure(requestGeneration);
+                    return;
+                }
+
                 CommitIfOwnerStillMatches(credential, orgScope.OrgId, requestGeneration,
                     credits.RootElement, subscription.RootElement, requestStop.Token);
             }
@@ -454,7 +474,8 @@ public sealed class CommandCodeQuotaProvider : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.UserAgent.ParseAdd(UserAgentProductToken);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        try { request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey); }
+        catch (FormatException) { throw new CommandCodeRequestException("auth_invalid"); }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_requestTimeout);
 
@@ -512,6 +533,18 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new CommandCodeRequestException("request_timeout");
+            }
+            catch (HttpRequestException)
+            {
+                throw new CommandCodeRequestException("offline");
+            }
+            catch (IOException)
+            {
+                throw new CommandCodeRequestException("offline");
+            }
+            catch (SocketException)
+            {
+                throw new CommandCodeRequestException("offline");
             }
             try
             {
@@ -772,6 +805,19 @@ public sealed class CommandCodeQuotaProvider : IDisposable
             InvalidatePublicationLocked();
         }
         RequestPublication();
+    }
+
+    private static bool ResponseOrgScopeMatches(JsonElement response, string? expectedOrgId)
+    {
+        var hasScope = response.ValueKind == JsonValueKind.Object &&
+            (response.TryGetProperty("org", out _) ||
+             (response.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object &&
+              data.TryGetProperty("org", out _)));
+        if (!hasScope) return true;
+
+        var scope = CommandCodeQuotaParser.ParseOrgScope(response);
+        return scope.IsValid && scope.OrgId is not null &&
+            string.Equals(scope.OrgId, expectedOrgId, StringComparison.Ordinal);
     }
 
     private void SetProviderFailure()

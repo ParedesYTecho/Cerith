@@ -49,13 +49,15 @@ Result: first GPT-6.1 Sol High adversarial review returned FIXES REQUIRED / NO-G
 ## CER-M3-004 — AI quota expansion wave 1
 
 Status: IN PROGRESS
-Owner: GPT-6.1 Sol Medium — sole execution and shared-file integration owner on native Codex for the current autonomous marathon. Independent global review is pending in a fresh future read-only context; this owner's self-review cannot satisfy it. Default concurrency is one, with no routine provider swarm or per-provider Sol gates.
+Owner: GPT-6 Luna Xhigh — sole repository writer on native Codex for the authorized 2026-10-03 final correction run, concurrency one, no subagents. The previous independent review remains FIXES REQUIRED on `0b9daad6534623d256b79bbd30f39387405793d2`; it is not approval. Fresh bounded read-only independent re-review remains pending, and this owner's self-review cannot satisfy it. PR #47 remains DRAFT; canonical main stays untouched.
 Priority: P0
 Depends on: CER-M3-003
 Branch: `codex/CER-M3-004-integration`
 Base: `72b43b268b4992d0b0ea45b6e29067d10450274f` (verified clean isolated worktree)
 
 Goal: stage evidence-backed safe integrations from this wave, preserve one writer per provider path and one owner for shared files, and record exact blockers for the rest. Follow-up authorized 2026-10-02: same sole owner researches the three preserved reference clones and additional GitHub monitors for Claude subscription availability and Grok weekly quotas; that research-only unit completed at f1531e2. The subsequent user instruction to finish remaining work authorizes bounded provider implementation on preserved branches and integration-owner registration/tests/docs work. This sole owner now evaluates the official Grok billing acquisition and remaining Claude contract; credentials and canonical main remain untouched, and PR #47 remains draft. The 16-provider reference catalog remains research scope; it is not a 17/17 candidate or completion gate.
+
+Final correction run: fix all nine actionable findings from the independent review, add failure-mode regressions, inspect only directly affected interactions, run the complete Release/build/hygiene gates, push the corrected candidate, obtain green exact-head Build and Test and Repository Quality, report CodeQL's actual disposition, update the packet and PR description, and stop ready for fresh bounded independent re-review. Do not redo the provider wave, rewrite the original verdict, change blocked/deferred statuses, mark PR ready, merge, or touch canonical main.
 
 Provider branch dispositions (the current worktree and exact commit state are recorded below; only the integration owner edits shared files):
 

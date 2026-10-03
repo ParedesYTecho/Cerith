@@ -1,4 +1,18 @@
-# CERITH AUTONOMOUS MARATHON HANDOFF
+# CERITH CER-M3-004 FINAL CORRECTION HANDOFF
+
+## Current correction status — 2026-10-03
+
+Verdict: `CORRECTIONS_COMPLETE_READY_FOR_REREVIEW` once exact-head Build and Test and Repository Quality are green on the pushed correction head. The later independent reviewer alone may issue final review PASS. PR #47 remains OPEN / DRAFT; do not merge or touch `main`. M3 remains ACTIVE / INCOMPLETE.
+
+Base verdict preserved: `FIXES REQUIRED — NO-GO FOR MERGE` on `0b9daad6534623d256b79bbd30f39387405793d2`. The correction owner has not performed the final independent re-review. Pin the exact current PR head and confirm its checks before reviewing.
+
+All nine findings have code and regression coverage. Local Release build: 0 warnings/errors. Core 39/39; Telemetry 381/381; Integration 10/10; total 430/430; zero skipped. Focused Release results: Copilot 37/37; Command Code 51/51; ZCode 25/25; Kiro 44/44; Ark Agent Plan 23/23; shared-bus coexistence 1/1; supervisor failure isolation 11/11; Grok stdlib cleanup 1/1. `git diff --check` PASS; repository filename/path hygiene PASS (137 tracked paths); bounded sensitive-added-diff review PASS (zero credential/private-path matches); dependency diff EMPTY. The PR description will contain the exact corrected SHA and hosted run links; CodeQL must be reported by its actual status.
+
+The bounded correction packet is `.agent/CER-M3-004_REVIEW_PACKET.md`. It preserves all nine severities, fixes, regression names, pre-fix evidence, and remaining source/live limitations. No provider status changed: Claude, Gemini CLI / Code Assist and Grok Build remain EVIDENCE_BLOCKED; Qoder International, Kimi and Devin remain DEFERRED_AFTER_M3_QUOTA_WAVE. No dependency or canonical provider-contract wording changed.
+
+Next action: run a fresh bounded read-only independent re-review of the correction diff from `0b9daad6534623d256b79bbd30f39387405793d2` to the exact current PR head, plus directly affected contracts, regressions and exact-head CI. Do not re-review unrelated unchanged providers unless a correction changed shared architecture, auth ownership or lifecycle.
+
+## Preserved previous Grok / Shadow closure record
 
 ## 1. VERDICT
 

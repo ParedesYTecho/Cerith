@@ -44,6 +44,27 @@ public sealed class CopilotQuotaAcquirerTests
     }
 
     [TestMethod]
+    public async Task OwnerObservationChecksActiveOwnerWithoutRequestingQuota()
+    {
+        var requests = new List<CopilotGhRequest>();
+        var responses = new Queue<string>([
+            "{\"state\":\"success\"}",
+            "{\"id\":24680}",
+            "{\"id\":24680}"
+        ]);
+
+        var owner = await CreateAcquirer(requests, responses).ObserveOwnerAsync();
+
+        CollectionAssert.AreEqual(new[]
+        {
+            CopilotGhRequest.AuthStatus,
+            CopilotGhRequest.AuthenticatedUser,
+            CopilotGhRequest.AuthenticatedUser
+        }, requests);
+        Assert.AreEqual(CopilotQuotaParser.HashAccountId(24680), owner);
+    }
+
+    [TestMethod]
     public async Task RejectsQuotaForDifferentAccountAfterCheckingAuthenticatedIdentity()
     {
         var requests = new List<CopilotGhRequest>();

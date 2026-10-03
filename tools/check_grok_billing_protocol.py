@@ -18,6 +18,40 @@ import time
 from pathlib import Path
 
 
+def cleanup_probe(process, reader, server, thread):
+    failures = []
+
+    def attempt(name, action):
+        try:
+            action()
+        except Exception:
+            failures.append(name)
+
+    try:
+        if process is not None:
+            if process.stdin is not None:
+                attempt("stdin.close", process.stdin.close)
+            try:
+                process.wait(timeout=4)
+            except subprocess.TimeoutExpired:
+                attempt("process.kill", process.kill)  # Only this isolated fixture process.
+                attempt("process.wait_after_kill", lambda: process.wait(timeout=4))
+            except Exception:
+                failures.append("process.wait")
+                attempt("process.kill", process.kill)
+                attempt("process.wait_after_kill", lambda: process.wait(timeout=4))
+            finally:
+                if process.stdout is not None:
+                    attempt("stdout.close", process.stdout.close)
+                if reader is not None:
+                    attempt("reader.join", lambda: reader.join(timeout=1))
+    finally:
+        attempt("server.shutdown", server.shutdown)
+        attempt("server.close", server.server_close)
+        attempt("server-thread.join", lambda: thread.join(timeout=1))
+    return failures
+
+
 def check(binary, expected_version, mode):
     requests = []
     admitted_class = mode == "oidc_xai"
@@ -67,6 +101,8 @@ def check(binary, expected_version, mode):
         thread.start()
         backend = f"http://127.0.0.1:{server.server_port}"
         process = None
+        reader = None
+        cleanup_failures = []
         try:
             process = subprocess.Popen(
                 [str(binary), "agent", "--no-leader", "--cli-chat-proxy-base-url", backend,
@@ -137,18 +173,9 @@ def check(binary, expected_version, mode):
                               "mock_billing_acquired": admitted_class,
                               "synthetic_owner_change_observed": changed}))
         finally:
-            if process is not None:
-                process.stdin.close()
-                try:
-                    process.wait(timeout=4)
-                except subprocess.TimeoutExpired:
-                    process.kill()  # Only this isolated fixture process; no refresh grant exists.
-                    process.wait(timeout=4)
-                process.stdout.close()
-                reader.join(timeout=1)
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=1)
+            cleanup_failures = cleanup_probe(process, reader, server, thread)
+        if cleanup_failures:
+            raise RuntimeError("Probe cleanup failed: " + ", ".join(cleanup_failures))
         return changed
 
 
