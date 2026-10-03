@@ -468,6 +468,69 @@ public sealed class ZCodeQuotaProviderTests
     }
 
     [TestMethod]
+    public async Task UnavailableAuthBetweenOwnersClearsLongRetryAdmissionForDirectPoll()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        var initial = await ReadAllAsync(harness);
+        Assert.AreEqual(MetricState.Fresh, initial[1].State);
+
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        harness.Handler.EnqueueStatus(HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1));
+        await harness.Provider.PollOnceAsync();
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+
+        harness.WriteConfig(string.Empty, "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        var unavailable = await ReadAllAsync(harness);
+        Assert.IsTrue(unavailable.All(snapshot => snapshot.Value is null &&
+            snapshot.State is MetricState.Error or MetricState.Unavailable),
+            "Unverifiable auth must clear A's cached quota before another owner is observed.");
+        await harness.Provider.ObserveLocalStateAsync();
+
+        harness.WriteConfig("synthetic-zai-key-B", "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+
+        Assert.AreEqual(3, harness.Handler.Requests.Length,
+            "B must acquire promptly instead of inheriting A's one-hour retry deadline.");
+        Assert.AreEqual("synthetic-zai-key-B", harness.Handler.Requests[^1].Authorization);
+        var recovered = await ReadAllAsync(harness);
+        Assert.IsTrue(recovered.All(snapshot => snapshot.State == MetricState.Fresh && snapshot.Value is not null));
+    }
+
+    [TestMethod]
+    public async Task UnavailableAuthCancelsPendingOldOwnerPublication()
+    {
+        using var harness = new Harness();
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        var initial = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PublishCurrentAsync();
+        Assert.IsTrue(await initial);
+
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        await harness.Provider.PublishCurrentAsync();
+        var blockedPublication = harness.Provider.PublishCurrentAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(25));
+        Assert.IsFalse(blockedPublication.IsCompleted);
+
+        harness.WriteConfig(string.Empty, "zai");
+        await harness.Provider.ObserveLocalStateAsync();
+        await blockedPublication.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.IsTrue(await reader.MoveNextAsync());
+        Assert.AreEqual(MetricState.Fresh, reader.Current.State);
+        var invalidated = reader.MoveNextAsync().AsTask();
+        await harness.Provider.PublishCurrentAsync();
+        Assert.IsTrue(await invalidated.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.IsNull(reader.Current.Value);
+        Assert.IsTrue(reader.Current.State is MetricState.Unavailable or MetricState.Error);
+    }
+
+    [TestMethod]
     public async Task RunWakesFromLongRetryWhenConfiguredOwnerChanges()
     {
         using var harness = new Harness();
@@ -491,6 +554,59 @@ public sealed class ZCodeQuotaProviderTests
         await newOwnerPoll.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await Task.Delay(50);
         Assert.AreEqual(3, harness.Handler.Requests.Length);
+
+        stop.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await run.WaitAsync(TimeSpan.FromSeconds(3)));
+    }
+
+    [TestMethod]
+    public async Task RunWakesForNewOwnerAfterUnavailableAuthClearsSleepingOwnersRetry()
+    {
+        using var harness = new Harness();
+        harness.Handler.EnqueueJson(harness.Fixture);
+        await harness.Provider.PollOnceAsync();
+        harness.Time.Advance(ZCodeQuotaProvider.PollInterval);
+        harness.Handler.EnqueueStatus(HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1));
+        await harness.Provider.PollOnceAsync();
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+
+        await using var reader = harness.Bus.Subscribe(new MetricId(Ids[1])).GetAsyncEnumerator();
+        using var stop = new CancellationTokenSource();
+        var initial = reader.MoveNextAsync().AsTask();
+        var run = harness.Provider.RunAsync(stop.Token);
+        Assert.IsTrue(await initial.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.AreEqual(MetricState.Stale, reader.Current.State);
+        Assert.IsTrue(reader.Current.Value.HasValue);
+        await harness.Time.WaitForTimerScheduledAsync(TimeSpan.FromHours(1), TimeSpan.FromSeconds(2));
+
+        harness.WriteConfig(string.Empty, "zai");
+        var invalidState = reader.MoveNextAsync().AsTask();
+        for (var tick = 0; tick < 12; tick++)
+        {
+            await harness.Time.WaitForTimerScheduledAsync(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+            harness.Time.Advance(TimeSpan.FromSeconds(1));
+            if (await Task.WhenAny(invalidState, Task.Delay(TimeSpan.FromMilliseconds(250))) != invalidState)
+                continue;
+            Assert.IsTrue(await invalidState);
+            if (reader.Current.Value is null) break;
+            invalidState = reader.MoveNextAsync().AsTask();
+        }
+        Assert.IsTrue(reader.Current.Value is null,
+            "RunAsync's local-state monitor must publish valueless state after A becomes unverifiable.");
+        Assert.AreEqual(2, harness.Handler.Requests.Length);
+
+        harness.WriteConfig("synthetic-zai-key-B", "zai");
+        harness.Handler.Enqueue((request, _) =>
+        {
+            Assert.AreEqual("Bearer synthetic-zai-key-B", request.Headers.Authorization?.ToString());
+            return Task.FromResult(JsonResponse(harness.Fixture));
+        });
+        await harness.Time.WaitForTimerScheduledAsync(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        await SpinWaitAsync(() => harness.Handler.Requests.Length == 3, TimeSpan.FromSeconds(2));
+        Assert.AreEqual(3, harness.Handler.Requests.Length,
+            "The sleeping RunAsync polling loop must acquire B promptly, not after A's retry deadline.");
 
         stop.Cancel();
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
@@ -575,6 +691,12 @@ public sealed class ZCodeQuotaProviderTests
         {
             foreach (var reader in readers) await reader.DisposeAsync();
         }
+    }
+
+    private static async Task SpinWaitAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        using var stop = new CancellationTokenSource(timeout);
+        while (!condition()) await Task.Delay(TimeSpan.FromMilliseconds(10), stop.Token);
     }
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
@@ -789,12 +911,25 @@ public sealed class ZCodeQuotaProviderTests
             foreach (var timer in timers) timer.FireDue(timestamp);
         }
 
+        internal async Task WaitForTimerScheduledAsync(TimeSpan dueTime, TimeSpan timeout)
+        {
+            using var deadline = new CancellationTokenSource(timeout);
+            while (!_timers.Any(timer => timer.RemainingTicks(GetTimestamp()) == dueTime.Ticks))
+                await Task.Delay(TimeSpan.FromMilliseconds(1), deadline.Token);
+        }
+
         private sealed class ManualTimer(TestTimeProvider owner, TimerCallback callback, object? state) : ITimer
         {
             private readonly object _gate = new();
             private long _due = long.MaxValue;
             private long _period;
             private bool _disposed;
+
+            internal long RemainingTicks(long timestamp)
+            {
+                lock (_gate)
+                    return _disposed || _due <= timestamp ? 0 : _due - timestamp;
+            }
 
             public bool Change(TimeSpan dueTime, TimeSpan period)
             {

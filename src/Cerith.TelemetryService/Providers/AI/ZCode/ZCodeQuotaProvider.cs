@@ -477,6 +477,8 @@ internal sealed class ZCodeQuotaProvider : IDisposable
                 ClearCacheLocked(observedAt);
                 _rateLimitFailures = 0;
                 _retryNotBeforeTimestamp = 0;
+                _nextPollTimestamp = _timeProvider.GetTimestamp();
+                WakePollLoop();
             }
             _activeAuth = null;
             _rejectedCredentialFingerprint = null;
@@ -489,6 +491,7 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             !StringComparer.Ordinal.Equals(_activeAuth.StableId, read.Identity.StableId);
         var changedCredential = _activeAuth is not null &&
             !StringComparer.Ordinal.Equals(_activeAuth.ApiKey, read.Identity.ApiKey);
+        var timestamp = _timeProvider.GetTimestamp();
         if (changedOwner)
         {
             InvalidateOwnerWorkLocked();
@@ -497,7 +500,7 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             _rejectedCredentialFingerprint = null;
             _rateLimitFailures = 0;
             _retryNotBeforeTimestamp = 0;
-            _nextPollTimestamp = _timeProvider.GetTimestamp();
+            _nextPollTimestamp = timestamp;
             WakePollLoop();
         }
         else if (changedCredential)
@@ -506,6 +509,14 @@ internal sealed class ZCodeQuotaProvider : IDisposable
             _rateLimitFailures = 0;
             _retryNotBeforeTimestamp = 0;
             _rejectedCredentialFingerprint = null;
+        }
+        else if (_activeAuth is null)
+        {
+            _rateLimitFailures = 0;
+            _retryNotBeforeTimestamp = 0;
+            _rejectedCredentialFingerprint = null;
+            _nextPollTimestamp = timestamp;
+            WakePollLoop();
         }
         _activeAuth = read.Identity;
     }

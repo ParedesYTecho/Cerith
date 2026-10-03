@@ -1,16 +1,24 @@
-# CERITH CER-M3-004 FINAL CORRECTION HANDOFF
+# CERITH CER-M3-004 FINAL ZCODE CLOSURE HANDOFF
 
-## Current correction status — 2026-10-03
+## Current review state — 2026-10-03
 
-Verdict: `CORRECTIONS_COMPLETE_READY_FOR_REREVIEW` once exact-head Build and Test and Repository Quality are green on the pushed correction head. The later independent reviewer alone may issue final review PASS. PR #47 remains OPEN / DRAFT; do not merge or touch `main`. M3 remains ACTIVE / INCOMPLETE.
+Verdict: `ZCODE_CORRECTION_COMPLETE_READY_FOR_FINAL_REREVIEW`. This is not an independent PASS. The fresh bounded review of `0b9daad6534623d256b79bbd30f39387405793d2` → `84fbf84d1065ba859605cdd2dc83019a1b51fe69` returned `FIXES STILL REQUIRED — NO-GO FOR MERGE`, with findings 1–4 and 6–9 closed and finding 5 partially unresolved. Preserve that result; the current correction addresses only finding 5. The next reviewer must inspect the ZCode-only delta from `84fbf84d1065ba859605cdd2dc83019a1b51fe69` to the exact pushed head, its regressions, the review/handoff reconciliation and exact-head CI.
 
-Base verdict preserved: `FIXES REQUIRED — NO-GO FOR MERGE` on `0b9daad6534623d256b79bbd30f39387405793d2`. The correction owner has not performed the final independent re-review. Pin the exact current PR head and confirm its checks before reviewing.
+## Residual finding and correction
 
-All nine findings have code and regression coverage. Local Release build: 0 warnings/errors. Core 39/39; Telemetry 381/381; Integration 10/10; total 430/430; zero skipped. Focused Release results: Copilot 37/37; Command Code 51/51; ZCode 25/25; Kiro 44/44; Ark Agent Plan 23/23; shared-bus coexistence 1/1; supervisor failure isolation 11/11; Grok stdlib cleanup 1/1. `git diff --check` PASS; repository filename/path hygiene PASS (137 tracked paths); bounded sensitive-added-diff review PASS (zero credential/private-path matches); dependency diff EMPTY. The PR description will contain the exact corrected SHA and hosted run links; CodeQL must be reported by its actual status.
+ZCode's `ApplyAuthReadLocked` cleared A's retry state when auth became invalid but retained `_nextPollTimestamp`. After `_activeAuth` became null, B's ready observation did not satisfy the changed-owner/credential conditions, so a direct poll remained blocked by A's one-hour deadline and the sleeping loop was not awakened. The fix resets admission and wakes only on verified-owner → unverifiable and no-verified-owner → verified-owner transitions. It clears owner-specific retry/rejection state for B, preserves same-owner A→A backoff and avoids repeated wakes during continuous invalid state. Changes are limited to `src/Cerith.TelemetryService/Providers/AI/ZCode/ZCodeQuotaProvider.cs` and its existing focused test file.
 
-The bounded correction packet is `.agent/CER-M3-004_REVIEW_PACKET.md`. It preserves all nine severities, fixes, regression names, pre-fix evidence, and remaining source/live limitations. No provider status changed: Claude, Gemini CLI / Code Assist and Grok Build remain EVIDENCE_BLOCKED; Qoder International, Kimi and Devin remain DEFERRED_AFTER_M3_QUOTA_WAVE. No dependency or canonical provider-contract wording changed.
+Regressions: `UnavailableAuthBetweenOwnersClearsLongRetryAdmissionForDirectPoll` and `RunWakesForNewOwnerAfterUnavailableAuthClearsSleepingOwnersRetry` failed against the unfixed base and pass after the correction. `UnavailableAuthCancelsPendingOldOwnerPublication` also passes, holding a bus publication across the invalid-auth transition and verifying it cannot publish A's quota. Existing direct A→B, running-loop A→B, same-owner retry, owner-work cancellation and bounded shutdown tests remain green.
 
-Next action: run a fresh bounded read-only independent re-review of the correction diff from `0b9daad6534623d256b79bbd30f39387405793d2` to the exact current PR head, plus directly affected contracts, regressions and exact-head CI. Do not re-review unrelated unchanged providers unless a correction changed shared architecture, auth ownership or lifecycle.
+## Validation and repository state
+
+Release build: 0 warnings/errors. Core 39/39; Telemetry 384/384; Integration 10/10; total 433/433; zero skipped. ZCode focused suite 28/28; shared-bus coexistence 1/1; supervisor failure isolation 11/11. `git diff --check` PASS; filename/path hygiene PASS (137 paths); bounded sensitive-added-diff scan PASS (zero credential/private-path matches); dependency/project diff EMPTY. The exact pushed SHA, ahead/behind count, Build and Test, Repository Quality, CodeQL disposition and run IDs are recorded in the current PR #47 description. PR #47 remains OPEN / DRAFT and mergeable; canonical `main` remains untouched. M3 remains ACTIVE / INCOMPLETE.
+
+Provider statuses are unchanged: accepted/staged Codex, Cursor, Antigravity quota, ZCode, GitHub Copilot, OpenCode Go, Kiro, Command Code, Qoder CN, Ark Agent Plan and Ark Coding Plan; EVIDENCE_BLOCKED Claude, Gemini CLI / Code Assist and Grok Build; DEFERRED_AFTER_M3_QUOTA_WAVE Qoder International, Kimi and Devin. No subagents, Sol, Astra or Luna Max were used. THIS IS NOT THE FINAL INDEPENDENT RE-REVIEW.
+
+## Exact next action
+
+Run one final fresh read-only independent re-review limited to the ZCode delta from 84fbf84d1065ba859605cdd2dc83019a1b51fe69 to <FINAL_HEAD>, its regressions, documentation reconciliation and exact-head CI. Preserve the eight previously closed findings unless this ZCode-only delta changes their basis.
 
 ## Preserved previous Grok / Shadow closure record
 
