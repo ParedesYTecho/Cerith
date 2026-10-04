@@ -1,8 +1,19 @@
 # Tasks
 
+## CER-M3-006 — M3.B catalog disposition audit and M3 exit candidate
+
+Status: IN PROGRESS — evidence-backed disposition audit for the 42-target M3.B catalog, post-merge CER-M3-005 reconciliation, and literal M3 exit evaluation.
+Owner: Codex — sole repository write owner; read-only specialists may research disjoint target groups, followed by one fresh read-only GPT-6.1 Sol Medium reviewer.
+Branch: `codex/CER-M3-006-m3b-catalog-disposition`
+Base: `8dfd5f56aa63355bd0d952d774a5d84af750afa2` (canonical `main` / `origin/main`).
+Scope: research and documentation only; no product/dependency changes, additional collector, or M4/M7 work.
+Acceptance assessment: 42/42 M3.B targets accounted for in docs/AI_TELEMETRY.md: 1 IMPLEMENTED_ACCEPTED, 27 EVIDENCE_BLOCKED, 14 DEFERRED_AFTER_M3. M3.A remains 11 accepted quota integrations; existing quota blocked/deferred states are unchanged and separate.
+Coexistence evidence: HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus (4/4) exercises unavailable OpenCode activity beside CPU/RAM, gaming, Codex, Cursor and Antigravity; Cursor includes success, missing, auth-failed and a pending synthetic request timeout. Provider-failure isolation includes opencode-activity (12/12). These are synthetic/local receipts, not live activity.
+Exit decision: every literal ROADMAP gate is satisfied; M3 DONE is the intended canonical post-merge state. OpenCode is the sole accepted M3.B implementation. M4 is NEXT / NOT STARTED; M7 is NOT STARTED. Independent review, PR and exact-head CI are pending.
+
 ## CER-M3-005 — First passive/local AI activity vertical slice
 
-Status: Implementation candidate complete locally. Merging the exact independently reviewed PR #50 head closes CER-M3-005 as DONE. M3 remains ACTIVE / INCOMPLETE pending its separate exit audit.
+Status: DONE via PR #50, squash-merged from reviewed head c2a8594107f1a3b68071f6c2244c144ba7ded409 as 8dfd5f56aa63355bd0d952d774a5d84af750afa2. CER-M3-006 records the separate M3 exit audit.
 Owner: Codex — sole repository write owner for this task.
 Branch: `codex/CER-M3-005-m3b-activity`
 Base: `2441568f0899affdbc6e43d8359a6496c4c4dde7` (canonical `main` / `origin/main`).
