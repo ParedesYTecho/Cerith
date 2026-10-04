@@ -1,4 +1,14 @@
-# State — CER-M3-004 post-merge reconciliation
+# State — CER-M3-005 first M3.B activity slice
+
+Current disposition (2026-10-04): Phase A completed safely. PR #49 squash-merged from authorized head `564b56e1d11b89fa95334c3f30181ee1654823c2` as canonical SHA `2441568f0899affdbc6e43d8359a6496c4c4dde7`; exact-head Build and Test and Repository Quality were SUCCESS, CodeQL was SKIPPED. Local `main` equaled `origin/main` at that SHA and was clean before the task branch was created. Routing reconciliation is DONE.
+
+PR #50 carries the first passive/local M3.B OpenCode activity implementation. Merging its exact independently reviewed head closes CER-M3-005 as DONE. The implementation uses the existing MetricSnapshot → MetricBus → Named Pipe → MetricId consumer path. The version-qualification correction is recorded in commit `c3c9dc313114e1d64a0e8062093855d22a461c8f`; only the selected assistant's parent `session.version` equal to `1.17.9` is accepted. Unsupported versions publish no values as Unavailable; a missing parent/version or unusable version fails closed as Error. There is no fallback to an older assistant and no version/session identity metric.
+
+Release build: PASS, 0 warnings/errors. Full solution: 446/446, zero skipped. Focused OpenCode tests: 12/12; real shared-bus coexistence: 4/4; provider-failure isolation: 12/12. The bounded host qualification probe selected no eligible assistant, so source-version match was not evaluated; live activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`, with no message content read. Hygiene/privacy scans found no private-artifact filenames, sensitive assignment matches, personal paths or whitespace errors. No runtime dependency was added; the test project links the existing `NamedPipeMetricClient` source for IPC acceptance. PR #50 and Git history are authoritative for the exact reviewed head, hosted-check results, and resulting merge SHA. CodeQL SKIPPED, when reported, is not a security PASS.
+
+M3 remains ACTIVE / INCOMPLETE because remaining M3.B targets lack evidence-backed dispositions. M4 and M7 are NOT STARTED. No second M3.B collector was started. The activity fields stay separate from quota, credits and billing.
+
+## Historical — CER-M3-004 post-merge reconciliation
 
 Current disposition (2026-10-03): PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after user authorization and final independent verdict `PASS — ZCODE CORRECTION VERIFIED, READY FOR ADVISOR MERGE DECISION` on `03d9907b491d27bf0d23b67f2953cff17a4465f9`. Reviewed and merged Git trees are identical (`94a7132ed2e6bce0805757366030e6efa12c327b`). CER-M3-001/002/003/004 are DONE; M0/M1/M2 remain DONE. PR #48 records the completed post-merge reconciliation. M3 remains ACTIVE / INCOMPLETE: accepted passive/local AI activity acquisition is still required.
 

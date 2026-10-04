@@ -20,6 +20,7 @@ using Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 using Cerith.TelemetryService.Providers.AI.CommandCode;
 using Cerith.TelemetryService.Providers.AI.GitHubCopilot;
 using Cerith.TelemetryService.Providers.AI.Kiro;
+using Cerith.TelemetryService.Providers.AI.OpenCode;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cerith.Telemetry.Tests;
@@ -681,6 +682,7 @@ public sealed class CodexQuotaProviderTests
     [DataRow("qoder-cn")]
     [DataRow("ark-agent-plan")]
     [DataRow("ark-coding-plan")]
+    [DataRow("opencode-activity")]
     public async Task UnexpectedProviderFailureStaysIsolatedUntilBoundedShutdown(string providerId)
     {
         using var stop = new CancellationTokenSource();
@@ -705,11 +707,16 @@ public sealed class CodexQuotaProviderTests
         var registry = codexHarness.Registry;
         var bus = codexHarness.Bus;
         using var hardwareProvider = new HardwareTelemetryProvider(registry, bus);
+        var openCodeDatabase = Path.Combine(Path.GetTempPath(), $"missing-opencode-coexistence-{Guid.NewGuid():N}.db");
+        var openCodeProvider = new OpenCodeActivityProvider(registry, bus,
+            new OpenCodeActivityReader(openCodeDatabase), TimeProvider.System);
 
         await using var cpuReader = bus.Subscribe(new MetricId("cpu.total.usage")).GetAsyncEnumerator();
         await using var memoryReader = bus.Subscribe(new MetricId("ram.usage")).GetAsyncEnumerator();
         await using var presentMonReader = bus.Subscribe(new MetricId("game.fps.display")).GetAsyncEnumerator();
         await using var codexReader = bus.Subscribe(new MetricId(Ids[0])).GetAsyncEnumerator();
+        await using var openCodeReader = bus.Subscribe(new MetricId("ai.opencode.activity.latest.tokens.input"))
+            .GetAsyncEnumerator();
         await using var cursorReader = bus.Subscribe(new MetricId("ai.cursor.quota.plan.total.used_percent"))
             .GetAsyncEnumerator();
         await using var antigravityReader = bus.Subscribe(new MetricId("ai.antigravity.quota.3p-weekly.remaining"))
@@ -718,6 +725,7 @@ public sealed class CodexQuotaProviderTests
         var memoryRead = memoryReader.MoveNextAsync().AsTask();
         var presentMonRead = presentMonReader.MoveNextAsync().AsTask();
         var codexRead = codexReader.MoveNextAsync().AsTask();
+        var openCodeRead = openCodeReader.MoveNextAsync().AsTask();
         var cursorRead = cursorReader.MoveNextAsync().AsTask();
         var antigravityRead = antigravityReader.MoveNextAsync().AsTask();
 
@@ -726,10 +734,12 @@ public sealed class CodexQuotaProviderTests
         await PresentMonTelemetryProviderTests.PublishSyntheticReadingAsync(registry, bus);
         await codexHarness.Provider.PollOnceAsync();
         await codexHarness.Provider.PublishCurrentAsync();
+        await openCodeProvider.PollOnceAsync();
         await CursorQuotaProviderTests.PublishSyntheticOutcomeAsync(registry, bus, cursorOutcome);
         await AntigravityQuotaProviderTests.PublishSyntheticQuotaAsync(registry, bus);
 
-        var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, cursorRead, antigravityRead)
+        var received = await Task.WhenAll(cpuRead, memoryRead, presentMonRead, codexRead, openCodeRead,
+                cursorRead, antigravityRead)
             .WaitAsync(TimeSpan.FromSeconds(5));
         Assert.IsTrue(received.All(result => result), "Every provider should deliver through the subscribed shared bus.");
 
@@ -751,6 +761,10 @@ public sealed class CodexQuotaProviderTests
         Assert.IsTrue(presentMonReader.Current.Value.HasValue);
         Assert.AreEqual(MetricState.Fresh, codexReader.Current.State);
         Assert.AreEqual(MetricConfidence.Measured, codexReader.Current.Confidence);
+        Assert.AreEqual(MetricState.Unavailable, openCodeReader.Current.State);
+        Assert.AreEqual(MetricConfidence.Unknown, openCodeReader.Current.Confidence);
+        Assert.AreEqual("database_missing", openCodeReader.Current.ErrorCode);
+        Assert.IsNull(openCodeReader.Current.Value);
         switch (cursorOutcome)
         {
             case "success":
