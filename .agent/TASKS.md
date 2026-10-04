@@ -2,13 +2,13 @@
 
 ## CER-M3-005 — First passive/local AI activity vertical slice
 
-Status: DONE via PR #50 — first passive/local M3.B activity slice. M3 remains ACTIVE / INCOMPLETE pending its separate exit audit.
+Status: Implementation candidate complete locally. Merging the exact independently reviewed PR #50 head closes CER-M3-005 as DONE. M3 remains ACTIVE / INCOMPLETE pending its separate exit audit.
 Owner: Codex — sole repository write owner for this task.
 Branch: `codex/CER-M3-005-m3b-activity`
 Base: `2441568f0899affdbc6e43d8359a6496c4c4dde7` (canonical `main` / `origin/main`).
-Initial implementation commit: `0d8b67b9cca104ca1b993f335bd04e88fd55d70a`. Version-qualification and coexistence correction commit: `c3c9dc313114e1d64a0e8062093855d22a461c8f`. PR #50 carries the exact accepted candidate and hosted receipts: https://github.com/ParedesYTecho/Cerith/pull/50.
+Initial implementation commit: `0d8b67b9cca104ca1b993f335bd04e88fd55d70a`. Version-qualification and coexistence correction commit: `c3c9dc313114e1d64a0e8062093855d22a461c8f`. PR #50 and Git history are authoritative for the exact reviewed head, hosted checks and merge result: https://github.com/ParedesYTecho/Cerith/pull/50.
 Scope: compare 3–5 realistic host-available passive/local AI activity sources, choose one evidence-backed collector, then route its directly observed fields through MetricSnapshot, MetricBus, existing IPC and a MetricId consumer. One collector only; no M4 UI, M7 history, quota inference, artificial model requests, credential mutation, or speculative shared framework.
-Review boundary: an earlier GPT-6.1 Sol Medium native-Codex read-only design review returned PASS after six design finding groups were resolved. That was a design gate, not the implementation review. The final exact-head implementation review and hosted checks are recorded on PR #50. CodeQL SKIPPED is not a security PASS.
+Review boundary: an earlier GPT-6.1 Sol Medium native-Codex read-only design review returned PASS after six design finding groups were resolved. That was a design gate, not the implementation review. The owner validation below is not an independent implementation-review or exact-head hosted-check receipt; PR #50 and Git history are authoritative for those results. CodeQL SKIPPED is not a security PASS.
 Privacy: never retain or emit prompts, completions, source code, credentials, or raw provider records; use synthetic private-safe fixtures and inspect no real content unless schema evidence makes minimal scalar confirmation necessary.
 
 Candidate decision: OpenCode CLI 1.17.9 is selected. Its first-party v1.17.9 source defines the `session_message` SQLite table, V2 assistant usage fields, and database path/override behavior; the schema is internal rather than a stable public contract. The host has the standard database and matching schema/index, but the bounded collector probe found no recent assistant row (`activity_absent`); no user row content was read. The collector fails closed on schema/index/query errors and does not search channel-suffixed database names.
