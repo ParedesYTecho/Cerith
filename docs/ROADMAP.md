@@ -109,7 +109,7 @@ This future capability does not change M2 acceptance criteria and does not start
 
 ## M3 — AI Telemetry & Quotas
 
-Current status: ACTIVE / INCOMPLETE. CER-M3-001 source reconnaissance/contract is DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server corroboration and CI completed; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`.
+Current status: DONE after CER-M3-006; M4 is NEXT / NOT STARTED and M7 is NOT STARTED. CER-M3-001 source reconnaissance/contract is DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server corroboration and CI completed; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`.
 
 D-024 supersedes only the **future sequential ordering** portion of D-023. D-023 remains historical authority for why Codex was the first vertical slice. M3 now continues as a broad AI-telemetry expansion rather than a fixed Claude-then-Antigravity sequence.
 
@@ -151,11 +151,11 @@ DONE via PR #45 squash `2aa865ef35000680a3110ff7134b836bd966ef82`. It records th
 
 ### CER-M3-004 — AI quota expansion wave 1
 
-DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after final independent PASS on `03d9907b491d27bf0d23b67f2953cff17a4465f9`; the reviewed and merged trees are identical. Eleven accepted quota integrations are canonical, counting Codex. Candidate Release validation passed 433/433 tests, zero skipped; Build and Test and Repository Quality passed, while CodeQL was SKIPPED, not a security PASS. M3 remains ACTIVE / INCOMPLETE.
+DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` after final independent PASS on `03d9907b491d27bf0d23b67f2953cff17a4465f9`; the reviewed and merged trees are identical. Eleven accepted quota integrations are canonical, counting Codex. Candidate Release validation passed 433/433 tests, zero skipped; Build and Test and Repository Quality passed, while CodeQL was SKIPPED, not a security PASS. At the time of this quota-wave merge, M3 remained ACTIVE / INCOMPLETE; the later exit audit is recorded under CER-M3-006.
 
 ### CER-M3-005 — first passive/local activity slice
 
-PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. Merging its exact independently reviewed head closes CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in `.agent/TASKS.md`; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. M3 remains ACTIVE / INCOMPLETE because remaining M3.B catalog targets do not yet have evidence-backed dispositions. M4 and M7 remain NOT STARTED.
+PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. PR #50 was squash-merged as 8dfd5f56aa63355bd0d952d774a5d84af750afa2, closing CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in `.agent/TASKS.md`; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. CER-M3-006 records evidence-backed dispositions for all 42 M3.B targets and the literal M3 exit audit below. M4 and M7 remain NOT STARTED.
 
 The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
 
@@ -171,6 +171,18 @@ M3 cannot exit by classifying the entire target catalog as blocked/deferred. Bef
 - every remaining target either implemented with verified semantics or explicitly tracked as blocked/deferred with concrete evidence.
 
 Breadth targets are not permission to fabricate parity, and blocked/deferred classification cannot substitute for delivering the committed wave.
+
+#### CER-M3-006 exit audit result
+
+CER-M3-006 is DONE in the post-merge state recorded by the disposition/exit PR. The 42-row matrix in AI_TELEMETRY.md accounts for every catalog target: 1 IMPLEMENTED_ACCEPTED (OpenCode), 27 EVIDENCE_BLOCKED and 14 DEFERRED_AFTER_M3. The matrix gives target-specific source, Windows, field, privacy, semantic-risk and revisit evidence. These activity statuses do not change the quota catalog.
+
+The M3.A gate is satisfied by the accepted Codex quota slice plus 10 additional accepted integrations (11 total); all remaining quota targets retain their existing evidence-backed blocked/deferred statuses in PROVIDERS_AI_QUOTAS.md.
+
+The M3.B implementation gate is satisfied by the OpenCode 1.17.9 passive SQLite slice and its MetricSnapshot → MetricBus → Named Pipe → MetricId consumer path. PR #50 is integrated at 8dfd5f56aa63355bd0d952d774a5d84af750afa2. No session identity or content is published. The host probe selected no eligible assistant, so live activity remains LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent and source-version qualification was not observed on that host.
+
+The coexistence gate is supported by HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus (4/4): an absent OpenCode database reports Unavailable while CPU/RAM, PresentMon gaming, Codex, Antigravity and Cursor metrics publish on the shared bus; Cursor cases cover success, missing, auth failure and a synthetic pending request that times out after 100 ms. The provider-failure isolation selection also includes opencode-activity (12/12). These are synthetic/local acceptance receipts, not proof of live provider activity.
+
+The target-accounting gate is satisfied by the individual evidence-backed dispositions above; the delivered OpenCode slice prevents a paperwork-only exit. No M4 surface, M7 history, public plugin SDK, remote/multi-PC path or unrelated hardware/gaming expansion entered M3. M3 is DONE; M4 is NEXT / NOT STARTED; M7 remains NOT STARTED.
 
 ## M4 — Widget Engine & Compact Surfaces
 
