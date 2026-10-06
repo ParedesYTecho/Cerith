@@ -109,7 +109,7 @@ This future capability does not change M2 acceptance criteria and does not start
 
 ## M3 — AI Telemetry & Quotas
 
-Current status: DONE after CER-M3-006; M4 is NEXT / NOT STARTED and M7 is NOT STARTED. CER-M3-001 source reconnaissance/contract is DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server corroboration and CI completed; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`.
+Current status: DONE after CER-M3-006; M4 is ACTIVE through the first bounded CER-M4-001 slice and M7 is NOT STARTED. CER-M3-001 source reconnaissance/contract is DONE. CER-M3-002 Codex is DONE: implementation, automated conformance, official usage-UI comparison, bounded official Codex app-server corroboration and CI completed; PR #43 was squash-merged as `3c3db6dd1102ec3ed2d95b6234e5550df08ab34a`.
 
 D-024 supersedes only the **future sequential ordering** portion of D-023. D-023 remains historical authority for why Codex was the first vertical slice. M3 now continues as a broad AI-telemetry expansion rather than a fixed Claude-then-Antigravity sequence.
 
@@ -182,9 +182,11 @@ The M3.B implementation gate is satisfied by the OpenCode 1.17.9 passive SQLite 
 
 The coexistence gate is supported by HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus (4/4): an absent OpenCode database reports Unavailable while CPU/RAM, PresentMon gaming, Codex, Antigravity and Cursor metrics publish on the shared bus; Cursor cases cover success, missing, auth failure and a synthetic pending request that times out after 100 ms. The provider-failure isolation selection also includes opencode-activity (12/12). These are synthetic/local acceptance receipts, not proof of live provider activity.
 
-The target-accounting gate is satisfied by the individual evidence-backed dispositions above; the delivered OpenCode slice prevents a paperwork-only exit. No M4 surface, M7 history, public plugin SDK, remote/multi-PC path or unrelated hardware/gaming expansion entered M3. M3 is DONE; M4 is NEXT / NOT STARTED; M7 remains NOT STARTED.
+The target-accounting gate is satisfied by the individual evidence-backed dispositions above; the delivered OpenCode slice prevents a paperwork-only exit. No M4 surface, M7 history, public plugin SDK, remote/multi-PC path or unrelated hardware/gaming expansion entered M3. M3 is DONE; subsequent CER-M4-001 work starts M4 without changing this M3 scope; M7 remains NOT STARTED.
 
 ## M4 — Widget Engine & Compact Surfaces
+
+Current status: ACTIVE through CER-M4-001, the first bounded native MetricId presentation slice. This does not complete M4.
 
 - text;
 - metric;

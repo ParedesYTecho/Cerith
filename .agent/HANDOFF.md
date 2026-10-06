@@ -1,4 +1,16 @@
-# CERITH CER-M3-006 — M3.B catalog disposition and exit handoff — 2026-10-04
+# CERITH CER-M4-001 — first generic native MetricId surface handoff — 2026-10-06
+
+## Current candidate
+
+CER-M4-001 is the first bounded implementation slice of M4. It replaces the old WidgetHost diagnostic text wall with one compact native WinUI surface driven by the existing `MetricSnapshot -> Named Pipe -> MetricId` consumer path. The reusable row is provider-independent; the parent supplies only MetricId, label, numeric format and unit. No new project, runtime dependency, IPC discovery channel, provider-specific UI, M5 editor/config schema, M7/history, gaming OSD or tray/taskbar work was introduced.
+
+Representative live MetricIds are `cpu.total.usage`, `game.fps.display` and `ai.codex.quota.primary.remaining`. Fresh/Stale display real values; Unavailable/Stopped/Error display an em dash; Unlimited displays its semantic state rather than a fake percentage; real zero remains zero; confidence is always textually exposed. UI Automation names include label, value, state and confidence. Dark/light resources and the restrained edge/state-rail motif implement the provisional M4 visual direction without importing Design Lab assets or adding a custom font.
+
+Local acceptance is green: Release build 0 warnings/errors, full suite 458/458, focused presentation tests 12/12. Native runtime proof covered live CPU, expected stopped gaming state with no selected target, truthful Codex `route_unsupported`, service interruption to Unavailable/No snapshot, automatic reconnect, and clean window close. Final observation at 96 DPI measured 1.172% of one core / 127.25 MiB visible and 0.781% / 127.66 MiB minimized. The 420x340 default and 360x340 minimum keep all three rows visible at 96 DPI. Both attached monitors are 96 DPI, so physical higher-DPI behavior is not claimed as verified.
+
+The bounded GPT-5.6 Sol High visual review via CodexGPT -> ChatGPT Web returned PASS. Hostile engineering review found no blocking provider/lifecycle/reconnect/accessibility/scope issue. An attempted GPT-6.1 Sol Medium read-only engineering review produced only the runtime usage-limit error and therefore contributes no verdict. The next task action is to finish repository hygiene/Graphify, commit/push the exact candidate, open one unmerged PR and wait for exact-head Build and Test / Repository Quality / CodeQL disposition. M4 remains ACTIVE and incomplete; M7 remains NOT STARTED.
+
+## Historical — CER-M3-006 handoff
 
 ## Canonical post-merge state
 
