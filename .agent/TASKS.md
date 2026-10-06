@@ -2,14 +2,14 @@
 
 ## CER-M3-006 — M3.B catalog disposition audit and M3 exit candidate
 
-Status: READY FOR ADVISOR REVIEW — the 42-target audit and independent review are complete; final exact-head check state is tracked on the open PR #51.
+Status: DONE — PR #51 was squash-merged from reviewed head `c9c34a9cfc1de0fabf13b42625b8057df281c217` as `6c262aaa7ae75ecb46c3e45f76a69b7304df4128`.
 Owner: Codex — sole repository write owner; read-only specialists may research disjoint target groups, followed by one fresh read-only GPT-6.1 Sol Medium reviewer.
 Branch: `codex/CER-M3-006-m3b-catalog-disposition`
-Base: `8dfd5f56aa63355bd0d952d774a5d84af750afa2` (canonical `main` / `origin/main`).
+Base: PR #51 base (pre-merge): `8dfd5f56aa63355bd0d952d774a5d84af750afa2`; canonical `main` / `origin/main` after merge: `6c262aaa7ae75ecb46c3e45f76a69b7304df4128`.
 Scope: research and documentation only; no product/dependency changes, additional collector, or M4/M7 work.
 Acceptance assessment: 42/42 M3.B targets accounted for in docs/AI_TELEMETRY.md: 1 IMPLEMENTED_ACCEPTED, 27 EVIDENCE_BLOCKED, 14 DEFERRED_AFTER_M3. M3.A remains 11 accepted quota integrations; existing quota blocked/deferred states are unchanged and separate.
 Coexistence evidence: HardwarePresentMonCodexCursorAndAntigravityPublishIndependentlyOnTheSameBus (4/4) exercises unavailable OpenCode activity beside CPU/RAM, gaming, Codex, Cursor and Antigravity; Cursor includes success, missing, auth-failed and a pending synthetic request timeout. Provider-failure isolation includes opencode-activity (12/12). These are synthetic/local receipts, not live activity.
-Exit decision: every literal ROADMAP gate is satisfied; M3 DONE is the intended canonical post-merge state. OpenCode is the sole accepted M3.B implementation. M4 is NEXT / NOT STARTED; M7 is NOT STARTED. The fresh GPT-6.1 Sol Medium review returned PASS. PR #51 is the single open, unmerged documentation PR; final-head hosted checks are tracked there.
+Exit decision: every literal ROADMAP gate is satisfied; M3 DONE is canonical. OpenCode is the sole accepted M3.B implementation. M4 is NEXT / NOT STARTED; M7 is NOT STARTED. The fresh GPT-6.1 Sol Medium review returned PASS on reviewed head `c9c34a9cfc1de0fabf13b42625b8057df281c217`. PR #51 is MERGED via squash `6c262aaa7ae75ecb46c3e45f76a69b7304df4128`; Build and Test and Repository Quality succeeded on that exact head; CodeQL was SKIPPED, not PASS.
 
 ## CER-M3-005 — First passive/local AI activity vertical slice
 
