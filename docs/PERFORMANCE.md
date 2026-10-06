@@ -18,6 +18,12 @@ startup: near-instant
 
 These are targets, not claims.
 
+## CER-M4-001 WidgetHost idle observation
+
+Date: 2026-10-06. Two local 12-second samples measured WidgetHost, one with the window visible and one minimized. Process CPU time was converted to percent of one logical core; working set was recorded during each sample. At 96 DPI, the visible window measured 1.172% CPU and 127.25 MiB working set; minimized measured 0.781% CPU and 127.66 MiB. The unchanged-value path updates rows only when presentation output changes; the observation does not establish the approximately-zero idle CPU target.
+
+The measured working set exceeds the `< 50 MB` minimal always-on target and the `well below 100 MB` common-runtime preference. No comparable pre-M4 or bare-WinUI baseline exists, so attribution of this absolute process cost is unknown; it is not assigned to CER-M4-001. Before M4 exit, run a bounded baseline/performance investigation with a comparable bare WinUI process and the current WidgetHost, then record the attribution and any justified follow-up. These are one-machine observations, not product guarantees.
+
 ## Cadence
 
 Different sources require different refresh rates.

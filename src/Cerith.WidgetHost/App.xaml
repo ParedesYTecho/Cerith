@@ -1,4 +1,25 @@
 <Application
     x:Class="Cerith.WidgetHost.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#F7F8FA" />
+                    <SolidColorBrush x:Key="CerithTextBrush" Color="#171A20" />
+                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#626872" />
+                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#D9DCE2" />
+                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#52678E" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#111318" />
+                    <SolidColorBrush x:Key="CerithTextBrush" Color="#F1F3F6" />
+                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#9DA4AF" />
+                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#30343C" />
+                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#91A4C9" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

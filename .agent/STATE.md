@@ -1,4 +1,16 @@
-# State — CER-M3 M3.B catalog disposition and exit
+# State — CER-M4-001 first generic native MetricId surface
+
+Current disposition (2026-10-06): CER-M4-001 is complete at its bounded slice scope. M4 — Widget Engine & Compact Surfaces remains ACTIVE / INCOMPLETE; M3 remains DONE; M7 remains NOT STARTED. This slice does not complete M4 or start M5, M7, gaming OSD, tray/taskbar integration or a new IPC/configuration architecture.
+
+The existing WidgetHost diagnostic wall has been replaced by a compact native WinUI surface using three representative MetricIds (`cpu.total.usage`, `game.fps.display`, `ai.codex.quota.primary.remaining`). A reusable `MetricReadout` consumes provider-independent `MetricPresentation` output from the existing Named Pipe / `MetricSnapshot` path. The parent surface supplies only tiny explicit display metadata (MetricId, label, numeric format, unit); there is no second registry, descriptor-discovery protocol or provider-specific renderer.
+
+Truth semantics are preserved: Fresh and Stale retain real values; an actual zero remains zero; Unavailable, Stopped and Error render no numeric value; Unlimited renders as `Unlimited`; confidence remains explicit and independent. Core already constrains error codes to short safe ASCII identifiers, so the readout can expose the canonical code without rendering raw provider payloads. Repeated identical presentations do not rewrite the row.
+
+Local candidate evidence: Release build PASS with 0 warnings/errors; full suite 458/458 PASS with zero failed/skipped; focused MetricPresentation tests 12/12 PASS. Live native validation exercised real CPU telemetry, truthful stopped gaming state, truthful Codex `route_unsupported` host state, service interruption/reconnect and normal close. Dark/light captures are sanitized local evidence only. Both connected displays report 96 DPI; 420x340 default and 360x340 minimum were validated at 96 DPI, while physical >100% DPI remains unverified on this host. Final observation measured 1.172% of one core / 127.25 MiB working set visible and 0.781% / 127.66 MiB minimized.
+
+The bounded GPT-5.6 Sol High visual review via CodexGPT -> ChatGPT Web returned PASS; the optional technical header label noted in that review was removed in the final polish pass. Hostile engineering review found no provider coupling, repaint loop, lifecycle blocker, dependency addition or M5/M7 leakage. A GPT-6.1 Sol Medium read-only review attempt returned the runtime usage-limit error before producing a verdict; no independent engineering PASS is claimed from that attempt. Implementation/review head `87d447cd30665b2c272acc4a2a104871ab63aa16` passed Build and Test (run 37467483707) and Repository Quality (run 37467484170); CodeQL was SKIPPED (run 37467483710), not a security PASS. `docs/PERFORMANCE.md` records that measured WidgetHost memory is above the aspirational budget, that idle CPU has not been established at target, and that baseline attribution is unknown; a bounded baseline/performance investigation is required before M4 exit.
+
+## Historical — CER-M3 M3.B catalog disposition and exit
 
 Current disposition (2026-10-04): M3 — AI Telemetry & Quotas is DONE in the post-merge state recorded by CER-M3-006. CER-M3-005 is DONE via PR #50, integrated at 8dfd5f56aa63355bd0d952d774a5d84af750afa2. CER-M3-006 accounts for all 42 M3.B catalog targets: 1 IMPLEMENTED_ACCEPTED (OpenCode), 27 EVIDENCE_BLOCKED and 14 DEFERRED_AFTER_M3. The target-specific matrix is canonical in docs/AI_TELEMETRY.md.
 
