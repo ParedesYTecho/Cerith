@@ -2,7 +2,7 @@
 
 ## CER-M4-001 — First generic native MetricId surface
 
-Status: IN PROGRESS
+Status: READY FOR ADVISOR REVIEW — PR #53 OPEN / UNMERGED.
 Owner: Codex — sole repository write owner for CER-M4-001; independent visual reviewer is read-only.
 Branch: `codex/CER-M4-001-generic-metric-surface`
 Base: `fc2f85eaad588d0fcf807c5836ed184b2a051e90` (`main == origin/main`, clean tree before claim).
@@ -10,6 +10,7 @@ Scope: replace the WidgetHost diagnostic presentation with the smallest reusable
 Acceptance: Release build/full tests/focused presentation tests, native dark/light/live/reconnect validation, measured idle CPU/working set, bounded GPT-5.6 Sol High visual review via CodexGPT → ChatGPT Web, hostile engineering review, one unmerged PR with exact-head hosted Build and Test / Repository Quality / CodeQL disposition.
 Local candidate receipt: Release build PASS with 0 warnings/errors; full suite 458/458 PASS, zero failed/skipped; focused MetricPresentation 12/12 PASS. Native dark/light captures render coherently; live CPU reports Fresh/Measured, no-target gaming reports Stopped/Unknown, and this host reports Codex quota Error/route_unsupported/Unknown without coercing either case to zero. Service interruption changes all rows to Unavailable/No snapshot and automatic reconnect restores live state; normal window close exits cleanly. At 96 DPI the intended window is 420x340 with an effective 360x340 minimum and all three rows visible. Both attached displays report 96 DPI, so a physical higher-DPI move is not claimed. Final measured observation: visible 1.172% of one core / 127.25 MiB working set; minimized 0.781% / 127.66 MiB.
 Review receipt: bounded GPT-5.6 Sol High visual review via CodexGPT -> ChatGPT Web returned PASS against the native dark/light/non-Fresh evidence and the Design Lab direction; only the user-facing `MetricId` header was noted as optional/non-blocking. Hostile owner engineering review found no provider coupling, new IPC contract, repaint loop, M5/M7 leakage, runtime dependency, or lifecycle blocker. A requested GPT-6.1 Sol Medium read-only review was attempted but the runtime returned its usage-limit error before producing a review; no PASS is attributed to it.
+PR receipt: PR #53 (`https://github.com/ParedesYTecho/Cerith/pull/53`) is OPEN, non-draft and unmerged. Implementation/review head `87d447cd30665b2c272acc4a2a104871ab63aa16` is exact-head verified by Build and Test SUCCESS (run 37467483707) and Repository Quality SUCCESS (run 37467484170); CodeQL is SKIPPED (run 37467483710), not a security PASS. This final receipt-only documentation commit does not change product code; its own exact-head hosted checks remain the final PR gate.
 
 ## CER-M3-006 — M3.B catalog disposition audit and M3 exit candidate
 
