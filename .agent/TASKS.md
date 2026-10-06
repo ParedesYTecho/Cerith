@@ -1,5 +1,15 @@
 # Tasks
 
+## CER-M4-002 — Attribute the WidgetHost native performance baseline
+
+Status: DONE at bounded attribution scope. Verdict: `PERFORMANCE_ACTION_REQUIRED`; M4 remains ACTIVE / INCOMPLETE.
+Owner: Codex — sole repository write owner for CER-M4-002; no parallel writer.
+Branch: `codex/CER-M4-002-performance-baseline`
+Base: `1f18fd3771193d6aea4f9cff0ebe6684e5fb7006` (`main == origin/main`, clean tree after fetch before claim).
+Scope: controlled local attribution of the native WidgetHost process cost using a disposable minimal WinUI baseline, current WidgetHost with service absent/live/minimized, and the immediate pre-M4 WidgetHost control. Evidence and workflow documentation only; no product optimization, new project/dependency in the repo, M5, M7, tray/taskbar or gaming OSD work.
+Acceptance: repeated process-specific CPU-time deltas plus Working Set/Private Bytes, host/runtime facts, framework-floor and incremental-cost estimates, explicit uncertainty and a decision gate.
+Result: bare WinUI visible median 0.000% CPU / 108.20 MiB WS / 132.35 MiB private; current static M4-001 UI 0.000% / 115.81 / 134.31; current service-absent 1.946% / 119.13 / 135.70; current live visible pooled 1.102% / 125.89 / 137.89; live minimized 0.908% / 125.96 / 138.04. The isolated pre-M4 `fc2f85e...` WidgetHost against the same live service measured 0.454% / 128.53 / 142.40 across eight pooled runs. A second three-run comparison repeated the post-M4 > pre-M4 CPU ordering. Memory is mostly framework floor and M4-001 improves it modestly versus pre-M4; current connected/reconnect CPU requires the next bounded M4 performance task. Canonical protocol, ranges and limitations are in `docs/PERFORMANCE.md`.
+
 ## CER-M4-001 — First generic native MetricId surface
 
 Status: DONE — CER-M4-001 bounded slice complete; M4 remains ACTIVE / INCOMPLETE.

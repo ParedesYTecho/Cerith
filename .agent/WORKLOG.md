@@ -762,3 +762,12 @@ PR #53 was opened from implementation/review head `87d447cd30665b2c272acc4a2a104
 Applied the three bounded Advisor corrections to PR #53: made current TASKS/STATE/HANDOFF wording merge-stable while retaining M4 ACTIVE / INCOMPLETE, removed the visible `MetricId` header label, and added the measured WidgetHost performance gap plus unknown baseline attribution and a bounded investigation gate before M4 exit in `docs/PERFORMANCE.md`. No MetricPresentation behavior, IPC, dependency, project or performance optimization changed.
 
 Validation after the header edit: Release solution build passed with 0 warnings/errors; focused MetricPresentation passed 12/12; canonical Core/Telemetry/Integration suites passed 39/39, 397/397 and 22/22 (458/458, zero skipped). Native 420x340 dark and light captures confirmed header alignment; the original dark theme was restored. `git diff --check` and the added-diff private-path/secret-pattern scan passed. Hosted checks for the pushed correction candidate are recorded in PR #53 history.
+
+
+## 2026-10-06 — CER-M4-002 WidgetHost native performance attribution
+
+Started from canonical `1f18fd3771193d6aea4f9cff0ebe6684e5fb7006` on `codex/CER-M4-002-performance-baseline` with one repository writer. Used an external disposable minimal WinUI control, an external current-XAML/no-subscription control and an isolated `fc2f85e...` pre-M4 worktree; no benchmark project/helper was added to Cerith.
+
+Release measurements used fresh processes, 8-second warm-up, 12-second process CPU-time deltas and one-second Working Set/Private Bytes samples. Bare WinUI was 0.000% CPU / 108.20 MiB WS / 132.35 MiB private; current XAML only was 0.000% / 115.81 / 134.31; current service-absent was 1.946% / 119.13 / 135.70; current live pooled eight-run median was 1.102% / 125.89 / 137.89; live minimized was 0.908% / 125.96 / 138.04. Pre-M4 pooled eight-run live median was 0.454% / 128.53 / 142.40, and a second three-run comparison reproduced the current > pre-M4 CPU ordering. Live UI Automation verified CPU Fresh/Measured, gaming Stopped/Unknown and Codex quota Error/route_unsupported/Unknown.
+
+Verdict `PERFORMANCE_ACTION_REQUIRED`: memory is mostly the WinUI/.NET/Windows App SDK floor and M4-001 modestly improves it versus pre-M4, while current connected telemetry/update CPU and disconnected reconnect CPU are materially above the static-UI baseline. Exact operation-level CPU attribution remains for the next bounded M4 task. No product optimization, runtime dependency/project change, M5, M7, tray/taskbar or OSD work was performed.
