@@ -39,10 +39,6 @@
                                FontSize="10"
                                FontWeight="SemiBold"
                                CharacterSpacing="120" />
-                    <TextBlock Text="MetricId"
-                               HorizontalAlignment="Right"
-                               Foreground="{ThemeResource CerithMutedTextBrush}"
-                               FontSize="11" />
                 </StackPanel>
             </Grid>
 
