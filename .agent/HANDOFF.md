@@ -1,4 +1,16 @@
-# CERITH CER-M4-002 — WidgetHost native performance attribution handoff — 2026-10-06
+# CERITH CER-M4-003 — WidgetHost CPU isolation handoff — 2026-10-06
+
+Verdict: `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`. Base `0c6c68447cefbb12978f681f6d393024189b5025`; branch `codex/CER-M4-003-widgethost-cpu`. All decisive runs opened WidgetHost on `DISPLAY2` with a fresh Release process, 8-second warm-up and 12-second process CPU-time interval. The canonical experimental matrix, counts, median/ranges and uncertainty are in `docs/PERFORMANCE.md`; raw logs and disposable variants stayed outside the repository.
+
+Connected receive/presentation had the same 1.038% median of one core. Applying WinUI row values raised the median to 1.946% without Automation name mutation and 2.206% for the full instrumented path; untouched canonical visible/minimized was 2.074%/1.556%. Over five full-path runs, 408 snapshots produced 408 presentations but only 112 row applications. CPU alone applied 103 of 103 snapshots, while FPS and Codex each applied only 5 unchanged-state transitions over 205 and 102 snapshots. Simple selective-property rewrites were inconsistent across five pairs, so no product UI change was made.
+
+With the service absent, one versus three subscriptions measured 1.425% versus 3.484% median. The current three loops spent 261.5 aggregate seconds in pending `ConnectAsync` across about 102 seconds of process lifetime. Five-second and ten-second outer retry variants lowered CPU but could delay recovery; shorter connect timeouts had overlapping CPU ranges and less margin for healthy handshakes. No retry policy or IPC change was made. One live DISPLAY2 stop/restart check observed all rows become Unavailable and later restore CPU Fresh/Measured, gaming Stopped/Unknown and Codex Error/route_unsupported/Unknown. Normal close passed. No post-fix before/after claim exists.
+
+Local validation: canonical Release build passed with 0 warnings/errors; Core/Telemetry/Integration suites passed 39/397/22 (458/458, zero skipped), and focused MetricPresentation passed 12/12. Diff, tracked filename hygiene and added-line private-data scan passed. No product code, test, package or project file changed. Hosted PR checks must be read on the exact pushed head; a CodeQL skip is not a pass.
+
+Next action: independently review this documentation PR and decide the next M4 correction's acceptable recovery latency and bounded UI/connection approach; any shared connection design needs Advisor review. M4 remains ACTIVE / INCOMPLETE. M3 remains DONE; M5/M7, taskbar/tray, OSD and budget revision remain outside this task.
+
+## Historical — CER-M4-002 handoff
 
 ## Current decision
 
