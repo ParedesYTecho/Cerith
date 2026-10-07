@@ -796,4 +796,8 @@ The final code handles both exceptional disconnects and clean EOF. Ten service s
 
 Release solution build passed with 0 warnings/errors; Core/Telemetry/Integration passed 39/397/22 (458/458, zero skipped); focused Named Pipe tests passed 10/10. The read-only GPT-6.1 Sol Medium review initially found the clean-EOF stale-availability path; the path was corrected and the reviewer returned PASS. No protocol, dependency, project, performance budget, M5/M7, OSD or taskbar/tray scope changed.
 
-Opened [PR #56](https://github.com/ParedesYTecho/Cerith/pull/56), OPEN / UNMERGED. On implementation head `43017c967c042e98120e64408ea52cb8774a2e0b`, Repository Quality passed, Build and Test was pending at the first status read, and CodeQL was SKIPPED (not a pass). This receipt-only documentation commit needs its own exact-head checks; check the latest PR head before merge.
+Historical PR checkpoint (2026-10-07): [PR #56](https://github.com/ParedesYTecho/Cerith/pull/56) was opened from implementation head `43017c967c042e98120e64408ea52cb8774a2e0b`. Repository Quality passed at that checkpoint; Build and Test was pending at the first status read, and CodeQL was SKIPPED. The later reviewed candidate head `26c1e8da8f7c96e776a2768f071b4965cd70ece4` passed exact-head Build and Test and Repository Quality; CodeQL was SKIPPED (not PASS).
+
+## 2026-10-07 — CER-M4-004 Advisor correction
+
+Removed the unnecessary Ponytail comment from `MainWindow.xaml.cs` and made current CER-M4-004 status wording merge-stable in STATE, TASKS and HANDOFF. Recorded the reviewed candidate's exact-head Build and Test and Repository Quality successes and CodeQL skip; the earlier transient check read is retained only as a clearly historical checkpoint. No reconnect logic, telemetry topology, tests, benchmarks, dependencies, projects or budgets changed.

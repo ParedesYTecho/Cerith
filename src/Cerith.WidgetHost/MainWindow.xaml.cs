@@ -24,7 +24,6 @@ public sealed partial class MainWindow : Window
 
     private readonly MetricReadout[] _readouts;
     private readonly CancellationTokenSource _stop = new();
-    // ponytail: one local availability attempt; split only if a second service endpoint is added.
     private readonly object _connectionAttemptLock = new();
     private TaskCompletionSource<bool>? _connectionAttempt;
     private bool _serviceAvailable;
