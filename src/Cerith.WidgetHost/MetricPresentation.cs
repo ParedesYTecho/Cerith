@@ -28,6 +28,11 @@ internal readonly record struct MetricPresentationResult(
 
 internal static class MetricPresentation
 {
+    public static MetricPresentationResult Create(MetricPresentationSpec spec, MetricSubscription subscription) =>
+        subscription.Snapshot is { } snapshot
+            ? Create(spec, subscription.Descriptor, snapshot)
+            : new("—", subscription.ConnectionState.ToString(), "No snapshot", MetricState.Unavailable);
+
     public static MetricPresentationResult Create(MetricPresentationSpec spec, MetricDescriptor? descriptor,
         MetricSnapshot snapshot)
     {
@@ -67,5 +72,47 @@ internal static class MetricPresentation
             _ => throw new InvalidDataException("Metric value kind cannot be presented.")
         };
         return unit is null ? text : $"{text} {unit}";
+    }
+}
+
+internal sealed record MetricBarSpec
+{
+    public MetricPresentationSpec Presentation { get; }
+    public double Minimum { get; }
+    public double Maximum { get; }
+
+    public MetricBarSpec(MetricPresentationSpec presentation, double minimum, double maximum)
+    {
+        ArgumentNullException.ThrowIfNull(presentation);
+        if (!double.IsFinite(minimum) || !double.IsFinite(maximum) || maximum <= minimum ||
+            !double.IsFinite(maximum - minimum))
+            throw new ArgumentOutOfRangeException(nameof(maximum), "Bar range must be finite and increasing.");
+        Presentation = presentation;
+        Minimum = minimum;
+        Maximum = maximum;
+    }
+}
+
+internal readonly record struct MetricBarResult(double? FillFraction, string RangeState);
+
+internal static class MetricBarPresentation
+{
+    public static MetricBarResult Create(MetricBarSpec spec, MetricDescriptor? descriptor, MetricSnapshot? snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+        if (snapshot is null) return new(null, "");
+        _ = MetricPresentation.Create(spec.Presentation, descriptor, snapshot);
+        if (snapshot.Value is not { } value) return new(null, "");
+        var number = value.Kind switch
+        {
+            MetricValueKind.Double => value.AsDouble(),
+            MetricValueKind.Int64 => value.AsInt64(),
+            MetricValueKind.Decimal => (double)value.AsDecimal(),
+            _ => double.NaN
+        };
+        if (!double.IsFinite(number)) return new(null, "No finite numeric fill");
+        if (number < spec.Minimum) return new(null, "Below range");
+        if (number > spec.Maximum) return new(null, "Above range");
+        return new((number - spec.Minimum) / (spec.Maximum - spec.Minimum), "");
     }
 }

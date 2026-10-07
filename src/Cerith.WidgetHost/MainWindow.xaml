@@ -54,9 +54,9 @@
                         Background="{ThemeResource CerithSeparatorBrush}" />
             </Grid>
 
-            <StackPanel x:Name="MetricsPanel"
-                        Grid.Row="2"
-                        VerticalAlignment="Top" />
+            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
+            </ScrollViewer>
         </Grid>
     </Grid>
 </Window>

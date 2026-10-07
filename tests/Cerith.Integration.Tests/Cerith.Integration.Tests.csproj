@@ -8,5 +8,6 @@
     <ProjectReference Include="..\..\src\Cerith.TelemetryService\Cerith.TelemetryService.csproj" />
     <Compile Include="..\..\src\Cerith.WidgetHost\NamedPipeMetricClient.cs" Link="NamedPipeMetricClient.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricPresentation.cs" Link="MetricPresentation.cs" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\MetricSubscription.cs" Link="MetricSubscription.cs" />
   </ItemGroup>
 </Project>

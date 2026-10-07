@@ -117,6 +117,26 @@ Lifecycle validation used a real Named Pipe v1 `cpu.total.usage` subscribe accep
 
 Validation: Release solution build passed with 0 warnings/errors; Core, Telemetry and Integration suites passed 39/397/22 (458/458, zero skipped); focused Named Pipe client tests passed 10/10. A read-only concurrency review returned PASS after the clean-EOF correction. No IPC contract, telemetry topology, dependency, project or performance budget changed. M4 remains ACTIVE / INCOMPLETE; M3 remains DONE and M7 remains NOT STARTED. M5, taskbar/tray and OSD work remain outside this task.
 
+## CER-M4-006 bounded composition and MetricBus scale characterization
+
+Date: 2026-10-07/08. Bus decision: **KEEP_CURRENT_BUS**. Track C copied and verified the actual canonical base Core source into a disposable Release console harness; no product bus, dependency, project or backpressure-policy change was justified. Three independent warmed runs tested 10/50/100/250/500 subscriptions, exact distinct IDs with one match, distributed publication and many same-ID readers. Prebuilt immutable snapshots isolated publication cost from construction, IPC and UI. Tiered compilation was disabled for stable warmed code; these are not startup measurements. Reported p50/p95 are medians of per-batch percentiles, not pooled percentiles.
+
+| Subscriptions, capacity 1 with active readers | One match p50/p95 µs | Distributed p50/p95 µs | Same ID p50/p95 µs |
+| ---: | ---: | ---: | ---: |
+| 10 | 0.7 / 4.9 | 0.6 / 2.9 | 3.8 / 9.6 |
+| 50 | 1.1 / 5.0 | 1.3 / 1.5 | 17.6 / 26.7 |
+| 100 | 1.6 / 4.3 | 1.8 / 2.1 | 34.1 / 44.1 |
+| 250 | 3.3 / 6.2 | 3.6 / 4.9 | 83.0 / 109.5 |
+| 500 | 6.1 / 9.4 | 7.1 / 10.0 | 163.9 / 235.8 |
+
+A buffered capacity-64 isolation measured 216 B/publication for one match and 288–4208 B for 10–500 same-ID subscribers. Capacity 64 is a measurement control, not the production capacity. Nine lossless slow-reader proofs blocked for 199.5–204.7 ms while a requested 200 ms hold kept its capacity-1 channel full. Independent-ID concurrent publications continued, but later publications awaited by the same sequential caller stalled. An index would not remove that deliberate backpressure. `BoundedChannelFullMode.Wait`, ordinal exact routing, cancellation and disposal are unchanged. The 500-reader bus stress is not a 500-pipe runtime claim: the current server's maximum instance count is 255.
+
+At plausible M4 loads of 10–50 distinct IDs, matching cost was not presently material. A paced 100-publications/s experiment overlapped timer-control CPU ranges; incremental bus CPU was inconclusive. A callback MODEL excluding actual subscription code, IPC and WinUI measured 500 field assignments at 5.3/6.6 µs and formatting callbacks at 58.9/122.8 µs (p50/p95). Those figures are not an end-to-end candidate speedup or a process-memory result. F3 is characterized with linear matching and sequential backpressure retained as known limits; revisit indexing only when an actual workload makes matching material. No drop/coalescing-policy decision is triggered.
+
+The candidate surface requests four distinct IDs for six components. A disposable background console probe used the actual candidate subscription/client/presentation source against the actual local service, with acceptance-only counting added outside the repository. CPU/RAM were Fresh/Measured, gaming Stopped/Unknown without a target, and Codex Error/route_unsupported/Unknown. Initial startup accepted exactly one pipe for each ID, including CPU and quota shared by readout/bar; service restart added exactly one accepted pipe per ID. Service-absent recovery took 914.8 ms after a separate accepted-ready probe; restart recovery took 995.0 ms; transport loss cleared values within 19.7 ms. These single-run no-window observations are not WinUI recovery bounds. The real 5-second OpenCode activity stream retained its Unavailable/Unknown snapshot through a 3.5-second quiet hold with one accepted connection and no churn. Cancellation awaited all loops and cleared binding state. No runtime snapshots were fabricated.
+
+**Native/runtime-performance acceptance: NOT RUN / DISPLAY2 unavailable.** DISPLAY2 was present at session start but disappeared before the visible launch gate; the gate aborted without starting WidgetHost or falling back to primary. Separate base/candidate Release builds were prepared with only disposable startup placement/no-activation changes (product App unchanged). No native dark/light/layout/normal-close PASS or canonical-vs-candidate WinUI CPU, Working Set or Private Bytes result is claimed. The larger surface adds RAM plus two renderer instances, so absolute memory must be interpreted against that content change when the paired gate can run. Existing aspirational budgets are unchanged.
+
 ## Cadence
 
 Different sources require different refresh rates.

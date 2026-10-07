@@ -296,6 +296,36 @@ public sealed class NamedPipeMetricTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ClientRejectsValueKindMismatchAfterAcceptedOrLateDescriptor(bool lateDescriptor)
+    {
+        var id = new MetricId("typed.metric");
+        var descriptor = new MetricDescriptor(id, "Typed", "percentage", MetricValueKind.Double);
+        var name = Name();
+        await using var peer = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serving = Task.Run(async () =>
+        {
+            await peer.WaitForConnectionAsync(stop.Token);
+            Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+            await MetricIpcProtocol.WriteAcceptedAsync(peer, lateDescriptor ? null : descriptor, stop.Token);
+            if (lateDescriptor)
+                await MetricIpcProtocol.WriteSnapshotAsync(peer, new MetricSnapshot(id, MetricValue.From(1d),
+                    DateTimeOffset.UtcNow, MetricState.Fresh, MetricConfidence.Measured), descriptor, stop.Token);
+            await MetricIpcProtocol.WriteSnapshotAsync(peer, new MetricSnapshot(id, MetricValue.From(2L),
+                DateTimeOffset.UtcNow, MetricState.Fresh, MetricConfidence.Measured), stop.Token);
+        }, stop.Token);
+        await using var client = new NamedPipeMetricClient(name);
+        await client.ConnectAsync(id, stop.Token);
+        await using var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+        if (lateDescriptor) Assert.IsTrue(await reader.MoveNextAsync());
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => reader.MoveNextAsync().AsTask());
+        await serving.WaitAsync(stop.Token);
+    }
+
+    [TestMethod]
     public async Task QuietSubscriptionEndsOnPipeClosureAfterFormerReceiveDeadline()
     {
         using var bus = new MetricBus(1);

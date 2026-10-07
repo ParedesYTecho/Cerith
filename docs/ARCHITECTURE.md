@@ -213,6 +213,12 @@ CER-M2-001 adds a second concrete acquisition lifecycle in TelemetryService. It 
 
 CER-M4-005 keeps `MetricRegistry` as the single semantic source and extends v1 subscription frames with optional descriptor metadata. `accepted` includes a descriptor already registered; a descriptor registered later accompanies the first later snapshot, including valueless states. Missing metadata does not reject or delay an exact bus subscription. Metadata is sent once per pipe, and WidgetHost uses the MetricId as a truthful label fallback while waiting. After acceptance, stream silence alone does not mean the service disconnected: WidgetHost waits for a snapshot or pipe closure, leaving metric state transitions to the provider. The three exact-MetricId pipes and CER-M4-004 availability-attempt coordination remain independent.
 
+## WidgetHost local composition (CER-M4-006)
+
+The native surface creates one `MetricSubscription` for each distinct exact MetricId requested by its components. That subscription owns one client/read loop and the current descriptor/snapshot; local consumers receive the same committed state on the WinUI context. `MetricReadout` and `MetricBar` can therefore consume one stream simultaneously. Different MetricIds still use independent pipes; local fan-out is not IPC multiplexing. The window owns cancellation and awaits all loops/client disposal before detaching consumers and closing. Removing one event consumer does not cancel other consumers; subscription lifetime remains the window's lifetime for this fixed composition.
+
+`MetricConnectionAttempt` shares only availability-attempt coordination. A pending attempt releases followers on success/failure/cancellation, and generation checks prevent old completion from restoring invalidated availability. Individual consumer exceptions are diagnosed locally and do not reconnect telemetry. Acceptance replaces the descriptor, including null, and clears the previous snapshot before Waiting; late metadata is committed before its associated snapshot notification. Transport loss clears the active value. Providers remain authoritative for metric states while an accepted pipe stays open.
+
 ## Storage
 
 SQLite is the default future local persistence layer for:

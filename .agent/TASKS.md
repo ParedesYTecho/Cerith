@@ -1,5 +1,20 @@
 # Tasks
 
+## CER-M4-006 — Composable mixed-domain WidgetHost surface
+
+Status: IN PROGRESS — technical candidate verified; native DISPLAY2 and paired WinUI performance acceptance pending.
+Owner: Codex — sole repository writer (Track A); Tracks B/C are read-only.
+Branch: `codex/CER-M4-006-composable-surface`.
+Canonical starting main: `aafc90425b5c17e6514989c4b7f4ddd0f577c6f5`, fetched with clean local main equal to origin/main.
+Scope: one local subscription per distinct MetricId feeding multiple native components, truthful MetricBar with explicit presentation range, bounded Hardware/Gaming/AI composition, deterministic reconnect regressions and scale/performance characterization. Preserve D-025, exact per-ID pipes and bounded backpressure. No providers, dependencies, projects, history, persistence, editor, taskbar/tray or OSD. One unmerged PR; M4 remains ACTIVE / INCOMPLETE.
+Routing: Track A native Codex (requested GPT-6.1 Sol Medium; root runtime model/effort is not independently exposed); Track B GPT-6.1 Sol Medium native. Track C uses GPT-6.1 Sol Medium because the subagent interface does not expose the preferred GPT-6 Luna Max. Initial Track B dispatch failed at capacity before producing a review; same-model retry delivered architecture PASS and final technical PASS after a non-owner cancellation correction.
+Implementation: `MetricSubscription.ForDistinctMetrics` deduplicates requested exact IDs. The window owns one loop/client per ID and shared availability-attempt coordination; local event consumers receive committed descriptor/snapshot state on the WinUI context. CPU/quota each use Readout + Bar; RAM/FPS use Readout. Range is explicit 0–100 presentation configuration; valueless/Unlimited states suppress track, out-of-range values retain actual text with an explicit range warning and no fill. No MetricBus product change.
+Validation: Release solution build 0 warnings/errors; Core/Telemetry/Integration 39/397/67 (503/503, zero skipped); focused subscription/presentation 48/48. Independent technical review PASS. Actual-service no-window probe observed one accepted pipe per four IDs despite six consumers and one reconnect per ID; service-absent/restart recovery 914.8/995.0 ms, EOF clearing 19.7 ms; real OpenCode quiet hold 3.5 s without churn. These are not WinUI native acceptance receipts.
+Graph/hygiene: Graphify AST re-extracted nine changed/new C# files (3234 nodes, 9610 edges, 185 communities); semantic docs and community labels were not regenerated. The extractor reported its namespace-ID collision/dedup warning; individual changed source-symbol nodes are present. No LLM API calls or monetary expense. Diff and repository filename/privacy checks are required before each candidate commit.
+Scale: Track C KEEP_CURRENT_BUS; 10–500 subscriptions characterized, with exact routing and lossless bounded Wait unchanged. Canonical methodology/limitations are in `docs/PERFORMANCE.md`. F3 characterized with its scaling/backpressure limits retained; F4 dedicated deterministic regression gap addressed. F5/F7 remain before M4 exit and F6/F8 remain public-release debt.
+External gate: DISPLAY2 vanished before native launch; safety gate aborted without a WidgetHost window. Native layout/themes/close and paired canonical/candidate WinUI CPU/Working Set/Private Bytes are NOT RUN. Do not issue COMPOSABLE_METRIC_SURFACE_VERIFIED or mark this task DONE until those gates pass. CI/PR integration receipts belong to the exact head in Git/PR history; PR remains unmerged.
+Overnight continuation authorized on 2026-10-07/08: advance bounded milestone slices, preserve review/prerequisite gates, no monetary expense or dangerous/destructive operations; Antigravity quota is the only additional external agent quota authorized. Next M4 work may be prepared independently while native acceptance is deferred; M5/M6/M7 remain NOT STARTED.
+
 ## CER-M4-005 — Establish the MetricId binding contract
 
 Status: DONE at bounded task scope — verdict `METRIC_BINDING_CONTRACT_VERIFIED`; read-only GPT-6.1 Sol Medium final diff review and Advisor product/architecture review returned `PASS`.

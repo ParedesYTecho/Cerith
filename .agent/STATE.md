@@ -1,3 +1,17 @@
+# State — CER-M4-006 composable surface candidate
+
+CER-M4-006 is IN PROGRESS. Technical implementation and deterministic validation are complete; native acceptance is deferred because DISPLAY2 disappeared before the launch gate. Do not claim COMPOSABLE_METRIC_SURFACE_VERIFIED or task DONE yet. Canonical starting main is `aafc90425b5c17e6514989c4b7f4ddd0f577c6f5`; candidate branch is `codex/CER-M4-006-composable-surface`. One repository writer; Tracks B/C are read-only.
+
+The surface uses four distinct MetricIds with six consumers: CPU and Codex quota each Readout + Bar, RAM/FPS Readout. One local loop/client/pipe per exact distinct ID, native-context local fan-out, explicit presentation ranges, truthful valueless/Unlimited/overflow states, and deterministic availability-attempt coordination. D-025 remains unchanged. Core/IPC/provider acquisition, dependencies, projects and budgets are unchanged.
+
+Release build: 0 warnings/errors. Core/Telemetry/Integration: 39/397/67 (503/503, zero skipped), focused subscription/presentation 48/48. Track B initial architecture PASS and final technical PASS after a cancellation correction. Track C KEEP_CURRENT_BUS; F3 scale evidence and native-performance gate are canonical in docs/PERFORMANCE.md. F4 dedicated deterministic regression coverage is added; F5/F7 remain before M4 exit, F6/F8 remain public-release debt.
+
+An actual-service no-window probe confirmed accepted connection counts and real mixed-domain truth/recovery/quiet-stream behavior. It does not replace native layout/theme/close or paired WinUI process CPU/memory acceptance. No WidgetHost window was launched after DISPLAY2 vanished. Exact-head hosted checks and the unmerged PR receipt belong to Git/PR history.
+
+M4 remains ACTIVE / INCOMPLETE; M0–M3 DONE; M5/M6/M7, taskbar/tray and gaming OSD NOT STARTED. No history, persistence or editor schema. Fer authorized continued bounded overnight milestone work with no monetary expense or dangerous/destructive operations; only Antigravity is additionally authorized as an external agent quota. Prepare independent next M4 work while native validation awaits DISPLAY2, without treating the pending acceptance gate as PASS.
+
+## Historical operational snapshot — CER-M4-005
+
 # State — CER-M4-005 MetricId binding contract
 
 CER-M4-005 is DONE at bounded task scope; technical verdict: `METRIC_BINDING_CONTRACT_VERIFIED`. Reviewed candidate head `4cd329d1139a1c3b2d620c87af92323e8696ad39` passed exact-head Build and Test (run 37680696512) and Repository Quality (run 37680696546); CodeQL was SKIPPED (run 37680696518), not a security PASS. Release build, full local tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium review (`PASS`) are complete. D-025 records the accepted MetricId descriptor-binding contract; Git history and PR #57 are authoritative for the integration receipt.
