@@ -1,10 +1,10 @@
 # State — CER-M4-005 MetricId binding contract
 
-Current candidate: `METRIC_BINDING_CONTRACT_VERIFIED` on `codex/CER-M4-005-metric-binding`, based on canonical `b9449ae7358d09acdbc8dfaffa24c114370d33e0`. Release build (0 warnings/errors), full tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium final diff review (`PASS`) are complete. Exact-head hosted PR checks are pending. `main` remains unchanged.
+Current candidate: `METRIC_BINDING_CONTRACT_VERIFIED` on `codex/CER-M4-005-metric-binding`, based on canonical `b9449ae7358d09acdbc8dfaffa24c114370d33e0`. PR #57 is OPEN / UNMERGED. Implementation head `3f75bdc59504c105e52c224177a64cac9382b5f4` passed hosted Build and Test (39/397/32) and Repository Quality; CodeQL was SKIPPED. The final receipt-only documentation commit is awaiting its exact-head hosted checks. Release build, full local tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium review (`PASS`) are complete. `main` remains unchanged.
 
 M4 remains ACTIVE / INCOMPLETE; M0–M3 are DONE; M5, M6 and M7 remain NOT STARTED. No taskbar/tray or gaming OSD work began, and performance budgets are unchanged. Independent exact-MetricId pipes and CER-M4-004 reconnect coordination remain required.
 
-Next: open one bounded PR, record exact-head Build and Test / Repository Quality / CodeQL dispositions, and leave it UNMERGED. Do not begin CER-M4-006.
+Next: verify exact-head checks for the receipt-only PR update and leave PR #57 UNMERGED. Do not begin CER-M4-006.
 
 ## Historical — CER-M4-004 WidgetHost reconnect CPU
 

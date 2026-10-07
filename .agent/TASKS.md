@@ -2,7 +2,7 @@
 
 ## CER-M4-005 — Establish the MetricId binding contract
 
-Status: IMPLEMENTATION COMPLETE — candidate verdict `METRIC_BINDING_CONTRACT_VERIFIED`; read-only GPT-6.1 Sol Medium final diff review returned `PASS`. Exact-head hosted checks are pending.
+Status: PR #57 OPEN / UNMERGED — candidate verdict `METRIC_BINDING_CONTRACT_VERIFIED`; read-only GPT-6.1 Sol Medium final diff review returned `PASS`.
 Owner: Codex — sole repository write owner; GPT-6.1 Sol Medium audit is read-only.
 Branch: `codex/CER-M4-005-metric-binding`
 Base: `b9449ae7358d09acdbc8dfaffa24c114370d33e0` (`main == origin/main`, clean after fetch).
@@ -11,7 +11,8 @@ Decision: protocol v1 keeps its exact-subscription/no-replay guarantee. `accepte
 Audit: initial overall verdict `FIXES_REQUIRED`; F1/F2 blocked M4-005 and are addressed by this candidate. F3/F4/F5/F7 remain before M4 exit; F6/F8 remain before public release; F9 is reconciled here; F10 remains historical context.
 Local validation: Release solution build 0 warnings/errors; Core/Telemetry/Integration 39/397/32 (468/468, zero skipped); focused MetricPresentation 15/15, Named Pipe 17/17 and OpenCode descriptor path 1/1. New regressions cover described → descriptor-free → late-described reconnect, wrong-ID and repeated descriptors, and a quiet connection held for 3.5 seconds through cancellation and EOF. DISPLAY2-only native checks covered healthy startup, service-absent startup/recovery (2.19s), stop/restart (2.18s), truthful CPU/game/Codex state and clean close without foreground focus. Graphify re-extracted six changed source files (3155 nodes, 9461 edges, 179 communities); community labels were not regenerated.
 Review: first pass `FIXES_REQUIRED` identified stale descriptor binding and missing lifecycle coverage; corrected and re-reviewed as `PASS` with no architecture disagreement. The actual WinUI binding reset was source-reviewed; integration regressions cover transport and presentation state, not automated WinUI control interaction.
-Acceptance: exact-head Build and Test, Repository Quality and CodeQL disposition; one bounded PR that remains unmerged. Do not begin CER-M4-006.
+Hosted receipt on implementation head `3f75bdc59504c105e52c224177a64cac9382b5f4`: Build and Test PASS on attempt 3 (Core 39/39, Telemetry 397/397, Integration 32/32; run 37677043748); Repository Quality PASS (run 37677043875); CodeQL SKIPPED (run 37677043871), not PASS. Two earlier runs failed on differing timing-sensitive GitHub Copilot tests; both failures passed focused local reruns and the exact-SHA hosted retry passed. The documentation receipt commit will trigger a new exact-head check run.
+Acceptance: keep the single bounded PR unmerged, verify exact-head checks for the documentation receipt commit, and record final disposition. Do not begin CER-M4-006.
 
 ## CER-M4-004 — Bound disconnected WidgetHost reconnect CPU
 
