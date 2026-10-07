@@ -2,7 +2,7 @@
 
 Current disposition (2026-10-07): CER-M4-004 is complete with verdict `PERFORMANCE_RECONNECT_FIX_VERIFIED`. WidgetHost coordinates one availability-establishing connection attempt while TelemetryService is unavailable; after acceptance, the existing loops create their own Named Pipe clients and MetricId subscriptions. Clean EOF and exceptional termination both invalidate the local availability state. The ten-pair disconnected comparison reduced median CPU by 54.71%; ten real restart cycles recovered all three metrics within 1.054 seconds. Full evidence is canonical in `docs/PERFORMANCE.md`.
 
-M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. No M5, taskbar/tray or OSD work began, and performance budgets are unchanged. The candidate PR remains unmerged; exact-head hosted checks are recorded in `.agent/HANDOFF.md`.
+M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. No M5, taskbar/tray or OSD work began, and performance budgets are unchanged. [PR #56](https://github.com/ParedesYTecho/Cerith/pull/56) is OPEN / UNMERGED; verify hosted checks on its latest head before merge. CodeQL SKIPPED is not PASS.
 
 ## Historical — CER-M4-002 WidgetHost performance attribution
 
