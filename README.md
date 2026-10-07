@@ -76,8 +76,8 @@ No Electron or browser runtime in the always-on monitoring path.
 
 ## Current milestone
 
-`M2 — Gaming MVP` — DONE.
+`M4 — Widget Engine & Compact Surfaces` — ACTIVE / INCOMPLETE.
 
-M0 — Foundation and M1 — Hardware MVP are DONE. CER-M2-001 (Displayed FPS and displayed frame time), CER-M2-002 (displayed FPS P1) and CER-M2-003 (selected game/session summary) are integrated. M3 — AI Quotas MVP is NEXT / NOT STARTED.
+M0 through M3 are DONE. CER-M4-001 through CER-M4-005 establish the first native surface, performance attribution/isolation, reconnect coordination and MetricId binding contract. M5 remains NOT STARTED.
 
 Current task truth lives in `.agent/STATE.md` and `.agent/TASKS.md`; `docs/ROADMAP.md` defines milestone scope.

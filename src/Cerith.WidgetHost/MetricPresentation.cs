@@ -10,20 +10,13 @@ namespace Cerith.WidgetHost;
 internal sealed record MetricPresentationSpec
 {
     public MetricId MetricId { get; }
-    public string Label { get; }
     public string NumberFormat { get; }
-    public string? Unit { get; }
 
-    public MetricPresentationSpec(MetricId metricId, string label, string numberFormat, string? unit)
+    public MetricPresentationSpec(MetricId metricId, string numberFormat)
     {
         MetricId = metricId ?? throw new ArgumentNullException(nameof(metricId));
-        ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(numberFormat);
-        if (unit is not null && string.IsNullOrWhiteSpace(unit))
-            throw new ArgumentException("Unit cannot be whitespace when provided.", nameof(unit));
-        Label = label;
         NumberFormat = numberFormat;
-        Unit = unit;
     }
 }
 
@@ -35,16 +28,21 @@ internal readonly record struct MetricPresentationResult(
 
 internal static class MetricPresentation
 {
-    public static MetricPresentationResult Create(MetricPresentationSpec spec, MetricSnapshot snapshot)
+    public static MetricPresentationResult Create(MetricPresentationSpec spec, MetricDescriptor? descriptor,
+        MetricSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.MetricId != spec.MetricId)
             throw new InvalidDataException("Snapshot MetricId does not match presentation spec.");
+        if (descriptor is not null && descriptor.Id != spec.MetricId)
+            throw new InvalidDataException("Descriptor MetricId does not match presentation spec.");
+        if (descriptor is not null && snapshot.Value is { } metricValue && metricValue.Kind != descriptor.ValueKind)
+            throw new InvalidDataException("Snapshot value kind does not match metric descriptor.");
 
         var valueText = snapshot.State switch
         {
-            MetricState.Fresh or MetricState.Stale => FormatValue(snapshot.Value!.Value, spec),
+            MetricState.Fresh or MetricState.Stale => FormatValue(snapshot.Value!.Value, spec, descriptor?.Unit),
             MetricState.Unlimited => "Unlimited",
             _ => "—"
         };
@@ -55,7 +53,7 @@ internal static class MetricPresentation
         return new MetricPresentationResult(valueText, stateText, snapshot.Confidence.ToString(), snapshot.State);
     }
 
-    private static string FormatValue(MetricValue value, MetricPresentationSpec spec)
+    private static string FormatValue(MetricValue value, MetricPresentationSpec spec, string? unit)
     {
         var text = value.Kind switch
         {
@@ -68,6 +66,6 @@ internal static class MetricPresentation
             MetricValueKind.TimeSpan => value.AsTimeSpan().ToString("c", CultureInfo.InvariantCulture),
             _ => throw new InvalidDataException("Metric value kind cannot be presented.")
         };
-        return spec.Unit is null ? text : $"{text} {spec.Unit}";
+        return unit is null ? text : $"{text} {unit}";
     }
 }

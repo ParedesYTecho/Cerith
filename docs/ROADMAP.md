@@ -155,7 +155,7 @@ DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` aft
 
 ### CER-M3-005 — first passive/local activity slice
 
-PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. PR #50 was squash-merged as 8dfd5f56aa63355bd0d952d774a5d84af750afa2, closing CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in `.agent/TASKS.md`; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. CER-M3-006 records evidence-backed dispositions for all 42 M3.B targets and the literal M3 exit audit below. M4 and M7 remain NOT STARTED.
+PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. PR #50 was squash-merged as 8dfd5f56aa63355bd0d952d774a5d84af750afa2, closing CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in `.agent/TASKS.md`; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. CER-M3-006 records evidence-backed dispositions for all 42 M3.B targets and the literal M3 exit audit below. At the time of CER-M3-005, M4 and M7 had not started. M4 is now ACTIVE / INCOMPLETE as recorded below; M7 remains NOT STARTED.
 
 The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
 
@@ -186,7 +186,7 @@ The target-accounting gate is satisfied by the individual evidence-backed dispos
 
 ## M4 — Widget Engine & Compact Surfaces
 
-Current status: ACTIVE through CER-M4-001, the first bounded native MetricId presentation slice. This does not complete M4.
+Current status: ACTIVE / INCOMPLETE. CER-M4-001 through CER-M4-005 are complete bounded slices, including the first native surface, performance attribution/isolation, reconnect coordination and MetricId binding contract. This does not complete M4.
 
 - text;
 - metric;

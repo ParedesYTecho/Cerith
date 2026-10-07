@@ -71,6 +71,10 @@ ValueKind
 
 `MetricBus` fans out snapshots to multiple independent subscribers by exact `MetricId`. A subscription receives only publications made after activation. Each subscriber has a bounded buffer; a full buffer applies backpressure rather than silently dropping snapshots. Cancellation or disposal ends a subscription, and disposing the bus completes active readers. The bus has no replay, latest-value cache, or dependency on `MetricRegistry`.
 
+## Consumer binding
+
+WidgetHost binds one exact `MetricId` per pipe. The binding keeps presentation formatting local and takes `DisplayName`, `SemanticType`, `Unit`, and `ValueKind` from the registered `MetricDescriptor`; a present snapshot value must match its descriptor's kind. Protocol v1 may include the descriptor in `accepted` when already registered, or once on the first later snapshot after registration, including a valueless snapshot. Missing metadata does not reject the subscription or create a fallback descriptor; the consumer can show the exact ID while waiting. Metadata is not retransmitted on subsequent snapshots, and this does not add a metric catalog or replay.
+
 ## Snapshot
 
 Snapshots are immutable. `Value` is optional and uses a typed value kind, not an arbitrary object or JSON value. Supported kinds are `double`, `long`, `decimal`, `bool`, `string`, `DateTimeOffset`, and `TimeSpan`.

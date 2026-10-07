@@ -27,39 +27,71 @@ public static class MetricIpcProtocol
     }
 
     public static Task WriteAcceptedAsync(Stream stream, CancellationToken cancellationToken = default) =>
-        WriteAsync(stream, new Message(Version, "accepted"), cancellationToken);
+        WriteAcceptedAsync(stream, null, cancellationToken);
 
-    public static async Task ReadAcceptedAsync(Stream stream, CancellationToken cancellationToken = default) =>
-        _ = await ReadAsync(stream, "accepted", cancellationToken).ConfigureAwait(false);
+    public static Task WriteAcceptedAsync(Stream stream, MetricDescriptor? descriptor,
+        CancellationToken cancellationToken = default) =>
+        WriteAsync(stream, new Message(Version, "accepted", Descriptor: descriptor), cancellationToken);
+
+    public static async Task<MetricDescriptor?> ReadAcceptedAsync(Stream stream,
+        CancellationToken cancellationToken = default)
+    {
+        var message = await ReadAsync(stream, "accepted", cancellationToken).ConfigureAwait(false);
+        try { return ValidateDescriptor(message.Descriptor, null); }
+        catch (ArgumentException ex) { throw new InvalidDataException("Invalid metric descriptor.", ex); }
+    }
 
     public static Task WriteSnapshotAsync(Stream stream, MetricSnapshot snapshot, CancellationToken cancellationToken = default)
+        => WriteSnapshotAsync(stream, snapshot, null, cancellationToken);
+
+    public static Task WriteSnapshotAsync(Stream stream, MetricSnapshot snapshot, MetricDescriptor? descriptor,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ValidateDescriptor(descriptor, snapshot.MetricId.Value);
         var value = snapshot.Value;
+        if (descriptor is not null && value.HasValue && descriptor.ValueKind != value.Value.Kind)
+            throw new InvalidDataException("Snapshot value kind does not match its metric descriptor.");
         return WriteAsync(stream, new Message(Version, "snapshot", snapshot.MetricId.Value,
             value?.Kind, value is null ? null : Format(value.Value), snapshot.ObservedAt,
-            snapshot.State, snapshot.Confidence, snapshot.Source, snapshot.ErrorCode), cancellationToken);
+            snapshot.State, snapshot.Confidence, snapshot.Source, snapshot.ErrorCode, descriptor), cancellationToken);
     }
 
     public static async Task<MetricSnapshot> ReadSnapshotAsync(Stream stream, CancellationToken cancellationToken = default)
+        => (await ReadSnapshotFrameAsync(stream, cancellationToken).ConfigureAwait(false)).Snapshot;
+
+    public static async Task<(MetricSnapshot Snapshot, MetricDescriptor? Descriptor)> ReadSnapshotFrameAsync(
+        Stream stream, CancellationToken cancellationToken = default)
     {
         var message = await ReadAsync(stream, "snapshot", cancellationToken).ConfigureAwait(false);
         try
         {
+            var id = new MetricId(message.MetricId ?? throw new InvalidDataException("Missing metric ID."));
+            var descriptor = ValidateDescriptor(message.Descriptor, id.Value);
             MetricValue? value = message.ValueKind is null ? null : Parse(message.ValueKind.Value,
                 message.Value ?? throw new InvalidDataException("Missing value."));
             if (message.ValueKind is null && message.Value is not null)
                 throw new InvalidDataException("Value kind is missing.");
-            return new MetricSnapshot(new MetricId(message.MetricId ?? throw new InvalidDataException("Missing metric ID.")),
+            if (descriptor is not null && value.HasValue && descriptor.ValueKind != value.Value.Kind)
+                throw new InvalidDataException("Snapshot value kind does not match its metric descriptor.");
+            return (new MetricSnapshot(id,
                 value, message.ObservedAt ?? throw new InvalidDataException("Missing timestamp."),
                 message.State ?? throw new InvalidDataException("Missing state."),
                 message.Confidence ?? throw new InvalidDataException("Missing confidence."),
-                message.Source, message.ErrorCode);
+                message.Source, message.ErrorCode), descriptor);
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
         {
             throw new InvalidDataException("Invalid snapshot payload.", ex);
         }
+    }
+
+    private static MetricDescriptor? ValidateDescriptor(MetricDescriptor? descriptor, string? metricId)
+    {
+        if (descriptor is not null && metricId is not null &&
+            !StringComparer.Ordinal.Equals(descriptor.Id.Value, metricId))
+            throw new InvalidDataException("Descriptor MetricId does not match the message.");
+        return descriptor;
     }
 
     private static string Format(MetricValue value) => value.Kind switch
@@ -111,7 +143,10 @@ public static class MetricIpcProtocol
         catch (EndOfStreamException ex) { throw new InvalidDataException("Truncated frame payload.", ex); }
         Message message;
         try { message = JsonSerializer.Deserialize<Message>(payload) ?? throw new InvalidDataException("Empty message."); }
-        catch (JsonException ex) { throw new InvalidDataException("Invalid frame payload.", ex); }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
+        {
+            throw new InvalidDataException("Invalid frame payload.", ex);
+        }
         if (message.Version != Version) throw new InvalidDataException("Unsupported protocol version.");
         if (message.Kind != expectedKind) throw new InvalidDataException("Unexpected message kind.");
         return message;
@@ -120,5 +155,5 @@ public static class MetricIpcProtocol
     private sealed record Message(int Version, string Kind, string? MetricId = null,
         MetricValueKind? ValueKind = null, string? Value = null, DateTimeOffset? ObservedAt = null,
         MetricState? State = null, MetricConfidence? Confidence = null, string? Source = null,
-        string? ErrorCode = null);
+        string? ErrorCode = null, MetricDescriptor? Descriptor = null);
 }

@@ -176,3 +176,12 @@ Parallel provider work is allowed only with isolated write ownership. One worker
 
 Licensing remains part of implementation acceptance: Gengchou and TokenTracker are MIT at the pinned references and may be considered for focused adaptation with provenance/notice review; AI Limits is GPL-3.0-or-later and remains research-only unless a separate license decision permits reuse.
 
+## D-025 — CER-M4-005 MetricId binding metadata
+
+Keep `MetricRegistry` as the single in-process source for `MetricDescriptor`. `NamedPipeMetricServer` receives that same registry. Exact-ID `accepted` still means the bus subscription is active and will receive future publications only; it does not require descriptor readiness. If the descriptor exists at acceptance, include it there. If registration happens later, include it once with the first subsequent snapshot, whether that snapshot has a value or not. Unknown IDs remain accepted without fabricated metadata, and registration is never polled or used to reorder provider startup.
+
+The descriptor carries semantic `MetricId`, `DisplayName`, `SemanticType`, `Unit`, `ValueKind`, and optional `Description`. WidgetHost binds its rows by exact `MetricId`, validates descriptor and snapshot IDs, and rejects a present value whose kind conflicts with the descriptor. The descriptor supplies display name and unit; numeric formatting stays local to the presentation. If metadata is absent, show the exact ID and no invented unit.
+
+Keep protocol version 1: descriptor fields are optional additions, do not change subscription acceptance, replay, or snapshot semantics, and default readers tolerate unknown fields. New readers tolerate an older descriptor-free peer. Do not create a catalog, new message kind, registry feed, or multiplexed pipe.
+
+After `accepted`, silence is not a transport failure. WidgetHost waits for a metric publication or actual pipe closure/cancellation; it shows `Waiting` before the first snapshot and preserves the last provider-reported snapshot while the pipe remains open. A closed pipe marks the subscription unavailable and reconnects. Providers own Fresh/Stale/Unavailable/Stopped/Error transitions. This accommodates slow publishers such as OpenCode activity and Codex quota without cadence inference or reconnect churn, while retaining CER-M4-004 single-flight connection establishment.

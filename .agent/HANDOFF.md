@@ -1,4 +1,16 @@
-# CERITH CER-M4-004 — WidgetHost reconnect CPU handoff — 2026-10-07
+# CERITH CER-M4-005 — MetricId binding contract — 2026-10-07
+
+Candidate verdict: `METRIC_BINDING_CONTRACT_VERIFIED`. Base `b9449ae7358d09acdbc8dfaffa24c114370d33e0`; branch `codex/CER-M4-005-metric-binding`. Local Release validation and DISPLAY2-only native lifecycle checks pass. The first independent review returned `FIXES_REQUIRED` for stale descriptor binding across reconnect and missing lifecycle regressions. The binding now resets on every accepted connection, including descriptor-free peers, and the required cases are covered. The read-only GPT-6.1 Sol Medium final re-review returned `PASS` with no architecture disagreement. The candidate is not merged; exact-head hosted checks are pending. The UI binding reset was source-reviewed; tests do not automate WinUI control interaction.
+
+The same `MetricRegistry` now supplies descriptor metadata to the pipe server. Protocol v1 remains exact-ID, future-publications-only, and one MetricId per pipe. `accepted` carries an available descriptor; late metadata is attached once to the first later snapshot, including valueless states. Missing metadata does not block acceptance; WidgetHost displays the MetricId until metadata arrives. The component owns numeric formatting; the descriptor owns semantic name/unit/value kind. After acceptance, silence is not a disconnect: WidgetHost shows Waiting before its first snapshot and waits for a real publication, pipe closure or cancellation. M4-004 single-flight reconnect coordination is preserved.
+
+TRACK B's initial overall audit was `FIXES_REQUIRED`: F1/F2 were M4-005 blockers and are addressed by this candidate. F3/F4/F5/F7 remain before M4 exit; F6/F8 remain before public release; README/ROADMAP status debt F9 is corrected. Final diff review returned `PASS`. Do not treat CodeQL `SKIPPED` as PASS.
+
+Local receipts: Release build 0 warnings/errors; Core/Telemetry/Integration 39/397/32 (468/468, zero skipped); focused MetricPresentation 15/15, Named Pipe 17/17, OpenCode descriptor path 1/1. Regressions cover described → descriptor-free → late-described reconnect, wrong-ID and repeated descriptors, and quiet reads held for 3.5 seconds before cancellation/EOF. DISPLAY2-only runtime verified CPU Fresh/Measured, gaming Stopped/Unknown, Codex Error/route_unsupported/Unknown, service-absent recovery in 2.19 seconds, stop/start recovery in 2.18 seconds, and normal close with no foreground focus. Repository hygiene and bounded added-diff secret/personal-path scans pass. Graphify re-extracted six source files (3155 nodes, 9461 edges, 179 communities); community labels were not regenerated.
+
+Next action: open one bounded PR, record exact-head Build and Test / Repository Quality / CodeQL dispositions, and keep the PR UNMERGED. M4 remains ACTIVE / INCOMPLETE; M5/M6/M7, taskbar/tray, gaming OSD and budget changes remain out of scope. Do not begin CER-M4-006.
+
+## Historical — CER-M4-004 WidgetHost reconnect CPU handoff
 
 Verdict: `PERFORMANCE_RECONNECT_FIX_VERIFIED`. Base `fe619e9581aca038a16abb3a6087f129225dce3b`; branch `codex/CER-M4-004-widgethost-reconnect`. The production candidate coordinates one connection attempt while the service is absent, then preserves the three independent MetricId-per-pipe subscriptions. Named Pipe v1, telemetry topology and performance budgets are unchanged. Full measurement detail is canonical in `docs/PERFORMANCE.md`.
 

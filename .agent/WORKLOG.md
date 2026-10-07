@@ -801,3 +801,9 @@ Historical PR checkpoint (2026-10-07): [PR #56](https://github.com/ParedesYTecho
 ## 2026-10-07 — CER-M4-004 Advisor correction
 
 Removed the unnecessary Ponytail comment from `MainWindow.xaml.cs` and made current CER-M4-004 status wording merge-stable in STATE, TASKS and HANDOFF. Recorded the reviewed candidate's exact-head Build and Test and Repository Quality successes and CodeQL skip; the earlier transient check read is retained only as a clearly historical checkpoint. No reconnect logic, telemetry topology, tests, benchmarks, dependencies, projects or budgets changed.
+
+## 2026-10-07 — CER-M4-005 MetricId binding contract
+
+Implemented shared-registry descriptor binding over Named Pipe v1, preserving exact-ID future-only subscriptions, late one-time metadata and independent pipes. WidgetHost resets descriptor semantics on each accepted connection, including descriptor-free reconnects, and treats post-acceptance silence as waiting. The first independent diff review found stale metadata across reconnect plus missing lifecycle coverage; both were corrected, including described → descriptor-free → late-described, wrong-ID/repeated descriptor, and 3.5-second quiet-read cancellation/EOF regressions. Final read-only GPT-6.1 Sol Medium review returned PASS with no architecture disagreement; exact-head hosted checks remain pending and the PR must stay unmerged.
+
+Release build passed with 0 warnings/errors. Core/Telemetry/Integration passed 39/397/32 (468/468, zero skipped); focused MetricPresentation 15/15, Named Pipe 17/17, and OpenCode descriptor path 1/1. DISPLAY2-only native lifecycle checks and bounded privacy/hygiene scans passed. Graphify re-extracted six source files (3155 nodes, 9461 edges, 179 communities); labels were not regenerated. M4 remains ACTIVE / INCOMPLETE; no M4-006 or M5/M6/M7 work began.
