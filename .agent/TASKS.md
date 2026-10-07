@@ -1,5 +1,15 @@
 # Tasks
 
+## CER-M4-004 — Bound disconnected WidgetHost reconnect CPU
+
+Status: DONE — `PERFORMANCE_RECONNECT_FIX_VERIFIED`; bounded single-flight reconnect coordination adopted after a corrected exact-base comparison.
+Owner: Codex — sole repository write owner; no parallel writer.
+Branch: `codex/CER-M4-004-widgethost-reconnect`
+Base: `fe619e9581aca038a16abb3a6087f129225dce3b` (`main == origin/main`, clean tree after fetch).
+Scope: reduce CPU while TelemetryService is absent only if paired evidence shows a worthwhile improvement within the recovery envelope. Preserve independent MetricId-per-pipe connections, truthful unavailable/recovery semantics, cancellation and lifecycle. No protocol/topology redesign, new project/dependency, M5, M7, OSD, taskbar/tray or performance-budget revision. Benchmark artifacts remain outside Git; visible Cerith windows are DISPLAY2-only.
+Evidence: ten distinct-base/candidate Release pairs reduced disconnected CPU median 54.71% (3.434% to 1.555% of one core), with 10/10 paired wins. Ten service restart cycles restored all three rows in 0.985–1.054s; connected visible/minimized checks found no material regression. Exact measurements and lifecycle evidence are canonical in `docs/PERFORMANCE.md`.
+Validation: Release solution build PASS (0 warnings/errors); Core/Telemetry/Integration 39/397/22 (458/458, zero skipped); focused Named Pipe tests 10/10; read-only concurrency review PASS after the clean-EOF fix. Final diff/preflight and exact-head hosted checks are recorded in the handoff.
+
 ## CER-M4-003 — Isolate and correct WidgetHost CPU regression
 
 Status: DONE at bounded isolation scope — verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`; independent Advisor review accepted the evidence as cost-category isolation, not an exact profiler-stack root cause. No product fix was adopted. M4 remains ACTIVE / INCOMPLETE; M3 remains DONE; M7 remains NOT STARTED.

@@ -1,4 +1,14 @@
-# CERITH CER-M4-003 — WidgetHost CPU isolation handoff — 2026-10-06
+# CERITH CER-M4-004 — WidgetHost reconnect CPU handoff — 2026-10-07
+
+Verdict: `PERFORMANCE_RECONNECT_FIX_VERIFIED`. Base `fe619e9581aca038a16abb3a6087f129225dce3b`; branch `codex/CER-M4-004-widgethost-reconnect`. The production candidate coordinates one connection attempt while the service is absent, then preserves the three independent MetricId-per-pipe subscriptions. Named Pipe v1, telemetry topology and performance budgets are unchanged. Full measurement detail is canonical in `docs/PERFORMANCE.md`.
+
+Corrected exact-base Release comparison: 10 paired fresh-process DISPLAY2 runs, 8-second warm-up and 12-second process-CPU interval. Disconnected median CPU was 3.434% base versus 1.555% candidate (54.71% reduction, 10/10 candidate wins); candidate Working Set/Private Bytes medians were 118.20/134.96 MiB versus 119.42/136.09 MiB. The earlier retained production matrix was excluded because its control and candidate paths were identical; this verdict uses separately built binaries.
+
+Connected checks: visible 5 pairs (median 1.944%/1.556%, paired delta -0.518 points, 3/5 candidate wins); minimized 10 pairs (1.621%/1.620%, paired delta -0.065 points, 5/10 wins). Ten real stop/start cycles recovered all three rows within 0.985–1.054 seconds. Service-absent startup showed truthful unavailable rows by 5.834 seconds and restored all rows 0.970 seconds after a real pipe-v1 accepted subscribe. A clean-EOF hold and close-during-connect checks passed; lifecycle and truth-state details are in `docs/PERFORMANCE.md`.
+
+Local validation: Release solution build PASS (0 warnings/errors); Core/Telemetry/Integration 39/397/22 (458/458, zero skipped); focused Named Pipe tests 10/10; `git diff --check` and configured repository/private-file checks are recorded with the final PR receipt. The read-only GPT-6.1 Sol Medium review returned PASS after the clean-EOF fix. PR and exact-head hosted results will be recorded below before handoff.
+
+## Historical — CER-M4-003 WidgetHost CPU isolation handoff
 
 Verdict: `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`. Base `0c6c68447cefbb12978f681f6d393024189b5025`; branch `codex/CER-M4-003-widgethost-cpu`. All decisive runs opened WidgetHost on `DISPLAY2` with a fresh Release process, 8-second warm-up and 12-second process CPU-time interval. The canonical experimental matrix, counts, median/ranges and uncertainty are in `docs/PERFORMANCE.md`; raw logs and disposable variants stayed outside the repository.
 

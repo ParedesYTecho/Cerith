@@ -1,8 +1,8 @@
-# State — CER-M4-003 WidgetHost CPU path isolation
+# State — CER-M4-004 WidgetHost reconnect CPU
 
-Current disposition (2026-10-06): CER-M4-003 is complete at its bounded isolation scope with verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`. On the real secondary display, receive/presentation, WinUI row application and disconnected pending Named Pipe connections each show material WidgetHost CPU cost. The identical-presentation guard works. Disposable equality-write and timeout/retry variants did not establish a correction that both clearly improves CPU and preserves the current recovery behavior. No product code, dependency, project, accessibility, IPC contract or performance budget changed. The experimental matrix and uncertainty are canonical in `docs/PERFORMANCE.md`.
+Current disposition (2026-10-07): CER-M4-004 is complete with verdict `PERFORMANCE_RECONNECT_FIX_VERIFIED`. WidgetHost coordinates one availability-establishing connection attempt while TelemetryService is unavailable; after acceptance, the existing loops create their own Named Pipe clients and MetricId subscriptions. Clean EOF and exceptional termination both invalidate the local availability state. The ten-pair disconnected comparison reduced median CPU by 54.71%; ten real restart cycles recovered all three metrics within 1.054 seconds. Full evidence is canonical in `docs/PERFORMANCE.md`.
 
-M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. Independent Advisor review accepted CER-M4-003's bounded isolation evidence; no product fix was adopted. The next product task must evaluate bounded reconnect coordination against the provisional recovery envelope in `docs/PERFORMANCE.md`; shared/multiplexed telemetry data connections are not authorized. No M5, taskbar/tray or OSD work began. Local checks are recorded in `.agent/TASKS.md`; hosted checks belong to the exact documentation PR head.
+M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. No M5, taskbar/tray or OSD work began, and performance budgets are unchanged. The candidate PR remains unmerged; exact-head hosted checks are recorded in `.agent/HANDOFF.md`.
 
 ## Historical — CER-M4-002 WidgetHost performance attribution
 

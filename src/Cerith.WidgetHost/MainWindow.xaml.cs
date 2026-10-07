@@ -24,6 +24,10 @@ public sealed partial class MainWindow : Window
 
     private readonly MetricReadout[] _readouts;
     private readonly CancellationTokenSource _stop = new();
+    // ponytail: one local availability attempt; split only if a second service endpoint is added.
+    private readonly object _connectionAttemptLock = new();
+    private TaskCompletionSource<bool>? _connectionAttempt;
+    private bool _serviceAvailable;
     private Task? _readTask;
     private bool _closing;
 
@@ -67,11 +71,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 await using var client = new NamedPipeMetricClient(MetricIpcProtocol.LocalPipeName);
-                using (var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-                {
-                    connect.CancelAfter(TimeSpan.FromSeconds(5));
-                    await client.ConnectAsync(spec.MetricId, connect.Token);
-                }
+                await ConnectCoordinatedAsync(client, spec.MetricId, cancellationToken);
 
                 using var receiveTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 receiveTimeout.CancelAfter(TimeSpan.FromSeconds(5));
@@ -81,10 +81,12 @@ public sealed partial class MainWindow : Window
                     if (snapshot.MetricId != spec.MetricId) throw new InvalidDataException("Unexpected metric ID.");
                     readout.Apply(snapshot);
                 }
+                MarkConnectionUnavailable();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
             catch (Exception)
             {
+                MarkConnectionUnavailable();
                 Debug.WriteLine($"Metric subscription interrupted for {spec.MetricId}; reconnecting.");
             }
 
@@ -92,6 +94,90 @@ public sealed partial class MainWindow : Window
             try { await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); }
             catch (OperationCanceledException) { break; }
         }
+    }
+
+    private async Task ConnectCoordinatedAsync(NamedPipeMetricClient client, MetricId metricId, CancellationToken cancellationToken)
+    {
+        TaskCompletionSource<bool>? attempt;
+        var ownsAttempt = false;
+        lock (_connectionAttemptLock)
+        {
+            if (_serviceAvailable)
+            {
+                attempt = null;
+            }
+            else
+            {
+                attempt = _connectionAttempt;
+                if (attempt is null)
+                {
+                    attempt = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _connectionAttempt = attempt;
+                    ownsAttempt = true;
+                }
+            }
+        }
+
+        if (attempt is null)
+        {
+            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
+            MarkConnectionAvailable();
+            return;
+        }
+
+        if (!ownsAttempt)
+        {
+            if (!await attempt.Task.WaitAsync(cancellationToken))
+                throw new IOException("TelemetryService connection attempt failed.");
+
+            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
+            MarkConnectionAvailable();
+            return;
+        }
+
+        try
+        {
+            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
+            MarkConnectionAvailable();
+        }
+        catch
+        {
+            lock (_connectionAttemptLock)
+            {
+                if (ReferenceEquals(_connectionAttempt, attempt))
+                {
+                    _connectionAttempt = null;
+                    _serviceAvailable = false;
+                }
+            }
+            attempt.TrySetResult(false);
+            throw;
+        }
+    }
+
+    private static async Task ConnectWithTimeoutAsync(NamedPipeMetricClient client, MetricId metricId, CancellationToken cancellationToken)
+    {
+        using var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        connect.CancelAfter(TimeSpan.FromSeconds(5));
+        await client.ConnectAsync(metricId, connect.Token);
+    }
+
+    private void MarkConnectionAvailable()
+    {
+        TaskCompletionSource<bool>? attempt;
+        lock (_connectionAttemptLock)
+        {
+            _serviceAvailable = true;
+            attempt = _connectionAttempt;
+            _connectionAttempt = null;
+        }
+        attempt?.TrySetResult(true);
+    }
+
+    private void MarkConnectionUnavailable()
+    {
+        lock (_connectionAttemptLock)
+            _serviceAvailable = false;
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
