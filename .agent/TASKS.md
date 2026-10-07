@@ -2,7 +2,7 @@
 
 ## CER-M4-003 — Isolate and correct WidgetHost CPU regression
 
-Status: DONE at bounded isolation scope — verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`; documentation PR awaits independent review. M4 remains ACTIVE / INCOMPLETE.
+Status: DONE at bounded isolation scope — verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`; independent Advisor review accepted the evidence as cost-category isolation, not an exact profiler-stack root cause. No product fix was adopted. M4 remains ACTIVE / INCOMPLETE; M3 remains DONE; M7 remains NOT STARTED.
 Owner: Codex — sole repository write owner; no parallel writer.
 Branch: `codex/CER-M4-003-widgethost-cpu`
 Base: `0c6c68447cefbb12978f681f6d393024189b5025` (`main == origin/main`, clean tree after fetch before claim).

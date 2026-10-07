@@ -8,7 +8,7 @@ With the service absent, one versus three subscriptions measured 1.425% versus 3
 
 Local validation: canonical Release build passed with 0 warnings/errors; Core/Telemetry/Integration suites passed 39/397/22 (458/458, zero skipped), and focused MetricPresentation passed 12/12. Diff, tracked filename hygiene and added-line private-data scan passed. No product code, test, package or project file changed. Hosted PR checks must be read on the exact pushed head; a CodeQL skip is not a pass.
 
-Next action: independently review this documentation PR and decide the next M4 correction's acceptable recovery latency and bounded UI/connection approach; any shared connection design needs Advisor review. M4 remains ACTIVE / INCOMPLETE. M3 remains DONE; M5/M7, taskbar/tray, OSD and budget revision remain outside this task.
+CER-M4-003 is DONE at bounded isolation scope. Independent Advisor review accepted the evidence as cost-category isolation, not an exact profiler-stack root cause; no product fix was adopted. The next product task must evaluate bounded reconnect coordination against the provisional recovery envelope in `docs/PERFORMANCE.md`, preserving independent MetricId connections. Shared/multiplexed telemetry data connections are not authorized. M4 remains ACTIVE / INCOMPLETE; M3 remains DONE; M7 remains NOT STARTED. M5, taskbar/tray, OSD and budget revision remain outside this task.
 
 ## Historical — CER-M4-002 handoff
 

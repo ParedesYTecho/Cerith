@@ -2,7 +2,7 @@
 
 Current disposition (2026-10-06): CER-M4-003 is complete at its bounded isolation scope with verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`. On the real secondary display, receive/presentation, WinUI row application and disconnected pending Named Pipe connections each show material WidgetHost CPU cost. The identical-presentation guard works. Disposable equality-write and timeout/retry variants did not establish a correction that both clearly improves CPU and preserves the current recovery behavior. No product code, dependency, project, accessibility, IPC contract or performance budget changed. The experimental matrix and uncertainty are canonical in `docs/PERFORMANCE.md`.
 
-M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. Next M4 decision: agree on a service-recovery latency envelope and review a bounded rendering/connection approach against the measured cost, with Advisor review before any shared connection design. No M5, taskbar/tray or OSD work began. Local checks are recorded in `.agent/TASKS.md`; hosted checks belong to the exact documentation PR head.
+M4 remains ACTIVE / INCOMPLETE; M3 is DONE; M7 is NOT STARTED. Independent Advisor review accepted CER-M4-003's bounded isolation evidence; no product fix was adopted. The next product task must evaluate bounded reconnect coordination against the provisional recovery envelope in `docs/PERFORMANCE.md`; shared/multiplexed telemetry data connections are not authorized. No M5, taskbar/tray or OSD work began. Local checks are recorded in `.agent/TASKS.md`; hosted checks belong to the exact documentation PR head.
 
 ## Historical — CER-M4-002 WidgetHost performance attribution
 
