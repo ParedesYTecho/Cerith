@@ -53,6 +53,51 @@ CER-M4-001 improved memory relative to the immediate pre-M4 host by about 2.6 Mi
 
 Required follow-up before M4 exit: isolate the current connected update path and disconnected reconnect path with the same process-time protocol, identify the concrete operation(s) responsible for the approximately 1% connected and approximately 2% disconnected CPU, then make the smallest evidence-backed correction. Do not change IPC semantics, WinUI/.NET versions, deployment mode, accessibility, truthful metric states or performance budgets merely to improve the benchmark.
 
+## CER-M4-003 WidgetHost CPU path isolation
+
+Date: 2026-10-06. Verdict: **PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED**. The connected cost has a measurable receive/scheduling floor and a second cost when the WinUI row is applied; the changing CPU value drives almost every row application. Disconnected CPU scales with concurrent pending `ConnectAsync` attempts. No product code or performance budget changed. The measured local alternatives either did not improve CPU consistently or traded CPU for a longer possible service-recovery wait. Changing the rendering strategy or connection topology needs a separate M4/Advisor decision.
+
+This study reused CER-M4-002's external process-time harness: Release, fresh WidgetHost process per run, 8-second warm-up, 12-second CPU interval, one-second Working Set/Private Bytes samples, five runs per condition, no debugger. CPU is percent of one logical/core-equivalent CPU, not whole-machine percent. All CER-M4-003 decisive runs opened Cerith on secondary `\\.\DISPLAY2` (1280x720); the harness moved the window before warm-up and checked the monitor before and after visible sampling. Minimized runs checked placement before minimizing. The disposable variants copied the current WidgetHost sources outside the repository and kept the same three real Named Pipe subscriptions unless the row below says otherwise. Counters were kept in memory and written only on normal close. Counter totals cover about 20 seconds per process, including warm-up; CPU percentages cover only the following 12-second interval. Raw logs and variants remain outside the repository.
+
+| Connected condition on DISPLAY2 | Runs | CPU % of one core, median (range) | Working Set MiB | Private MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Receive and validate only; no presentation/UI | 5 | 1.038 (0.778–1.168) | 126.88 | 138.39 |
+| Receive plus `MetricPresentation.Create`; no UI | 5 | 1.038 (1.038–1.557) | 126.85 | 138.20 |
+| Visible row updates, without `AutomationProperties.SetName` | 5 | 1.946 (1.686–2.335) | 126.93 | 138.38 |
+| Full path, disposable instrumented host | 5 | 2.206 (1.686–2.465) | 127.11 | 138.36 |
+| Untouched canonical WidgetHost, visible | 5 | 2.074 (1.946–2.204) | 125.88 | 137.96 |
+| Untouched canonical WidgetHost, minimized | 5 | 1.556 (1.426–2.204) | 125.90 | 138.16 |
+
+The five-run counter totals were 405 snapshots in receive-only and 408 in each other three-subscription stage. The full stage produced 408 presentations but applied the row only 112 times; the no-Automation-name stage applied it 111 times. Per-metric full-stage snapshots were CPU/FPS/Codex = 102/204/102, approximately 1/2/1 per second across each process. Thus the existing identical-presentation guard works. Formatting added no detectable median CPU. Applying the row added a substantial cost even without Automation name mutation; the additional name-mutation difference overlaps the run ranges and is not a reason to remove accessibility.
+
+| Full UI, one real subscription | Runs | CPU % of one core, median (range) | Snapshots over five process lifetimes | Row applications |
+| --- | ---: | ---: | ---: | ---: |
+| `cpu.total.usage` | 5 | 2.594 (2.205–2.851) | 103 | 103 |
+| `game.fps.display` | 5 | 0.778 (0.649–0.908) | 205 | 5 |
+| `ai.codex.quota.primary.remaining` | 5 | 0.778 (0.649–1.037) | 102 | 5 |
+| All three | 5 | 2.206 (1.686–2.465) | 408 | 112 |
+
+The single-metric results associate most changing-row work with CPU, while FPS arrives twice as often but normally presents the same stopped state. They do not form additive per-metric costs: CPU-only exceeded the earlier all-three median, showing temporal host variation. The untouched canonical visible median was 2.074% in this session versus CER-M4-002's 1.102%; compare conditions within this session rather than treating either session as a universal idle number.
+
+Two further disposable UI ablations tested simple fixes without touching product code. A field-by-field equality check kept the accessibility name current but avoided redundant text/state/confidence/opacity assignments. In five alternating full/selective pairs, the full-minus-selective CPU differences were +0.905, +0.129, +0.648, -0.389 and +0.001 percentage points: the direction was not consistent. Suppressing only the visible value assignment in another five pairs likewise varied from -0.389 to +1.428 points. Neither establishes a reliable single-property correction; suppressing a real changing value is not acceptable product behavior.
+
+| Service absent on DISPLAY2 | Runs | CPU % of one core, median (range) | Attempts / timed-out failures over five process lifetimes | Aggregate time inside `ConnectAsync` |
+| --- | ---: | ---: | ---: | ---: |
+| One subscription; 5 s connect, 1 s outer delay | 5 | 1.425 (0.648–1.554) | 20 / 15 | 87.2 s |
+| Three subscriptions; current 5 s connect, 1 s delay | 5 | 3.484 (2.460–5.308) | 60 / 45 | 261.5 s |
+| Three; 5 s connect, 5 s delay | 5 | 1.941 (1.682–3.754) | 45 / 30 | 156.0 s |
+| Three; 5 s connect, 10 s delay | 5 | 1.296 (0.130–2.463) | 30 / 30 | 150.1 s |
+| Three; 500 ms connect, 1 s delay | 5 | 2.722 (2.204–3.370) | 210 / 210 | 105.5 s |
+| Three; 1 s connect, 1 s delay | 5 | 3.242 (2.590–4.927) | 165 / 150 | 156.9 s |
+
+The aggregate connection time sums concurrent subscription waits, so it may exceed process wall time. Absent-server failures normally timed out rather than returning immediately. Longer outer delays reduced both time spent in pending connections and CPU. The 500 ms condition created far more cancellation exceptions yet used less CPU than the current five-second wait, so exception construction is not the dominant cause. `Debug.WriteLine` calls are conditional and omitted from the Release build; no debugger was attached. The current one-second outer delay contributes to how often a new five-second pending connect starts, but the pending connection occupies most disconnected time. A longer delay can add up to that delay to service recovery, and the shorter connect timeouts have overlapping CPU ranges and less margin than the observed 100–200 ms healthy subscribe handshakes. No retry or timeout policy was adopted solely for its benchmark result.
+
+One native lifecycle check on DISPLAY2 observed real CPU `Fresh/Measured`, FPS `Stopped/Unknown` without a selected PID, and Codex `Error · route_unsupported/Unknown`; all three became `Unavailable/No snapshot` 318 ms after stopping the service, then CPU returned to Fresh 2069 ms after launching the service again. The widget closed normally. These are single transition timings, not a recovery-latency distribution. A profiler trace was not collected: `dotnet-trace` was unavailable, and although Windows Performance Recorder was present, no cheap stack-analysis path was available. No stack-level attribution is claimed.
+
+The correction gate remains deferred. Independent Advisor review accepted `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED` as cost-category isolation, not an exact profiler-stack root cause. The property-level guard did not show a stable gain; no product fix was adopted. There is no post-fix before/after claim, no added dependency, project, or abstraction, and M4 remains ACTIVE / INCOMPLETE.
+
+For the next product task only, the Advisor permits experimental evaluation of bounded process-level reconnect coordination, such as single-flight or serialized connection attempts: evaluate at most one expensive absent-service `ConnectAsync` attempt at a time. Existing MetricId-per-subscription/per-pipe semantics remain unchanged; after service availability is restored, individual subscriptions still establish independent connections. This is reconnect coordination; shared/multiplexed telemetry data connections are not authorized. Measure recovery from a clearly observed TelemetryService-ready point to restored WidgetHost data against a provisional envelope of normally <= 3 seconds and approximately <= 5 seconds on a controlled healthy host; do not adopt 10+ second recovery solely to improve idle CPU. Verify any candidate on the same display and service states. This experimental boundary is not implemented by CER-M4-003 and does not revise performance budgets.
+
 ## Cadence
 
 Different sources require different refresh rates.

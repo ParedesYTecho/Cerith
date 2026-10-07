@@ -1,5 +1,15 @@
 # Tasks
 
+## CER-M4-003 — Isolate and correct WidgetHost CPU regression
+
+Status: DONE at bounded isolation scope — verdict `PERFORMANCE_CAUSE_ISOLATED_FIX_DEFERRED`; independent Advisor review accepted the evidence as cost-category isolation, not an exact profiler-stack root cause. No product fix was adopted. M4 remains ACTIVE / INCOMPLETE; M3 remains DONE; M7 remains NOT STARTED.
+Owner: Codex — sole repository write owner; no parallel writer.
+Branch: `codex/CER-M4-003-widgethost-cpu`
+Base: `0c6c68447cefbb12978f681f6d393024189b5025` (`main == origin/main`, clean tree after fetch before claim).
+Scope: disposable Release isolation of connected snapshot, presentation, UI and disconnected retry costs; minimal evidence-backed correction only if warranted. No M5, M7, tray/taskbar, OSD, new framework/dependency/project or budget revision.
+Result: DISPLAY2 five-run stages isolated a 1.038% receive/presentation floor, 1.946% UI-without-Automation-name and 2.206% full-path median. The equality guard reduced 408 presentations to 112 UI applications; CPU changed on nearly every snapshot. Disconnected one/three-subscription medians were 1.425%/3.484%, with pending `ConnectAsync` time tracking CPU. Selective UI mutation did not improve consistently, while longer retries reduce CPU at the cost of possible recovery delay. No product correction met the Phase B gate. Full matrix, counts, limitations and native lifecycle evidence: `docs/PERFORMANCE.md`.
+Validation: canonical Release build 0 warnings/errors; Core 39/39, Telemetry 397/397, Integration 22/22 (458/458, zero skipped); focused MetricPresentation 12/12; diff/private-data/filename checks passed. No product file, runtime dependency, project or new abstraction. Hosted CI disposition belongs to the exact PR head and must be checked there.
+
 ## CER-M4-002 — Attribute the WidgetHost native performance baseline
 
 Status: DONE at bounded attribution scope. Verdict: `PERFORMANCE_ACTION_REQUIRED`; M4 remains ACTIVE / INCOMPLETE.
