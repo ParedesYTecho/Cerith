@@ -1,10 +1,10 @@
 # State — CER-M4-005 MetricId binding contract
 
-Current candidate: `METRIC_BINDING_CONTRACT_VERIFIED` on `codex/CER-M4-005-metric-binding`, based on canonical `b9449ae7358d09acdbc8dfaffa24c114370d33e0`. PR #57 is OPEN / UNMERGED. Pre-reconciliation head `d70d9a056fa94d7a5b6822f331d5c210de8e21c4` passed hosted Build and Test and Repository Quality; CodeQL was SKIPPED. The current exact-head result is on PR #57. Release build, full local tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium review (`PASS`) are complete. `main` remains unchanged.
+CER-M4-005 is DONE at bounded task scope; technical verdict: `METRIC_BINDING_CONTRACT_VERIFIED`. Reviewed candidate head `4cd329d1139a1c3b2d620c87af92323e8696ad39` passed exact-head Build and Test (run 37680696512) and Repository Quality (run 37680696546); CodeQL was SKIPPED (run 37680696518), not a security PASS. Release build, full local tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium review (`PASS`) are complete. D-025 records the accepted MetricId descriptor-binding contract; Git history and PR #57 are authoritative for the integration receipt.
 
 M4 remains ACTIVE / INCOMPLETE; M0–M3 are DONE; M5, M6 and M7 remain NOT STARTED. No taskbar/tray or gaming OSD work began, and performance budgets are unchanged. Independent exact-MetricId pipes and CER-M4-004 reconnect coordination remain required.
 
-Next: hold PR #57 OPEN / UNMERGED pending user review. Do not begin CER-M4-006.
+Next: await Advisor-controlled integration/next-task decision. Do not begin CER-M4-006.
 
 ## Historical — CER-M4-004 WidgetHost reconnect CPU
 
