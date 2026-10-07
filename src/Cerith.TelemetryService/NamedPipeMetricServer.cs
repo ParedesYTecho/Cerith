@@ -14,7 +14,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Cerith.TelemetryService;
 
-public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
+public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus, MetricRegistry registry)
 {
     private const uint PipeAccessDuplex = 0x00000003;
     private const uint FileFlagOverlapped = 0x40000000;
@@ -22,6 +22,7 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
 
     private readonly string _pipeName = ValidateName(pipeName);
     private readonly MetricBus _bus = bus ?? throw new ArgumentNullException(nameof(bus));
+    private readonly MetricRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
@@ -80,14 +81,22 @@ public sealed class NamedPipeMetricServer(string pipeName, MetricBus bus)
         // MoveNextAsync enters MetricBus.Subscribe and installs its subscription before accepted.
         var next = subscription.MoveNextAsync().AsTask();
         var disconnected = pipe.ReadAsync(new byte[1], session.Token).AsTask();
+        _registry.TryGet(id, out var descriptor);
         try
         {
-            await MetricIpcProtocol.WriteAcceptedAsync(pipe, session.Token).ConfigureAwait(false);
+            await MetricIpcProtocol.WriteAcceptedAsync(pipe, descriptor, session.Token).ConfigureAwait(false);
             while (true)
             {
                 if (await Task.WhenAny(next, disconnected).ConfigureAwait(false) == disconnected) break;
                 if (!await next.ConfigureAwait(false)) break;
-                await MetricIpcProtocol.WriteSnapshotAsync(pipe, subscription.Current, session.Token).ConfigureAwait(false);
+                MetricDescriptor? lateDescriptor = null;
+                if (descriptor is null)
+                {
+                    _registry.TryGet(id, out lateDescriptor);
+                    descriptor = lateDescriptor;
+                }
+                await MetricIpcProtocol.WriteSnapshotAsync(pipe, subscription.Current,
+                    lateDescriptor, session.Token).ConfigureAwait(false);
                 next = subscription.MoveNextAsync().AsTask();
             }
         }

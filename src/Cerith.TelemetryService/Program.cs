@@ -42,7 +42,7 @@ internal static class Program
         using var gamingProvider = new PresentMonTelemetryProvider(registry, bus, processId);
 
         Console.CancelKeyPress += (_, args) => { args.Cancel = true; stop.Cancel(); };
-        var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(MetricIpcProtocol.LocalPipeName, bus, registry).RunAsync(stop.Token);
         if (server.IsCompleted) await server;
         var discovered = provider.Discovered;
         Console.WriteLine($"Hardware discovered: cpu={discovered.Cpu} gpu={discovered.Gpu} storage={discovered.Storage} network={discovered.Network}; zero means not discovered, cause unknown.");

@@ -15,6 +15,9 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
 {
     private readonly string _pipeName = pipeName;
     private NamedPipeClientStream? _pipe;
+    private MetricId? _metricId;
+
+    public MetricDescriptor? Descriptor { get; private set; }
 
     public async Task ConnectAsync(MetricId metricId, CancellationToken cancellationToken = default)
     {
@@ -26,7 +29,11 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
         {
             await pipe.ConnectAsync(cancellationToken).ConfigureAwait(false);
             await MetricIpcProtocol.WriteSubscribeAsync(pipe, metricId, cancellationToken).ConfigureAwait(false);
-            await MetricIpcProtocol.ReadAcceptedAsync(pipe, cancellationToken).ConfigureAwait(false);
+            var descriptor = await MetricIpcProtocol.ReadAcceptedAsync(pipe, cancellationToken).ConfigureAwait(false);
+            if (descriptor is not null && descriptor.Id != metricId)
+                throw new InvalidDataException("Accepted descriptor does not match the requested MetricId.");
+            _metricId = metricId;
+            Descriptor = descriptor;
             _pipe = pipe;
         }
         catch { await pipe.DisposeAsync().ConfigureAwait(false); throw; }
@@ -38,10 +45,18 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
         var pipe = _pipe ?? throw new InvalidOperationException("Client is not connected.");
         while (true)
         {
-            MetricSnapshot snapshot;
-            try { snapshot = await MetricIpcProtocol.ReadSnapshotAsync(pipe, cancellationToken).ConfigureAwait(false); }
+            (MetricSnapshot Snapshot, MetricDescriptor? Descriptor) frame;
+            try { frame = await MetricIpcProtocol.ReadSnapshotFrameAsync(pipe, cancellationToken).ConfigureAwait(false); }
             catch (EndOfStreamException) { yield break; }
-            yield return snapshot;
+            if (frame.Snapshot.MetricId != _metricId)
+                throw new InvalidDataException("Snapshot MetricId does not match the subscription.");
+            if (frame.Descriptor is not null)
+            {
+                if (Descriptor is not null)
+                    throw new InvalidDataException("Metric descriptor was sent more than once.");
+                Descriptor = frame.Descriptor;
+            }
+            yield return frame.Snapshot;
         }
     }
 
@@ -49,5 +64,7 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
     {
         if (_pipe is not null) await _pipe.DisposeAsync().ConfigureAwait(false);
         _pipe = null;
+        _metricId = null;
+        Descriptor = null;
     }
 }

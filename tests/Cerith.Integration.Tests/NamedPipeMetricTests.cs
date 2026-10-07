@@ -23,9 +23,10 @@ public sealed class NamedPipeMetricTests
     public async Task ConcurrentClientsKeepExactSubscriptionsAndShutDownTogether()
     {
         using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
         var idA = new MetricId("metric.a");
         var idB = new MetricId("metric.b");
         await using var a = new NamedPipeMetricClient(name);
@@ -79,15 +80,18 @@ public sealed class NamedPipeMetricTests
     public async Task SyntheticSnapshotTraversesPipeAndReconnectsWithoutReplay()
     {
         using var bus = new MetricBus(1);
-        var provider = new SyntheticProvider(new MetricRegistry(), bus);
+        var registry = new MetricRegistry();
+        var provider = new SyntheticProvider(registry, bus);
+        Assert.IsTrue(provider.TryRegister());
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
 
         await provider.PublishNextAsync(stop.Token);
         await using (var first = new NamedPipeMetricClient(name))
         {
             await first.ConnectAsync(provider.Descriptor.Id, stop.Token);
+            Assert.AreEqual(provider.Descriptor.DisplayName, first.Descriptor?.DisplayName);
             await using var reader = first.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
             var pending = reader.MoveNextAsync().AsTask();
             await provider.PublishNextAsync(stop.Token);
@@ -117,12 +121,209 @@ public sealed class NamedPipeMetricTests
     }
 
     [TestMethod]
+    public async Task SubscriptionSurvivesLateDescriptorRegistrationAndBindsOnValuelessSnapshot()
+    {
+        using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var id = new MetricId("late.metric");
+        var pipeName = Name();
+        var server = new NamedPipeMetricServer(pipeName, bus, registry);
+        var serverTask = server.RunAsync(stop.Token);
+        await using var client = new NamedPipeMetricClient(pipeName);
+        try
+        {
+            await client.ConnectAsync(id, stop.Token);
+            Assert.IsNull(client.Descriptor);
+
+            var descriptor = new MetricDescriptor(id, "Late metric", "count", MetricValueKind.Int64);
+            Assert.IsTrue(registry.TryRegister(descriptor));
+            await using var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+            var pending = reader.MoveNextAsync().AsTask();
+            await bus.PublishAsync(new MetricSnapshot(id, null, DateTimeOffset.UtcNow, MetricState.Unavailable,
+                MetricConfidence.Unknown), stop.Token);
+            Assert.IsTrue(await pending.WaitAsync(stop.Token));
+            Assert.AreEqual(MetricState.Unavailable, reader.Current.State);
+            Assert.IsNull(reader.Current.Value);
+            Assert.AreEqual(id, client.Descriptor?.Id);
+            Assert.AreEqual("Late metric", client.Descriptor?.DisplayName);
+            Assert.IsNull(client.Descriptor?.Unit);
+            Assert.IsNull(client.Descriptor?.Description);
+
+            pending = reader.MoveNextAsync().AsTask();
+            await bus.PublishAsync(new MetricSnapshot(id, MetricValue.From(4L), DateTimeOffset.UtcNow,
+                MetricState.Fresh, MetricConfidence.Measured), stop.Token);
+            Assert.IsTrue(await pending.WaitAsync(stop.Token));
+            Assert.AreEqual(4L, reader.Current.Value!.Value.AsInt64());
+            Assert.AreEqual(id, client.Descriptor?.Id);
+        }
+        finally
+        {
+            stop.Cancel();
+            await serverTask.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
+    public async Task ReconnectToDescriptorFreeServerUsesFallbackUntilLateMetadataArrives()
+    {
+        var id = new MetricId("reconnect.metric");
+        var pipeName = Name();
+        var previousDescriptor = new MetricDescriptor(id, "Previous metric", "percentage",
+            MetricValueKind.Double, unit: "%");
+        using (var firstBus = new MetricBus(1))
+        using (var firstStop = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+        {
+            var firstRegistry = new MetricRegistry();
+            Assert.IsTrue(firstRegistry.TryRegister(previousDescriptor));
+            var firstServer = new NamedPipeMetricServer(pipeName, firstBus, firstRegistry).RunAsync(firstStop.Token);
+            await using (var first = new NamedPipeMetricClient(pipeName))
+            {
+                await first.ConnectAsync(id, firstStop.Token);
+                Assert.AreEqual(previousDescriptor.DisplayName, first.Descriptor?.DisplayName);
+            }
+            firstStop.Cancel();
+            await firstServer.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        using var bus = new MetricBus(1);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var registry = new MetricRegistry();
+        var server = new NamedPipeMetricServer(pipeName, bus, registry).RunAsync(stop.Token);
+        try
+        {
+            await using var client = new NamedPipeMetricClient(pipeName);
+            await client.ConnectAsync(id, stop.Token);
+            Assert.IsNull(client.Descriptor);
+
+            var spec = new MetricPresentationSpec(id, "0");
+            var fallback = MetricPresentation.Create(spec, client.Descriptor,
+                new MetricSnapshot(id, MetricValue.From(42L), DateTimeOffset.UtcNow,
+                    MetricState.Fresh, MetricConfidence.Measured));
+            Assert.AreEqual("42", fallback.ValueText);
+
+            var lateDescriptor = new MetricDescriptor(id, "Current metric", "count", MetricValueKind.Int64,
+                unit: "items");
+            Assert.IsTrue(registry.TryRegister(lateDescriptor));
+            await using var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+            var pending = reader.MoveNextAsync().AsTask();
+            await bus.PublishAsync(new MetricSnapshot(id, null, DateTimeOffset.UtcNow, MetricState.Unavailable,
+                MetricConfidence.Unknown), stop.Token);
+            Assert.IsTrue(await pending.WaitAsync(stop.Token));
+            Assert.IsNull(reader.Current.Value);
+            Assert.AreEqual(lateDescriptor.DisplayName, client.Descriptor?.DisplayName);
+
+            pending = reader.MoveNextAsync().AsTask();
+            await bus.PublishAsync(new MetricSnapshot(id, MetricValue.From(42L), DateTimeOffset.UtcNow,
+                MetricState.Fresh, MetricConfidence.Measured), stop.Token);
+            Assert.IsTrue(await pending.WaitAsync(stop.Token));
+            var rebound = MetricPresentation.Create(spec, client.Descriptor, reader.Current);
+            Assert.AreEqual("42 items", rebound.ValueText);
+        }
+        finally
+        {
+            stop.Cancel();
+            await server.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
+    public async Task ClientRejectsDescriptorForWrongIdInAcceptedFrame()
+    {
+        var id = new MetricId("requested.metric");
+        var descriptor = new MetricDescriptor(new MetricId("other.metric"), "Other", "count",
+            MetricValueKind.Int64);
+        var name = Name();
+        await using var server = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serving = Task.Run(async () =>
+        {
+            await server.WaitForConnectionAsync(stop.Token);
+            Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(server, stop.Token));
+            await MetricIpcProtocol.WriteAcceptedAsync(server, descriptor, stop.Token);
+        }, stop.Token);
+        await using var client = new NamedPipeMetricClient(name);
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => client.ConnectAsync(id, stop.Token));
+        await serving.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [TestMethod]
+    public async Task ClientRejectsDescriptorRepeatedAfterAcceptance()
+    {
+        var id = new MetricId("repeated.metric");
+        var descriptor = new MetricDescriptor(id, "Repeated", "count", MetricValueKind.Int64);
+        var name = Name();
+        await using var server = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serving = Task.Run(async () =>
+        {
+            await server.WaitForConnectionAsync(stop.Token);
+            Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(server, stop.Token));
+            await MetricIpcProtocol.WriteAcceptedAsync(server, descriptor, stop.Token);
+            await MetricIpcProtocol.WriteSnapshotAsync(server,
+                new MetricSnapshot(id, MetricValue.From(1L), DateTimeOffset.UtcNow,
+                    MetricState.Fresh, MetricConfidence.Measured), descriptor, stop.Token);
+        }, stop.Token);
+        await using var client = new NamedPipeMetricClient(name);
+        await client.ConnectAsync(id, stop.Token);
+        await using var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => reader.MoveNextAsync().AsTask());
+        await serving.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [TestMethod]
+    public async Task QuietSubscriptionCanBeCanceledAfterFormerReceiveDeadline()
+    {
+        using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var readStop = new CancellationTokenSource();
+        var name = Name();
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
+        await using var client = new NamedPipeMetricClient(name);
+        await client.ConnectAsync(new MetricId("quiet"), stop.Token);
+        await using var reader = client.ReadSnapshotsAsync(readStop.Token).GetAsyncEnumerator();
+        var pending = reader.MoveNextAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(3500), stop.Token);
+        Assert.IsFalse(pending.IsCompleted);
+
+        readStop.Cancel();
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => pending);
+        stop.Cancel();
+        await server.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [TestMethod]
+    public async Task QuietSubscriptionEndsOnPipeClosureAfterFormerReceiveDeadline()
+    {
+        using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var readStop = new CancellationTokenSource();
+        var name = Name();
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
+        await using var client = new NamedPipeMetricClient(name);
+        await client.ConnectAsync(new MetricId("quiet"), stop.Token);
+        await using var reader = client.ReadSnapshotsAsync(readStop.Token).GetAsyncEnumerator();
+        var pending = reader.MoveNextAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(3500), stop.Token);
+        Assert.IsFalse(pending.IsCompleted);
+
+        stop.Cancel();
+        await server.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsFalse(await pending.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [TestMethod]
     public async Task ExactIdAndDisconnectRemoveSubscription()
     {
         using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
         var id = new MetricId("Example.Id");
         await using (var client = new NamedPipeMetricClient(name))
         {
@@ -148,9 +349,10 @@ public sealed class NamedPipeMetricTests
     public async Task ServerAndClientCancellationTerminate()
     {
         using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
         await using (var client = new NamedPipeMetricClient(name))
         {
             await client.ConnectAsync(new MetricId("idle"), stop.Token);
@@ -163,7 +365,7 @@ public sealed class NamedPipeMetricTests
         stop.Cancel();
         await server.WaitAsync(TimeSpan.FromSeconds(5));
         using var waitingStop = new CancellationTokenSource();
-        var waiting = new NamedPipeMetricServer(Name(), bus).RunAsync(waitingStop.Token);
+        var waiting = new NamedPipeMetricServer(Name(), bus, registry).RunAsync(waitingStop.Token);
         waitingStop.Cancel();
         await waiting.WaitAsync(TimeSpan.FromSeconds(5));
     }
@@ -202,19 +404,62 @@ public sealed class NamedPipeMetricTests
     }
 
     [TestMethod]
-    public async Task CodexQuotaIdsAndTypedValuesTraverseTheExistingNamedPipeContract()
+    public async Task DescriptorRoundTripsWithBothOptionalFieldsAndRejectsMismatchedIds()
     {
-        string[] ids =
+        var descriptor = new MetricDescriptor(new MetricId("metric.described"), "Described metric", "count",
+            MetricValueKind.Int64, "Optional description", "tokens");
+        using var accepted = new MemoryStream();
+        await MetricIpcProtocol.WriteAcceptedAsync(accepted, descriptor);
+        accepted.Position = 0;
+        var acceptedDescriptor = await MetricIpcProtocol.ReadAcceptedAsync(accepted);
+        Assert.AreEqual(descriptor.Id, acceptedDescriptor?.Id);
+        Assert.AreEqual(descriptor.DisplayName, acceptedDescriptor?.DisplayName);
+        Assert.AreEqual(descriptor.SemanticType, acceptedDescriptor?.SemanticType);
+        Assert.AreEqual(descriptor.Unit, acceptedDescriptor?.Unit);
+        Assert.AreEqual(descriptor.ValueKind, acceptedDescriptor?.ValueKind);
+        Assert.AreEqual(descriptor.Description, acceptedDescriptor?.Description);
+
+        var snapshot = new MetricSnapshot(descriptor.Id, MetricValue.From(12L), DateTimeOffset.UtcNow,
+            MetricState.Fresh, MetricConfidence.Measured);
+        using var stream = new MemoryStream();
+        await MetricIpcProtocol.WriteSnapshotAsync(stream, snapshot, descriptor);
+        stream.Position = 0;
+        var frame = await MetricIpcProtocol.ReadSnapshotFrameAsync(stream);
+        Assert.AreEqual(snapshot.MetricId, frame.Snapshot.MetricId);
+        Assert.AreEqual(descriptor.Id, frame.Descriptor?.Id);
+        Assert.AreEqual(descriptor.ValueKind, frame.Descriptor?.ValueKind);
+        Assert.AreEqual(descriptor.Description, frame.Descriptor?.Description);
+
+        var mismatched = new MetricDescriptor(new MetricId("metric.other"), "Other", "count",
+            MetricValueKind.String);
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
+            MetricIpcProtocol.WriteSnapshotAsync(new MemoryStream(), snapshot, mismatched));
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
+            MetricIpcProtocol.ReadAcceptedAsync(Frame("{\"Version\":1,\"Kind\":\"accepted\",\"Descriptor\":{}}")));
+        Assert.IsNull(await MetricIpcProtocol.ReadAcceptedAsync(Frame("{\"Version\":1,\"Kind\":\"accepted\"}")));
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => MetricIpcProtocol.ReadSnapshotFrameAsync(Frame(
+            "{\"Version\":1,\"Kind\":\"snapshot\",\"MetricId\":\"metric.described\",\"ValueKind\":2,\"Value\":\"12\",\"ObservedAt\":\"2026-10-07T00:00:00+00:00\",\"State\":0,\"Confidence\":1,\"Descriptor\":{\"Id\":{\"Value\":\"metric.other\"},\"DisplayName\":\"Other\",\"SemanticType\":\"count\",\"Unit\":\"tokens\",\"ValueKind\":2}}")));
+    }
+
+    [TestMethod]
+    public async Task HardwareGamingAndCodexDescriptorsTraverseTheSameNamedPipeContract()
+    {
+        MetricDescriptor[] descriptors =
         [
-            "ai.codex.quota.primary.remaining",
-            "ai.codex.quota.secondary.remaining",
-            "ai.codex.quota.primary.reset",
-            "ai.codex.quota.secondary.reset",
-            "ai.codex.quota.primary.duration",
-            "ai.codex.quota.secondary.duration"
+            new(new MetricId("cpu.total.usage"), "CPU Total Usage", "percentage", MetricValueKind.Double, unit: "%"),
+            new(new MetricId("game.fps.display"), "Displayed FPS", "rate", MetricValueKind.Double, unit: "FPS"),
+            new(new MetricId("ai.codex.quota.primary.remaining"), "Codex Primary Quota Remaining", "quota_remaining", MetricValueKind.Double, unit: "%"),
+            new(new MetricId("ai.codex.quota.secondary.remaining"), "Codex Secondary Quota Remaining", "quota_remaining", MetricValueKind.Double, unit: "%"),
+            new(new MetricId("ai.codex.quota.primary.reset"), "Codex Primary Reset At", "timestamp", MetricValueKind.DateTimeOffset),
+            new(new MetricId("ai.codex.quota.secondary.reset"), "Codex Secondary Reset At", "timestamp", MetricValueKind.DateTimeOffset),
+            new(new MetricId("ai.codex.quota.primary.duration"), "Codex Primary Window Duration", "duration", MetricValueKind.TimeSpan),
+            new(new MetricId("ai.codex.quota.secondary.duration"), "Codex Secondary Window Duration", "duration", MetricValueKind.TimeSpan)
         ];
+        var ids = descriptors.Select(descriptor => descriptor.Id.Value).ToArray();
         MetricValue[] values =
         [
+            MetricValue.From(44.25),
+            MetricValue.From(120.5),
             MetricValue.From(62.75),
             MetricValue.From(87.5),
             MetricValue.From(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)),
@@ -222,22 +467,14 @@ public sealed class NamedPipeMetricTests
             MetricValue.From(TimeSpan.FromHours(5)),
             MetricValue.From(TimeSpan.FromDays(7))
         ];
-        MetricValueKind[] kinds =
-        [
-            MetricValueKind.Double, MetricValueKind.Double,
-            MetricValueKind.DateTimeOffset, MetricValueKind.DateTimeOffset,
-            MetricValueKind.TimeSpan, MetricValueKind.TimeSpan
-        ];
         var registry = new MetricRegistry();
-        for (var i = 0; i < ids.Length; i++)
-            Assert.IsTrue(registry.TryRegister(new MetricDescriptor(new MetricId(ids[i]), ids[i],
-                i < 2 ? "quota_remaining" : i < 4 ? "timestamp" : "duration", kinds[i], unit: i < 2 ? "%" : null)));
-        Assert.AreEqual(6, registry.Count);
+        foreach (var descriptor in descriptors) Assert.IsTrue(registry.TryRegister(descriptor));
+        Assert.AreEqual(descriptors.Length, registry.Count);
 
         using var bus = new MetricBus(1);
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var pipeName = Name();
-        var server = new NamedPipeMetricServer(pipeName, bus);
+        var server = new NamedPipeMetricServer(pipeName, bus, registry);
         var serverTask = server.RunAsync(stop.Token);
         var clients = new NamedPipeMetricClient?[ids.Length];
         var readers = new System.Collections.Generic.IAsyncEnumerator<MetricSnapshot>?[ids.Length];
@@ -248,7 +485,12 @@ public sealed class NamedPipeMetricTests
             {
                 var client = new NamedPipeMetricClient(pipeName);
                 clients[i] = client;
-                await client.ConnectAsync(new MetricId(ids[i]), stop.Token);
+                await client.ConnectAsync(descriptors[i].Id, stop.Token);
+                Assert.AreEqual(descriptors[i].Id, client.Descriptor?.Id);
+                Assert.AreEqual(descriptors[i].DisplayName, client.Descriptor?.DisplayName);
+                Assert.AreEqual(descriptors[i].SemanticType, client.Descriptor?.SemanticType);
+                Assert.AreEqual(descriptors[i].Unit, client.Descriptor?.Unit);
+                Assert.AreEqual(descriptors[i].ValueKind, client.Descriptor?.ValueKind);
                 var reader = client.ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
                 readers[i] = reader;
                 pending[i] = reader.MoveNextAsync().AsTask();
@@ -265,7 +507,7 @@ public sealed class NamedPipeMetricTests
                 var snapshot = readers[i]!.Current;
                 var value = snapshot.Value!.Value;
                 Assert.AreEqual(ids[i], snapshot.MetricId.Value);
-                Assert.AreEqual(kinds[i], value.Kind);
+                Assert.AreEqual(descriptors[i].ValueKind, value.Kind);
                 Assert.AreEqual(values[i], value);
                 Assert.AreEqual(MetricState.Fresh, snapshot.State);
                 Assert.AreEqual(MetricConfidence.Measured, snapshot.Confidence);
@@ -302,9 +544,10 @@ public sealed class NamedPipeMetricTests
     public async Task PipeIsLocalCurrentUserAndRejectsRemoteClients()
     {
         using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
         await using var client = new NamedPipeClientStream(".", name, PipeDirection.InOut,
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         await client.ConnectAsync(stop.Token);
@@ -337,9 +580,10 @@ public sealed class NamedPipeMetricTests
     public async Task BadSubscribeDoesNotStopServer()
     {
         using var bus = new MetricBus(1);
+        var registry = new MetricRegistry();
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var name = Name();
-        var server = new NamedPipeMetricServer(name, bus).RunAsync(stop.Token);
+        var server = new NamedPipeMetricServer(name, bus, registry).RunAsync(stop.Token);
         await using (var invalid = new NamedPipeClientStream(".", name, PipeDirection.InOut,
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly))
         {

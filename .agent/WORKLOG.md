@@ -801,3 +801,21 @@ Historical PR checkpoint (2026-10-07): [PR #56](https://github.com/ParedesYTecho
 ## 2026-10-07 — CER-M4-004 Advisor correction
 
 Removed the unnecessary Ponytail comment from `MainWindow.xaml.cs` and made current CER-M4-004 status wording merge-stable in STATE, TASKS and HANDOFF. Recorded the reviewed candidate's exact-head Build and Test and Repository Quality successes and CodeQL skip; the earlier transient check read is retained only as a clearly historical checkpoint. No reconnect logic, telemetry topology, tests, benchmarks, dependencies, projects or budgets changed.
+
+## 2026-10-07 — CER-M4-005 MetricId binding contract
+
+Implemented shared-registry descriptor binding over Named Pipe v1, preserving exact-ID future-only subscriptions, late one-time metadata and independent pipes. WidgetHost resets descriptor semantics on each accepted connection, including descriptor-free reconnects, and treats post-acceptance silence as waiting. The first independent diff review found stale metadata across reconnect plus missing lifecycle coverage; both were corrected, including described → descriptor-free → late-described, wrong-ID/repeated descriptor, and 3.5-second quiet-read cancellation/EOF regressions. Final read-only GPT-6.1 Sol Medium review returned PASS with no architecture disagreement; exact-head hosted checks remain pending and the PR must stay unmerged.
+
+Release build passed with 0 warnings/errors. Core/Telemetry/Integration passed 39/397/32 (468/468, zero skipped); focused MetricPresentation 15/15, Named Pipe 17/17, and OpenCode descriptor path 1/1. DISPLAY2-only native lifecycle checks and bounded privacy/hygiene scans passed. Graphify re-extracted six source files (3155 nodes, 9461 edges, 179 communities); labels were not regenerated. M4 remains ACTIVE / INCOMPLETE; no M4-006 or M5/M6/M7 work began.
+
+## 2026-10-07 — CER-M4-005 PR and hosted receipt
+
+Opened and attached PR #57 at implementation head `3f75bdc59504c105e52c224177a64cac9382b5f4`; left it unmerged. Hosted Build and Test passed on exact-SHA attempt 3 (Core 39/39, Telemetry 397/397, Integration 32/32; run 37677043748) and Repository Quality passed (run 37677043875). CodeQL was SKIPPED (run 37677043871), not PASS. Attempts 1 and 2 failed on different timing-sensitive Copilot tests; both focused local reruns passed, and the full local suite remained 468/468. This receipt-only documentation commit will trigger another exact-head hosted check run.
+
+The first receipt-only head `00f98499699b40b5c163d3d8cbc00f3b7bc51a39` passed hosted Build and Test (run 37679502912) and Repository Quality (run 37679502643); CodeQL was SKIPPED (run 37679502884). A final documentation-only task-state reconciliation will receive its own exact-head check run; PR #57 remains open and unmerged.
+
+Pre-reconciliation head `d70d9a056fa94d7a5b6822f331d5c210de8e21c4` passed hosted Build and Test (Core 39/39, Telemetry 397/397, Integration 32/32; run 37680210712) and Repository Quality (run 37680210707); CodeQL was SKIPPED (run 37680210735). The final documentation state stops at PR #57 OPEN / UNMERGED; M4 remains ACTIVE / INCOMPLETE and no follow-on task was started.
+
+## 2026-10-07 — CER-M4-005 Advisor merge-stability correction
+
+After Advisor product/architecture PASS, made current STATE, TASKS and HANDOFF merge-stable: CER-M4-005 is DONE at bounded task scope with `METRIC_BINDING_CONTRACT_VERIFIED`, independent of PR-open or main-unchanged wording. Recorded reviewed candidate `4cd329d1139a1c3b2d620c87af92323e8696ad39`: Build and Test SUCCESS (37680696512, attempt 2), Repository Quality SUCCESS (37680696546), CodeQL SKIPPED (37680696518), not PASS. Historical receipts are preserved. This correction changes operational documentation only; runtime, tests, D-025, audit debt, milestones and budgets are unchanged. No local test/benchmark rerun is required; the correction receives exact-head hosted checks on PR #57. No merge or next task was performed.

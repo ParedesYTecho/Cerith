@@ -45,7 +45,7 @@ public sealed class OpenCodeActivityProviderTests
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var provider = new OpenCodeActivityProvider(registry, bus, new OpenCodeActivityReader(database.Path), TimeProvider.System);
         var pipeName = $"Cerith.OpenCodeActivity.{Guid.NewGuid():N}";
-        var serverTask = new NamedPipeMetricServer(pipeName, bus).RunAsync(stop.Token);
+        var serverTask = new NamedPipeMetricServer(pipeName, bus, registry).RunAsync(stop.Token);
         var clients = new NamedPipeMetricClient[MetricIds.Length];
         var readers = new IAsyncEnumerator<MetricSnapshot>[MetricIds.Length];
         var pending = new Task<bool>[MetricIds.Length];
@@ -57,6 +57,8 @@ public sealed class OpenCodeActivityProviderTests
                 var id = new MetricId(MetricIds[i]);
                 clients[i] = new NamedPipeMetricClient(pipeName);
                 await clients[i].ConnectAsync(id, stop.Token);
+                Assert.AreEqual(id, clients[i].Descriptor?.Id);
+                Assert.AreEqual(KindFor(i), clients[i].Descriptor?.ValueKind);
                 readers[i] = clients[i].ReadSnapshotsAsync(stop.Token).GetAsyncEnumerator();
                 pending[i] = readers[i].MoveNextAsync().AsTask();
             }

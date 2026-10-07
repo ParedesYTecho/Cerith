@@ -17,9 +17,9 @@ public sealed partial class MainWindow : Window
 {
     private static readonly MetricPresentationSpec[] Metrics =
     [
-        new(new MetricId("cpu.total.usage"), "CPU total", "0.0", "%"),
-        new(new MetricId("game.fps.display"), "Displayed FPS", "0.0", "FPS"),
-        new(new MetricId("ai.codex.quota.primary.remaining"), "Codex primary quota", "0.0", "%")
+        new(new MetricId("cpu.total.usage"), "0.0"),
+        new(new MetricId("game.fps.display"), "0.0"),
+        new(new MetricId("ai.codex.quota.primary.remaining"), "0.0")
     ];
 
     private readonly MetricReadout[] _readouts;
@@ -71,12 +71,17 @@ public sealed partial class MainWindow : Window
             {
                 await using var client = new NamedPipeMetricClient(MetricIpcProtocol.LocalPipeName);
                 await ConnectCoordinatedAsync(client, spec.MetricId, cancellationToken);
+                var boundDescriptor = client.Descriptor;
+                readout.BindDescriptor(boundDescriptor);
+                readout.ShowWaiting();
 
-                using var receiveTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                receiveTimeout.CancelAfter(TimeSpan.FromSeconds(5));
-                await foreach (var snapshot in client.ReadSnapshotsAsync(receiveTimeout.Token))
+                await foreach (var snapshot in client.ReadSnapshotsAsync(cancellationToken))
                 {
-                    receiveTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                    if (client.Descriptor is { } descriptor && !ReferenceEquals(descriptor, boundDescriptor))
+                    {
+                        readout.BindDescriptor(descriptor);
+                        boundDescriptor = descriptor;
+                    }
                     if (snapshot.MetricId != spec.MetricId) throw new InvalidDataException("Unexpected metric ID.");
                     readout.Apply(snapshot);
                 }
