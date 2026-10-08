@@ -1,3 +1,10 @@
+# State — CER-M4-009 polling acceptance synchronization
+
+CER-M4-006/007/008 are integrated through PR58/59/60. Latest canonical main5ec68f420831a5e953affe2e8bccc753462274d1 matches approved PR60 tree. Exact-head independentPASS and Build/Test37726489070attempt2SUCCESS/Quality37726489131SUCCESS; CodeQL37726489267SKIPPED underD013, notsecurityPASS. Attempt1 had an unchanged Copilot polling-test timeout; actual CIcause unconfirmed. Original100% display scale restored, noownednative runtime.
+
+CER-M4-009 IN PROGRESS, solewriter codex/CER-M4-009-polling-test-sync fromthatbase. Test-only candidate reuses timer-registration synchronization beforevirtualAdvance in two existing sibling acceptance tests and adds one deterministic timing-order check. Final test-project Release0warnings/errors, focused3/3 plus ten repetitions30/30 and fullTelemetry398/398 zero skipped; independent source review PASS, final exact-head review/CI/integration pending. No production/provider/UI/IPC/dependency changes. Native/runtime performance NOTAPPLICABLE for009. M4 ACTIVE/INCOMPLETE; single-monitor96/144DPI verified, mixedmonitorunverified; F7budgets and startupattributionsignal open. M5/M6exitgated; M7excluded. Samequietcontinuation, checkpointbeforequotaexhaustion, noresetcreditaction or monetaryexpense.
+
+## Historical CER-M4-008 state
 # State — CER-M4-008 native DPI investigation
 
 CER-M4-006 is DONE (`COMPOSABLE_METRIC_SURFACE_VERIFIED`) and PR #58 integrated at `905ab5ce09593ad934c9c7aeba8f81bcaf258d17`; final reviewed/integrated trees match. Exact final-head Build and Test / Repository Quality passed; CodeQL SKIPPED under D-013, not security PASS.
