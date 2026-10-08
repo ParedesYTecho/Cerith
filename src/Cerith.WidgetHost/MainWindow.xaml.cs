@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window
     private readonly CancellationTokenSource _stop = new();
     private Task? _readTask;
     private bool _closing;
+    private double _scale;
 
     public MainWindow()
     {
@@ -61,22 +62,30 @@ public sealed partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         Root.Loaded -= OnLoaded;
-        ResizeForScale();
+        UpdateMinimumForScale();
+        if (Root.XamlRoot is { } xamlRoot)
+            xamlRoot.Changed += OnXamlRootChanged;
+        AppWindow.Resize(new SizeInt32(
+            (int)Math.Ceiling(420d * _scale),
+            (int)Math.Ceiling(620d * _scale)));
         if (!_closing)
             _readTask = Task.WhenAll(_subscriptions.Select(subscription => subscription.RunAsync(_stop.Token)));
     }
 
-    private void ResizeForScale()
+    private void OnXamlRootChanged(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        var scale = Root.XamlRoot?.RasterizationScale ?? 1d;
+        if (!_closing && sender.RasterizationScale != _scale)
+            UpdateMinimumForScale();
+    }
+
+    private void UpdateMinimumForScale()
+    {
+        _scale = Root.XamlRoot?.RasterizationScale ?? 1d;
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.PreferredMinimumWidth = (int)Math.Ceiling(360d * scale);
-            presenter.PreferredMinimumHeight = (int)Math.Ceiling(340d * scale);
+            presenter.PreferredMinimumWidth = (int)Math.Ceiling(360d * _scale);
+            presenter.PreferredMinimumHeight = (int)Math.Ceiling(340d * _scale);
         }
-        AppWindow.Resize(new SizeInt32(
-            (int)Math.Ceiling(420d * scale),
-            (int)Math.Ceiling(620d * scale)));
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -84,6 +93,8 @@ public sealed partial class MainWindow : Window
         args.Cancel = true;
         if (_closing) return;
         _closing = true;
+        if (Root.XamlRoot is { } xamlRoot)
+            xamlRoot.Changed -= OnXamlRootChanged;
         _stop.Cancel();
         try
         {

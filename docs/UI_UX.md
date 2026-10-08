@@ -273,7 +273,7 @@ The bounded native demonstration uses CPU total usage and RAM usage (Hardware), 
 
 No component tree is rebuilt for numeric changes. Readout presentation/label equality and bar fill/range/Automation-name guards avoid unnecessary mutation. Native visual, theme, DPI and paired process-performance acceptance must be recorded separately from headless transport/presentation tests.
 
-At 96 DPI, default and minimum sizes passed dark/light inspection and native scrolling. Minimum dimensions belong to the outer AppWindow presenter; do not duplicate them as client Grid minima, because the caption/frame reduce the visible client area and can clip the final component. The bottom range must be fully inside both the native client rectangle and scroll viewport. Higher physical DPI and live scale transitions remain separate F5 acceptance work.
+At 96 DPI, default and minimum sizes passed dark/light inspection and native scrolling. Minimum dimensions belong to the outer AppWindow presenter; do not duplicate them as client Grid minima, because the caption/frame reduce the visible client area and can clip the final component. The bottom range must be fully inside both the native client rectangle and scroll viewport. CER-M4-008 additionally verifies the current surface at actual 144 DPI in both themes and live 96→144→96 transitions on one monitor. Explicit PerMonitorV2 belongs to the build-consumed application manifest; live XamlRoot scale changes update only presenter minima, preserving user sizing. Mixed-monitor hardware transitions remain unverified; detailed native evidence and failed attempts are recorded in TESTING_QA.
 
 ## Native readout overflow conformance
 
