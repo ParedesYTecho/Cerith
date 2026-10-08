@@ -13,6 +13,8 @@ namespace Cerith.WidgetHost;
 
 public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
 {
+    private const int ConnectionProbeMilliseconds = 1;
+    private const int ConnectionRetryMilliseconds = 100;
     private readonly string _pipeName = pipeName;
     private NamedPipeClientStream? _pipe;
     private MetricId? _metricId;
@@ -27,7 +29,20 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         try
         {
-            await pipe.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            // Bound the runtime's missing-pipe spin, then yield without shortening subscribe/ACK.
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await pipe.ConnectAsync(ConnectionProbeMilliseconds, cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+                catch (TimeoutException)
+                {
+                    await Task.Delay(ConnectionRetryMilliseconds, cancellationToken).ConfigureAwait(false);
+                }
+            }
             await MetricIpcProtocol.WriteSubscribeAsync(pipe, metricId, cancellationToken).ConfigureAwait(false);
             var descriptor = await MetricIpcProtocol.ReadAcceptedAsync(pipe, cancellationToken).ConfigureAwait(false);
             if (descriptor is not null && descriptor.Id != metricId)

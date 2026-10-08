@@ -331,6 +331,39 @@ public sealed class MetricSubscriptionTests
     }
 
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    [TestMethod]
+    public async Task StalledAcceptanceUsesExistingDeadlineAndReleasesFollowers()
+    {
+        var name = Name();
+        var gate = new MetricConnectionAttempt();
+        var owner = new MetricSubscription(new MetricId("deadline.owner"), gate, name);
+        var follower = new MetricSubscription(new MetricId("deadline.follower"), gate, name);
+        var ownerUnavailable = Signal();
+        var followerUnavailable = Signal();
+        owner.Updated += state => { if (state.ConnectionState == MetricConnectionState.Unavailable) ownerUnavailable.TrySetResult(); };
+        follower.Updated += state => { if (state.ConnectionState == MetricConnectionState.Unavailable) followerUnavailable.TrySetResult(); };
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var ownerRun = owner.RunAsync(stop.Token);
+        Task? followerRun = null;
+        try
+        {
+            await Task.Delay(350, stop.Token);
+            await using var peer = Peer(name);
+            await peer.WaitForConnectionAsync(stop.Token);
+            Assert.AreEqual(owner.MetricId, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+            followerRun = follower.RunAsync(stop.Token);
+            await Task.WhenAll(ownerUnavailable.Task, followerUnavailable.Task).WaitAsync(TimeSpan.FromSeconds(7));
+            Assert.IsFalse(stop.IsCancellationRequested);
+            Assert.IsNull(owner.Snapshot);
+            Assert.IsNull(follower.Snapshot);
+        }
+        finally
+        {
+            stop.Cancel();
+            await ownerRun;
+            if (followerRun is not null) await followerRun;
+        }
+    }
     private static string Name() => "Cerith.Binding.Test." + Guid.NewGuid().ToString("N");
     private static NamedPipeServerStream Peer(string name) => new(name, PipeDirection.InOut,
         NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte,
