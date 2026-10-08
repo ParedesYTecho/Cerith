@@ -1,5 +1,14 @@
 # Tasks
 
+## CER-M4-008 — Native DPI and scale lifecycle
+
+Status: VERIFIED — NATIVE_DPI_LIFECYCLE_VERIFIED at bounded single-monitor 96/144 DPI scope; final exact-head review/CI/integration pending.
+Owner: Codex — sole writer; independent native/lifecycle reviewers read-only.
+Branch: `codex/CER-M4-008-dpi-lifecycle`.
+Base: `906b25c08bf1bcfbbeef04bf521362c549e89a05` (main/origin-main equal after fetch, clean; PR59 head-pinned squash verified with identical reviewed/integrated trees).
+Scope: remaining F5 actual higher Windows DPI/scaling and live scale transition, default/minimum/scroll/theming/lifecycle of the current native surface. Record original OS scale before any temporary standard-scale change; restore it and verify after validation. No custom scale, sign-out, display-driver/system/security changes or installations. A single monitor can test actual Windows scaling but cannot prove mixed-monitor/hardware transitions. Fix a demonstrated cause minimally using existing native lifecycle APIs, preserving user resizing and truthful telemetry. No new renderer/provider/dependency/project/config/editor/persistence/history/IPC architecture or budget revision. M4 incomplete; F7 open; M5/M6 exit-gated; M7 excluded.
+Acceptance: actual GetDpiForWindow/XamlRoot evidence (no synthetic visual scaling); relevant native dark/light/default/minimum and live-transition checks, reproducible regression and relevant build/tests; independent review, final diff/docs/CI and normal protected integration. A missing/unsafe native scale path remains NOT VERIFIED; continue safe non-conflicting work. Preserve original setting and runtime ownership, checkpoint before interruption.
+
 ## CER-M4-007 — Native readout/value-state conformance
 
 Status: DONE at bounded readout scope at 96 DPI — verdict `NATIVE_READOUT_CONFORMANCE_VERIFIED`; higher physical DPI/scale transitions remain F5 OPEN. Final exact-head review/CI/integration receipts belong to Git/PR history.
