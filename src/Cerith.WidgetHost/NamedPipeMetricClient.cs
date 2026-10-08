@@ -56,6 +56,8 @@ public sealed class NamedPipeMetricClient(string pipeName) : IAsyncDisposable
                     throw new InvalidDataException("Metric descriptor was sent more than once.");
                 Descriptor = frame.Descriptor;
             }
+            if (Descriptor is not null && frame.Snapshot.Value is { } value && value.Kind != Descriptor.ValueKind)
+                throw new InvalidDataException("Snapshot value kind does not match metric descriptor.");
             yield return frame.Snapshot;
         }
     }

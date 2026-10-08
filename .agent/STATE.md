@@ -1,3 +1,15 @@
+# State — CER-M4-006 bounded task accepted
+
+CER-M4-006 is DONE at bounded task scope with verdict `COMPOSABLE_METRIC_SURFACE_VERIFIED`. Source-head `6cbf21afef8586a9de3b353359a3180d84461666` received independent technical/visual PASS and bounded performance acceptance. Exact-head Build and Test passed run 37697605476 attempt 2; attempt 1 failed the existing Copilot oversized-child-output timing assertion. Repository Quality passed 37697605475; CodeQL was SKIPPED (37697605502), not security PASS under D-013. Final documentation-delta review, hosted checks and integration receipts belong to PR #58 and Git history; this acceptance does not assert an unobserved merge.
+
+Four distinct MetricIds feed six native consumers. D-025, exact-ID per-pipe transport, provider acquisition and bounded Wait remain unchanged. Native minimum clipping was corrected by removing duplicated client Grid minima while retaining outer presenter constraints. Release build had 0 warnings/errors; local suites 39/397/67 = 503/503 before the XAML-only correction and Integration 67/67 afterward. Actual-service lifecycle/shared values and dark/light default/minimum containment passed at 96 DPI. Canonical evidence and limits are in docs/TESTING_QA.md and docs/PERFORMANCE.md.
+
+Track C: KEEP_CURRENT_BUS; bounded characterization complete with no blocking implementation-specific performance defect established. Expanded-surface CPU/memory increases remain measured; CPU nonregression and budget achievement are not proven. F3 characterized, F4 regression gap addressed; F5 physical DPI/native conformance and F7 budgets remain before M4 exit. F6/F8 remain public-release debt.
+
+M4 remains ACTIVE / INCOMPLETE; M0–M3 DONE; M5/M6/M7 NOT STARTED. Next: protected head-pinned integration after final documentation gates, verify canonical main/clean tree, then claim bounded F5 native DPI/value-state conformance. Fer authorizes interactive available screens and gated autonomous merges. M5/M6 require independent preceding-milestone closure, integration and documentation; M7 is excluded. One writer and one existing same-chat continuation. Ordinary quota reset was verified on resumption; no reset credits or expenses were used. No owned validation processes remain.
+
+## Historical operational snapshot — CER-M4-005
+
 # State — CER-M4-005 MetricId binding contract
 
 CER-M4-005 is DONE at bounded task scope; technical verdict: `METRIC_BINDING_CONTRACT_VERIFIED`. Reviewed candidate head `4cd329d1139a1c3b2d620c87af92323e8696ad39` passed exact-head Build and Test (run 37680696512) and Repository Quality (run 37680696546); CodeQL was SKIPPED (run 37680696518), not a security PASS. Release build, full local tests (468/468, zero skipped), DISPLAY2 runtime validation and read-only GPT-6.1 Sol Medium review (`PASS`) are complete. D-025 records the accepted MetricId descriptor-binding contract; Git history and PR #57 are authoritative for the integration receipt.

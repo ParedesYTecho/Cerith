@@ -2,7 +2,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,15 +17,18 @@ public sealed partial class MainWindow : Window
     private static readonly MetricPresentationSpec[] Metrics =
     [
         new(new MetricId("cpu.total.usage"), "0.0"),
+        new(new MetricId("ram.usage"), "0.0"),
         new(new MetricId("game.fps.display"), "0.0"),
         new(new MetricId("ai.codex.quota.primary.remaining"), "0.0")
     ];
+    private static readonly MetricBarSpec[] Bars =
+    [
+        new(Metrics[0], 0, 100),
+        new(Metrics[3], 0, 100)
+    ];
 
-    private readonly MetricReadout[] _readouts;
+    private readonly MetricSubscription[] _subscriptions;
     private readonly CancellationTokenSource _stop = new();
-    private readonly object _connectionAttemptLock = new();
-    private TaskCompletionSource<bool>? _connectionAttempt;
-    private bool _serviceAvailable;
     private Task? _readTask;
     private bool _closing;
 
@@ -34,8 +36,24 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = "Cerith";
-        _readouts = Metrics.Select(spec => new MetricReadout(spec)).ToArray();
-        foreach (var readout in _readouts) MetricsPanel.Children.Add(readout);
+        _subscriptions = MetricSubscription.ForDistinctMetrics(
+            Metrics.Select(spec => spec.MetricId).Concat(Bars.Select(bar => bar.Presentation.MetricId)),
+            new MetricConnectionAttempt(), MetricIpcProtocol.LocalPipeName);
+        foreach (var spec in Metrics)
+        {
+            var subscription = _subscriptions.Single(item => item.MetricId == spec.MetricId);
+            var readout = new MetricReadout(spec);
+            MetricsPanel.Children.Add(readout);
+            subscription.Updated += readout.Apply;
+            readout.Apply(subscription);
+            foreach (var barSpec in Bars.Where(bar => bar.Presentation.MetricId == spec.MetricId))
+            {
+                var bar = new MetricBar(barSpec);
+                MetricsPanel.Children.Add(bar);
+                subscription.Updated += bar.Apply;
+                bar.Apply(subscription);
+            }
+        }
         Root.Loaded += OnLoaded;
         AppWindow.Closing += OnClosing;
     }
@@ -45,7 +63,7 @@ public sealed partial class MainWindow : Window
         Root.Loaded -= OnLoaded;
         ResizeForScale();
         if (!_closing)
-            _readTask = Task.WhenAll(Enumerable.Range(0, Metrics.Length).Select(index => ReadAsync(index, _stop.Token)));
+            _readTask = Task.WhenAll(_subscriptions.Select(subscription => subscription.RunAsync(_stop.Token)));
     }
 
     private void ResizeForScale()
@@ -58,130 +76,7 @@ public sealed partial class MainWindow : Window
         }
         AppWindow.Resize(new SizeInt32(
             (int)Math.Ceiling(420d * scale),
-            (int)Math.Ceiling(340d * scale)));
-    }
-
-    private async Task ReadAsync(int index, CancellationToken cancellationToken)
-    {
-        var spec = Metrics[index];
-        var readout = _readouts[index];
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                await using var client = new NamedPipeMetricClient(MetricIpcProtocol.LocalPipeName);
-                await ConnectCoordinatedAsync(client, spec.MetricId, cancellationToken);
-                var boundDescriptor = client.Descriptor;
-                readout.BindDescriptor(boundDescriptor);
-                readout.ShowWaiting();
-
-                await foreach (var snapshot in client.ReadSnapshotsAsync(cancellationToken))
-                {
-                    if (client.Descriptor is { } descriptor && !ReferenceEquals(descriptor, boundDescriptor))
-                    {
-                        readout.BindDescriptor(descriptor);
-                        boundDescriptor = descriptor;
-                    }
-                    if (snapshot.MetricId != spec.MetricId) throw new InvalidDataException("Unexpected metric ID.");
-                    readout.Apply(snapshot);
-                }
-                MarkConnectionUnavailable();
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
-            catch (Exception)
-            {
-                MarkConnectionUnavailable();
-                Debug.WriteLine($"Metric subscription interrupted for {spec.MetricId}; reconnecting.");
-            }
-
-            if (!_closing) readout.ShowUnavailable();
-            try { await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); }
-            catch (OperationCanceledException) { break; }
-        }
-    }
-
-    private async Task ConnectCoordinatedAsync(NamedPipeMetricClient client, MetricId metricId, CancellationToken cancellationToken)
-    {
-        TaskCompletionSource<bool>? attempt;
-        var ownsAttempt = false;
-        lock (_connectionAttemptLock)
-        {
-            if (_serviceAvailable)
-            {
-                attempt = null;
-            }
-            else
-            {
-                attempt = _connectionAttempt;
-                if (attempt is null)
-                {
-                    attempt = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _connectionAttempt = attempt;
-                    ownsAttempt = true;
-                }
-            }
-        }
-
-        if (attempt is null)
-        {
-            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
-            MarkConnectionAvailable();
-            return;
-        }
-
-        if (!ownsAttempt)
-        {
-            if (!await attempt.Task.WaitAsync(cancellationToken))
-                throw new IOException("TelemetryService connection attempt failed.");
-
-            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
-            MarkConnectionAvailable();
-            return;
-        }
-
-        try
-        {
-            await ConnectWithTimeoutAsync(client, metricId, cancellationToken);
-            MarkConnectionAvailable();
-        }
-        catch
-        {
-            lock (_connectionAttemptLock)
-            {
-                if (ReferenceEquals(_connectionAttempt, attempt))
-                {
-                    _connectionAttempt = null;
-                    _serviceAvailable = false;
-                }
-            }
-            attempt.TrySetResult(false);
-            throw;
-        }
-    }
-
-    private static async Task ConnectWithTimeoutAsync(NamedPipeMetricClient client, MetricId metricId, CancellationToken cancellationToken)
-    {
-        using var connect = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        connect.CancelAfter(TimeSpan.FromSeconds(5));
-        await client.ConnectAsync(metricId, connect.Token);
-    }
-
-    private void MarkConnectionAvailable()
-    {
-        TaskCompletionSource<bool>? attempt;
-        lock (_connectionAttemptLock)
-        {
-            _serviceAvailable = true;
-            attempt = _connectionAttempt;
-            _connectionAttempt = null;
-        }
-        attempt?.TrySetResult(true);
-    }
-
-    private void MarkConnectionUnavailable()
-    {
-        lock (_connectionAttemptLock)
-            _serviceAvailable = false;
+            (int)Math.Ceiling(620d * scale)));
     }
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -197,6 +92,7 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { Debug.WriteLine(error); }
         finally
         {
+            foreach (var subscription in _subscriptions) subscription.DetachConsumers();
             _stop.Dispose();
             AppWindow.Closing -= OnClosing;
             Close();

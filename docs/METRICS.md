@@ -75,6 +75,8 @@ ValueKind
 
 WidgetHost binds one exact `MetricId` per pipe. The binding keeps presentation formatting local and takes `DisplayName`, `SemanticType`, `Unit`, and `ValueKind` from the registered `MetricDescriptor`; a present snapshot value must match its descriptor's kind. Protocol v1 may include the descriptor in `accepted` when already registered, or once on the first later snapshot after registration, including a valueless snapshot. Missing metadata does not reject the subscription or create a fallback descriptor; the consumer can show the exact ID while waiting. Metadata is not retransmitted on subsequent snapshots, and this does not add a metric catalog or replay.
 
+WidgetHost local composition deduplicates the exact MetricIds requested by its components: one local subscription/pipe supplies all consumers of that ID. Descriptor/snapshot ownership and reconnect lifetime are defined in [ARCHITECTURE.md](ARCHITECTURE.md); component-specific bar ranges and truthful overflow behavior are defined in [UI_UX.md](UI_UX.md). This adds neither bus replay nor an IPC catalog/multiplexer.
+
 ## Snapshot
 
 Snapshots are immutable. `Value` is optional and uses a typed value kind, not an arbitrary object or JSON value. Supported kinds are `double`, `long`, `decimal`, `bool`, `string`, `DateTimeOffset`, and `TimeSpan`.

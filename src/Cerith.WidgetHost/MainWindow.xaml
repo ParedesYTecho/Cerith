@@ -2,10 +2,7 @@
     x:Class="Cerith.WidgetHost.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid x:Name="Root"
-          MinWidth="360"
-          MinHeight="340"
-          Background="{ThemeResource CerithSurfaceBrush}">
+    <Grid x:Name="Root" Background="{ThemeResource CerithSurfaceBrush}">
         <Grid Padding="24,18,24,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -54,9 +51,9 @@
                         Background="{ThemeResource CerithSeparatorBrush}" />
             </Grid>
 
-            <StackPanel x:Name="MetricsPanel"
-                        Grid.Row="2"
-                        VerticalAlignment="Top" />
+            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
+            </ScrollViewer>
         </Grid>
     </Grid>
 </Window>

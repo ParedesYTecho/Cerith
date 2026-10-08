@@ -264,3 +264,13 @@ Presets share one semantic component system.
 Measured, estimated, stale, unavailable, error and loading states must be visually distinguishable.
 
 A beautiful wrong number is worse than `--`.
+
+## Current composable surface (CER-M4-006)
+
+The bounded native demonstration uses CPU total usage and RAM usage (Hardware), displayed FPS (Gaming), and Codex primary quota remaining (AI). CPU and quota each appear as both `MetricReadout` and `MetricBar`, sharing their exact MetricId stream. FPS remains textual. Native layout and the existing themed edge/state rail are retained; a ScrollViewer accommodates the larger content at the existing minimum size. The intended default is 420×620 logical pixels. This is not the Hardware page, a layout editor or a final container framework.
+
+`MetricBarSpec` supplies a presentation spec plus an explicit finite increasing Minimum/Maximum. Range belongs to the component, not the descriptor; no MetricId, provider, source or unit inference chooses it. The current two percentage bars configure 0–100. A bar embeds the existing readout for descriptor label/unit, actual value, state and confidence, and adds a themed native fill plus range text. Fresh/Stale retain their finite value and confidence, with stale text/opacity; real zero shows an empty valid track. Unavailable/Stopped/Error/Unlimited have no numeric track; Unlimited remains textual. Values above/below range suppress fill and explicitly say Above range/Below range while preserving the actual numeric text. Non-finite or nonnumeric values likewise have no numeric fill. Connecting/Waiting and transport loss show no snapshot/value. Missing metadata uses the exact MetricId without an invented unit.
+
+No component tree is rebuilt for numeric changes. Readout presentation/label equality and bar fill/range/Automation-name guards avoid unnecessary mutation. Native visual, theme, DPI and paired process-performance acceptance must be recorded separately from headless transport/presentation tests.
+
+At 96 DPI, default and minimum sizes passed dark/light inspection and native scrolling. Minimum dimensions belong to the outer AppWindow presenter; do not duplicate them as client Grid minima, because the caption/frame reduce the visible client area and can clip the final component. The bottom range must be fully inside both the native client rectangle and scroll viewport. Higher physical DPI and live scale transitions remain separate F5 acceptance work.

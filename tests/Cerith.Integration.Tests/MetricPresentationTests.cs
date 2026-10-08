@@ -126,6 +126,110 @@ public sealed class MetricPresentationTests
         Assert.AreEqual("42.0", current.ValueText);
     }
 
+    [TestMethod]
+    [DataRow(MetricState.Fresh, 0d, 0d)]
+    [DataRow(MetricState.Fresh, 42d, 0.42)]
+    [DataRow(MetricState.Fresh, 100d, 1d)]
+    [DataRow(MetricState.Stale, 8d, 0.08)]
+    public void BarRetainsFiniteValueStateAndConfidence(MetricState state, double value, double fill)
+    {
+        var snapshot = Snapshot(state, MetricConfidence.Estimated, MetricValue.From(value), "any-provider");
+        var result = MetricBarPresentation.Create(new(Percent, 0, 100), PercentDescriptor, snapshot);
+        Assert.AreEqual(fill, result.FillFraction);
+        Assert.AreEqual("", result.RangeState);
+        var text = MetricPresentation.Create(Percent, PercentDescriptor, snapshot);
+        Assert.AreEqual(state.ToString(), text.StateText);
+        Assert.AreEqual("Estimated", text.ConfidenceText);
+        Assert.AreEqual(value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " %", text.ValueText);
+    }
+
+    [TestMethod]
+    [DataRow(MetricState.Unavailable)]
+    [DataRow(MetricState.Stopped)]
+    [DataRow(MetricState.Error)]
+    [DataRow(MetricState.Unlimited)]
+    public void BarNeverShowsNumericFillForValuelessStates(MetricState state)
+    {
+        var snapshot = Snapshot(state, MetricConfidence.Unknown, null, "source",
+            state == MetricState.Error ? "provider_failure" : null);
+        var result = MetricBarPresentation.Create(new(Percent, 0, 100), PercentDescriptor, snapshot);
+        Assert.IsNull(result.FillFraction);
+        Assert.AreEqual("", result.RangeState);
+        var text = MetricPresentation.Create(Percent, PercentDescriptor, snapshot);
+        Assert.AreEqual(state == MetricState.Unlimited ? "Unlimited" : "—", text.ValueText);
+        Assert.AreEqual("Unknown", text.ConfidenceText);
+    }
+
+    [TestMethod]
+    [DataRow(-1d, "Below range")]
+    [DataRow(120d, "Above range")]
+    public void BarSuppressesOverflowFillAndPreservesActualValue(double value, string rangeState)
+    {
+        var snapshot = Snapshot(MetricState.Fresh, MetricConfidence.Measured, MetricValue.From(value), "source");
+        var result = MetricBarPresentation.Create(new(Percent, 0, 100), PercentDescriptor, snapshot);
+        Assert.IsNull(result.FillFraction);
+        Assert.AreEqual(rangeState, result.RangeState);
+        Assert.AreEqual(value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " %",
+            MetricPresentation.Create(Percent, PercentDescriptor, snapshot).ValueText);
+    }
+
+    [TestMethod]
+    public void BarRangeIsExplicitAndIndependentOfSourceUnitAndMetricId()
+    {
+        var spec = new MetricPresentationSpec(new("arbitrary.id"), "0.0");
+        var descriptor = new MetricDescriptor(spec.MetricId, "Temperature", "temperature", MetricValueKind.Double, unit: "°C");
+        var a = new MetricSnapshot(spec.MetricId, MetricValue.From(10d), DateTimeOffset.UtcNow,
+            MetricState.Fresh, MetricConfidence.Measured, "ProviderA");
+        var b = new MetricSnapshot(spec.MetricId, MetricValue.From(10d), DateTimeOffset.UtcNow,
+            MetricState.Fresh, MetricConfidence.Measured, "ProviderB");
+        Assert.AreEqual(0.75, MetricBarPresentation.Create(new(spec, -20, 20), descriptor, a).FillFraction);
+        Assert.AreEqual(MetricBarPresentation.Create(new(spec, -20, 20), descriptor, a),
+            MetricBarPresentation.Create(new(spec, -20, 20), descriptor, b));
+        Assert.AreEqual(0.1, MetricBarPresentation.Create(new(spec, 0, 100), null, a).FillFraction);
+        Assert.AreEqual("10.0", MetricPresentation.Create(spec, null, a).ValueText);
+    }
+
+    [TestMethod]
+    [DataRow(0d, 0d)]
+    [DataRow(100d, 0d)]
+    [DataRow(double.NaN, 100d)]
+    [DataRow(0d, double.PositiveInfinity)]
+    [DataRow(-double.MaxValue, double.MaxValue)]
+    public void BarRejectsInvalidConfiguredRange(double minimum, double maximum) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MetricBarSpec(Percent, minimum, maximum));
+
+    [TestMethod]
+    [DataRow(double.NaN)]
+    [DataRow(double.PositiveInfinity)]
+    [DataRow(double.NegativeInfinity)]
+    public void BarSuppressesNonFiniteFill(double value)
+    {
+        var snapshot = Snapshot(MetricState.Fresh, MetricConfidence.Measured, MetricValue.From(value), "source");
+        Assert.IsNull(MetricBarPresentation.Create(new(Percent, 0, 100), PercentDescriptor, snapshot).FillFraction);
+    }
+
+    [TestMethod]
+    public void BarSupportsNumericKindsAndRejectsDescriptorMismatch()
+    {
+        var integer = Snapshot(MetricState.Fresh, MetricConfidence.Measured, MetricValue.From(25L), "source");
+        Assert.AreEqual(0.25, MetricBarPresentation.Create(new(Percent, 0, 100), null, integer).FillFraction);
+        var fraction = Snapshot(MetricState.Stale, MetricConfidence.Estimated, MetricValue.From(25.5m), "source");
+        Assert.AreEqual(0.255, MetricBarPresentation.Create(new(Percent, 0, 100), null, fraction).FillFraction);
+        Assert.Throws<InvalidDataException>(() => MetricBarPresentation.Create(new(Percent, 0, 100), PercentDescriptor, integer));
+        var text = Snapshot(MetricState.Fresh, MetricConfidence.Measured, MetricValue.From("reported text"), "source");
+        Assert.IsNull(MetricBarPresentation.Create(new(Percent, 0, 100), null, text).FillFraction);
+        Assert.AreEqual("reported text", MetricPresentation.Create(Percent, null, text).ValueText);
+    }
+
+    [TestMethod]
+    public void BothPresentationsStartWithoutInventedSnapshotOrFill()
+    {
+        var subscription = new MetricSubscription(Percent.MetricId, new(), "unused");
+        Assert.AreEqual("Connecting", MetricPresentation.Create(Percent, subscription).StateText);
+        Assert.AreEqual("No snapshot", MetricPresentation.Create(Percent, subscription).ConfidenceText);
+        Assert.IsNull(MetricBarPresentation.Create(new(Percent, 0, 100), null, subscription.Snapshot).FillFraction);
+    }
+
     private static MetricPresentationResult Present(MetricState state, MetricConfidence confidence, MetricValue? value) =>
         MetricPresentation.Create(Percent, PercentDescriptor, Snapshot(state, confidence, value, "source"));
 

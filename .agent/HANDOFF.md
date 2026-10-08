@@ -1,3 +1,17 @@
+# CERITH CER-M4-006 — bounded acceptance / integration handoff — 2026-10-08
+
+CER-M4-006 is DONE at bounded task scope: `COMPOSABLE_METRIC_SURFACE_VERIFIED`. Branch `codex/CER-M4-006-composable-surface`; starting canonical main `aafc90425b5c17e6514989c4b7f4ddd0f577c6f5`. PR #58/Git history are authoritative for final documentation-head CI, review and integration; do not assume a requested operation succeeded.
+
+Source-head `6cbf21afef8586a9de3b353359a3180d84461666` independent review PASS. Build and Test 37697605476 attempt 2 SUCCESS; attempt 1 failed unchanged Copilot oversized-output timing (response_too_large expected, request_timeout actual). Repository Quality 37697605475 SUCCESS, CodeQL 37697605502 SKIPPED, not security PASS under D-013. Release 0 warnings/errors; local 503/503 before the XAML minimum correction, Integration 67/67 after. Native actual-service lifecycle and dark/light default/minimum full bottom-range containment PASS at 96 DPI. Four pipes feed six consumers; quiet/reconnect/cancellation truth retained. Higher physical DPI remains unverified. Canonical evidence: docs/TESTING_QA.md and docs/PERFORMANCE.md.
+
+Track C independently accepted 34 applicable bounded process runs and KEEP_CURRENT_BUS. Expanded-surface CPU/memory cost remains measured; CPU nonregression/budgets not proven. F3 characterized, F4 regressions added; F5/F7 remain before M4 exit and F6/F8 public-release debt. No renderer/provider/framework/history/configuration expansion entered this task. Graphify already refreshed nine C# files; this reconciliation changes documentation only.
+
+Next exact action: obtain independent review of this documentation-only delta and successful hosted checks at its exact committed HEAD. Re-fetch/inspect main and PR base/head, ensure ownership/clean tree and all gates, mark PR ready and squash with --match-head-commit using normal protections. Verify integrated Git tree and canonical main/origin-main without discarding work. Then claim a bounded F5 native DPI/value-state conformance task before another renderer. Do not restart verified 006 work or declare M4 closed. M5/M6 require independent canonical preceding-milestone exit review/integration/documented closure; M7 excluded.
+
+Capacity interruption: paused safely at 95% primary usage, reset observed 04:19:12 Europe/Madrid; resumed after reset with actual ordinary usage allowed and primary 0%. No paid/free reset action or credits used. One existing hourly quiet same-chat continuation; update it after integration, never duplicate it. No owned Cerith runtime processes or active reviewers at resumption. Fer authorizes available screens/focus and protected merges; no additional monetary cost, destructive action, security weakening or shared-history rewrite.
+
+## Historical handoff snapshot — CER-M4-005
+
 # CERITH CER-M4-005 — MetricId binding contract — 2026-10-07
 
 CER-M4-005 is DONE at bounded task scope; technical verdict: `METRIC_BINDING_CONTRACT_VERIFIED`. Reviewed candidate head: `4cd329d1139a1c3b2d620c87af92323e8696ad39`. The first independent review returned `FIXES_REQUIRED` for stale descriptor binding across reconnect and missing lifecycle regressions. The binding now resets on every accepted connection, including descriptor-free peers, and the required cases are covered. The read-only GPT-6.1 Sol Medium final re-review returned `PASS` with no architecture disagreement. Advisor review accepted the product/architecture contract. The UI binding reset was source-reviewed; tests do not automate WinUI control interaction.
