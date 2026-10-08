@@ -1,3 +1,13 @@
+# State — configurable composition priority
+
+PR63 is integrated at119c5d3; exactHEADreview/510tests/QualitySUCCESS/CodeQLSKIPPED underD013, identicaltree/cleanFFmain/postmergeCI verified.006–011 done. Fer's newpriority is coherent configurable MetricId composition with persistence usingexistingcomponents; no further automaticprimitive-first progression.012candidate preservedunintegrated:80tests/sourcearchitecturePASS, boundedactualnativePASS, physical144glyphFAIL/unresolved; performance/CI/integrationNOTRUN. Original100% scale restored/no ownedruntime oragents. Currentbranchcodex/CER-M4-012-native-sparkline. Nexttask startsfromfreshcanonicalmain. RoutingrestrictedtoLunaMaxnative(defaultwhenavailable), Sol6.1Mediumnative(strongrisk), GPT6SolWebverifiedintegration; no furtherGPT5.6Web/Astra. Web6actualwrites/build/tests occurredbeforelatestpriorityupdate; don't repeatcapabilities. M4incomplete/F7/startup/frameworkfloor/mixedmonitoropen; M5–6exitgated/neverM7. HANDOFF/TASKS hold exactlimits.
+
+## Historical CER-M4-011 integrated / CER-M4-012 implementation
+# State — CER-M4-011 integrated / CER-M4-012 implementation
+
+Main/origin-main119c5d3a6865b9fbb1af6532a617470e526e8c38: PR63 head-pinned protected squash, exact-head independentPASS/510tests/QualitySUCCESS/CodeQLSKIPPED underD013 notsecurityPASS; approved/integratedtree identical and postmerge Build/QualitySUCCESS.006–011 integratedPR58–63. Current sole-writer branchcodex/CER-M4-012-native-sparkline claims next real M4 component gap; architecture risk reviewPASS, implementation/native/performance/CI still pending. Integrated GPT6SolWeb implementation route chosen after actual localterminal/Git/docs verification; root suspendswrites during its scope. No new runtime, dependencies, persistence/history or publiccontracts. TASKS/HANDOFF provide exactscope. F7/startup/frameworkfloor/mixedmonitor/generalnonregression remainopen; M4incomplete/M5–6exitgated/neverM7.
+
+## Historical CER-M4-011 integration gates
 # State — CER-M4-011 integration gates
 
 Canonical main/origin-main: 14aaed2811545736ccd46d1c7282e792b9ab5516. CER-M4-006–010 are integrated (PR58–62). CER-M4-011 is VERIFIED_PENDING_INTEGRATION on codex/CER-M4-011-reconnect-attribution, PR63. Product head dd14747 passed independent GPT-6.1 Sol Medium review and hosted Build/Test 510/510 (39 Core, 398 Telemetry, 73 Integration), Quality SUCCESS; CodeQL SKIPPED under D-013, not security PASS. This operational documentation reconciliation requires review and CI at its own final HEAD before protected integration. Git/PR history is authoritative for those final receipts.

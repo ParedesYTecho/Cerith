@@ -245,3 +245,11 @@ Core → no UI/provider implementation
 ```
 
 Circular dependencies are defects.
+
+## Component-private sparkline observations (CER-M4-012)
+
+The native sparkline is a consumer of the existing exact-ID subscription and shared readout/explicit range. Its private sequence holds at most60 distinct Fresh finite in-range observations during that component's lifetime. This is M4 presentation state: the bus, Core and MetricSubscription do not retain or replay observations; no persistence/history/query/public contract is introduced.
+
+X uses actual ObservedAt instants relative to the retained first/last observation. Equal instants (including equivalent offsets) replace the last sample; backward time, source/confidence or descriptor semantic/unit/kind changes reset. Null/Waiting/loss and valueless/Unlimited/nonnumeric/nonfinite/out-of-range states clear the sequence. Valid Stale freezes/dims previously received Fresh points without adding its value; the next Fresh starts a new sequence. Silence on an accepted transport never invents a timeout or a state transition. Source is optional provenance, not a session identity; undetectable replacement under identical metadata/source cannot be inferred.
+
+The oldest sample is evicted only when admitting the61st distinct point; this local presentation bound does not drop IPC messages or change backpressure. Fewer than two points render no line. Native segments connect retained observations without smoothing, extrapolation or claims about intermediate measurements. The current readout, range, count and observed span remain visible/accessibly named. Geometry redraws on admitted changes or native size changes; repeated identical observations do not rebuild the points. Native/performance and final integration gates are separate from this contract review.

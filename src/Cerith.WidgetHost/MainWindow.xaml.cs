@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
         new(Metrics[3], 0, 100)
     ];
     private static readonly MetricRangeSpec[] Rings = [new(Metrics[0], 0, 100)];
+    private static readonly MetricRangeSpec[] Sparklines = [new(Metrics[0], 0, 100)];
 
     private readonly MetricSubscription[] _subscriptions;
     private readonly CancellationTokenSource _stop = new();
@@ -63,6 +64,13 @@ public sealed partial class MainWindow : Window
                 MetricsPanel.Children.Add(ring);
                 subscription.Updated += ring.Apply;
                 ring.Apply(subscription);
+            }
+            foreach (var sparklineSpec in Sparklines.Where(item => item.Presentation.MetricId == spec.MetricId))
+            {
+                var sparkline = new MetricSparkline(sparklineSpec);
+                MetricsPanel.Children.Add(sparkline);
+                subscription.Updated += sparkline.Apply;
+                sparkline.Apply(subscription);
             }
         }
         Root.Loaded += OnLoaded;

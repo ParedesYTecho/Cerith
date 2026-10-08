@@ -1,8 +1,19 @@
 # Tasks
 
+## CER-M4-012 — Native bounded sparkline
+
+Status: DEFERRED_BY_PRODUCT_PRIORITY — Fer now prioritizes configurable MetricId composition/persistence. Candidate preserved, not integrated. Architecture/source reviews PASS, Release0warnings/errors, Integration80/80; actual-service sample/reset lifecycle PASS. Synthetic96DPI readout/range checks passed; physical144DPI Dark readout PASS but minimum large-value range glyph check FAIL (cause not resolved). Original100% scale restored, no owned runtime/agents. Performance NOT RUN, finalHEAD review/CI NOT RUN. No DONE or full-native PASS claim.
+Owner: Codex root — sole writer after integrated GPT-6 Sol Web implementation handoff; Web writer closed. Independent reviewers read-only.
+Branch: codex/CER-M4-012-native-sparkline.
+Base:119c5d3a6865b9fbb1af6532a617470e526e8c38 (main/origin-main freshly verified; postmerge CI SUCCESS).
+Scope: one native generic CPU sparkline consuming the existing shared exact-ID subscription, readout and explicit range. Private in-memory maximum60 observed Fresh numeric samples; X uses ObservedAt instants, no uniform invented timing. Same timestamp replaces last, backward time/source/confidence/semantic-metadata changes reset. Stale freezes previous Fresh line without adding points, next Fresh starts anew. Null/Waiting/disconnect/valueless/Unlimited/nonfinite/nonnumeric/out-of-range suppress and clear; truthful current readout and range remain. Fewer than2 points no line; zero bottom stroke remains visible. No timers, smoothing, extrapolation, replay, persistence, public/history model, provider/IPC/Core/subscription change, dependency, taskbar/editor or budget revision. Sample eviction is component-private, not IPC dropping. Existing M4 gaps/F7 remain; M5/M6 exit-gated, neverM7.
+Acceptance: meaningful sequence/reset/time/zero/state regressions, Release build/tests, exact native synthetic glyph/time/line evidence distinct from actual-service lifecycle, bounded identified paired CPU/WS/private, complete diff and independent risk review, graph refresh/canonical docs, exact-head CI/protected integration.
+Decision: independent Sol6.1Medium Mencius read-only contract review PASS; private component retention fits M4, requires no M7 storage/API. Source label is not a session identity; cannot detect replacements hidden under identical source. No implementation/native/performance PASS inferred from architecture review.
+Allowed implementation paths: src/Cerith.WidgetHost/MetricSparkline.xaml, MetricSparkline.xaml.cs, one justified pure sequence source (or existing MetricPresentation.cs), MainWindow.xaml.cs; existing Integration csproj and focused tests. Do not edit other source or operational/canonical docs while assigned; no commit/push/merge/runtime/other agents.
+
 ## CER-M4-011 — Disconnected pipe connection attribution
 
-Status: VERIFIED_PENDING_INTEGRATION — bounded transport pacing, source/native/performance evidence accepted. Product head dd14747 independent PASS and hosted Build/Test510/510, Quality SUCCESS; CodeQL SKIPPED under D-013, not security PASS. Final operational/routing documentation reconciliation requires its own exact-head review/CI before protected integration. Git/PR history owns final integration receipts; do not declare DONE before merge. General nonregression INCONCLUSIVE/F7 OPEN.
+Status: DONE — bounded disconnected transport pacing verified and PR63 integrated119c5d3a6865b9fbb1af6532a617470e526e8c38. Final approvedHEAD6827d91 independent Sol6.1Medium PASS; Build37788772108 510/510, Quality37788771919 SUCCESS, CodeQL37788772344 SKIPPED under D-013 (not security PASS). Approved/integratedtree2b1ae742 identical; clean fast-forward main and postmergeBuild37789258556/Quality37789258749 SUCCESS, CodeQL37789258499 SKIPPED. General nonregression INCONCLUSIVE/F7 OPEN.
 Owner: Codex — sole repository writer; independent IPC/concurrency reviewer read-only.
 Branch: `codex/CER-M4-011-reconnect-attribution`.
 Base: `14aaed2811545736ccd46d1c7282e792b9ab5516` (main/origin-main equal after fetch; postmerge Build37761063358attempt2 SUCCESS).
