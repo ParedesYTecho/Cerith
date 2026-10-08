@@ -15,7 +15,7 @@
             </StackPanel>
             <TextBlock Text="Component" />
             <ComboBox x:Name="KindField" SelectionChanged="OnKindChanged" AutomationProperties.Name="Component type">
-                <ComboBoxItem Content="Text"/><ComboBoxItem Content="Bar"/><ComboBoxItem Content="Ring"/>
+                <ComboBoxItem Content="Text"/><ComboBoxItem Content="Bar"/><ComboBoxItem Content="Ring"/><ComboBoxItem Content="Sparkline"/>
             </ComboBox>
             <TextBlock Text="Exact MetricId" />
             <TextBox x:Name="IdField" AutomationProperties.Name="Exact MetricId" />
