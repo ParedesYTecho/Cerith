@@ -108,3 +108,11 @@ diagnostics available
 performance impact understood when relevant
 docs updated if public behavior changed
 ```
+
+## Native long-state/value regression procedure
+
+Use explicitly labeled local protocol fixtures with the production controls when a real provider cannot produce a required state. Such runs validate native presentation, not live acquisition. Exercise zero, upper boundary, Stale, Unavailable, Error (including a valid 64-character code), Stopped, Unlimited, below/above range, a large finite number and return to zero; repeat standalone and embedded readouts at default/minimum size in both themes.
+
+Wait with a bounded timeout for the exact expected presentation. Identify an embedded readout beneath its specific bar, not by tree order. Scroll and reacquire native elements until label, state, confidence and value can be inspected; confirm the exact text and separate bar-range containment. A clipped UIA BoundingRectangle can misleadingly fit inside the viewport. Check TextPattern document/range identity and visible character bounds, rejecting shortened glyph heights relative to the fully visible same-font reference. Intentional label ellipsis retains its full accessible name; actual value/state/confidence text must remain readable. Inspect native captures for complete glyphs; black or partial captures are inconclusive. Preserve candidate identity, explicit fixture labeling and all failed attempts outside Git. Missing physical higher-DPI coverage remains NOT VERIFIED.
+
+Baseline CER-M4-006 controls failed confidence visibility for the 64-character error at both tested 96 DPI sizes. CER-M4-007 changes only the shared readout layout; final result and limits are recorded in its task receipt. Headless presentation/IPC tests do not substitute for this native regression.

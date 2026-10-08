@@ -26,17 +26,18 @@
                            FontSize="13"
                            FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis" />
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock x:Name="StateText"
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="StateText" TextWrapping="Wrap"
                                Foreground="{ThemeResource CerithMutedTextBrush}"
                                FontSize="11" />
-                    <TextBlock Text="·"
+                    <TextBlock x:Name="ConfidenceText" Grid.Column="1"
                                Foreground="{ThemeResource CerithMutedTextBrush}"
                                FontSize="11" />
-                    <TextBlock x:Name="ConfidenceText"
-                               Foreground="{ThemeResource CerithMutedTextBrush}"
-                               FontSize="11" />
-                </StackPanel>
+                </Grid>
             </StackPanel>
 
             <TextBlock x:Name="ValueText"
@@ -49,7 +50,7 @@
                        FontSize="23"
                        FontWeight="SemiBold"
                        TextAlignment="Right"
-                       TextTrimming="CharacterEllipsis" />
+                       TextWrapping="Wrap" />
         </Grid>
 
         <Border Grid.Column="1"

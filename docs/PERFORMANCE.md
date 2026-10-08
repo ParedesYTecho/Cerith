@@ -239,3 +239,16 @@ Date: 2026-09-29. A temporary D3D11 process presented frames on the local displa
 With the target active, TelemetryService used 0.188 CPU seconds over a 12.0 second sample (1.56% of one logical core); its working set moved from 79.6 to 80.5 MiB. PresentMonService working set was 27.9 MiB at both ends of a separate 12 second sample. `Get-Process` reported 0.000 CPU seconds for PresentMonService in that interval; treat this as below the counter's useful resolution, not proof of zero CPU. These TelemetryService figures include the existing hardware provider and are not an isolated PresentMon cost. No controlled game-performance comparison was run.
 
 When PresentMonSharedService was stopped during the same process, the two gaming metrics became `Unavailable` while `cpu.total.usage` continued arriving as `Fresh`/`Measured`; restoring the service returned the gaming metrics to Fresh without restarting TelemetryService or WidgetHost. This is a single-host Windows measurement, not a universal performance or capture guarantee.
+
+## CER-M4-007 — bounded readout-layout comparison
+
+Date: 2026-10-08. Baseline is integrated CER-M4-006 (`905ab5ce09593ad934c9c7aeba8f81bcaf258d17`); candidate changes only MetricReadout XAML. Both use the production startup, four MetricIds/six consumers, default geometry and the same real TelemetryService. Two alternating baseline/candidate pairs per visible/native-verified minimized condition produced eight applicable Release runs. Each used 8 s warm-up and 12 s sampling (actual elapsed 12.0485–13.2355 s), process CPU-time deltas and 1 Hz Working Set/Private Bytes. Both visible candidates and baselines became foreground through normal production activation; minimized state was verified during warm-up and every sample. CPU hardware was Fresh/Measured, gaming Stopped/Unknown and Codex Error/route_unsupported/Unknown. The first attempt stopped before sampling because equivalent executable paths used different separators; normalized expected paths retained the ownership check.
+
+| Condition | CPU one core median (range) | Working Set median (range), MiB | Private Bytes median (range), MiB |
+|---|---:|---:|---:|
+| Visible baseline |1.2315% (1.0370–1.4260)|135.13 (135.08–135.18)|143.45 (143.16–143.74)|
+| Visible candidate |1.0370% (1.0370–1.0371)|134.60 (134.50–134.70)|143.21 (143.13–143.29)|
+| Minimized baseline |1.4262% (1.1665–1.6859)|134.94 (134.68–135.20)|143.67 (143.32–144.02)|
+| Minimized candidate |1.0558% (0.9444–1.1673)|133.19 (131.98–134.40)|142.10 (140.98–143.22)|
+
+Paired candidate-minus-baseline CPU differences were 0.0000/−0.3889 percentage points visible and −0.5186/−0.2221 minimized. WS differences were −0.48/−0.58 MiB visible and −2.70/−0.80 minimized; private differences were +0.13/−0.61 and −2.34/−0.80MiB. This small single-host comparison detected no repeatable layout-specific regression; it does not prove an optimization, general CPU nonregression or budget achievement. Timer quantization, changing hardware values and ambient scheduling remain limitations. Synthetic native state fixtures were not running during these real-service measurements. F7 stays OPEN and budgets are unchanged.
