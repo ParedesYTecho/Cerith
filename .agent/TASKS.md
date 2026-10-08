@@ -1,8 +1,17 @@
 # Tasks
 
+## CER-M4-010 — Native ranged metric ring
+
+Status: VERIFIED_PENDING_INTEGRATION — bounded native ranged ring/source/lifecycle/performance characterization accepted independently; exact committed-head review/CI/protected integration still required.
+Owner: Codex — sole writer; independent native/architecture/performance reviewers read-only.
+Branch: `codex/CER-M4-010-native-ring`.
+Base: `5980e6fb38273144e4abeecd0299db4db567cbb1` (main/origin-main equal after fetch; post-merge main CI37727971063 SUCCESS).
+Scope: one native MetricRing with explicit finite increasing range, actual readout/state/confidence and a concrete current-surface consumer; shared internal range semantics with MetricBar, same exact-ID subscriptions. Investigate native ProgressRing first; no invented spinner/activity, animation loop, range inference, telemetry/provider/IPC/MetricId changes, dependencies, registry, editor/configuration/persistence/history or public/plugin contracts. Internal shared naming justified only by actual bar+ring consumers. Preserve truthful zero, Fresh/Stale, valueless Unavailable/Error/Stopped/Unlimited, descriptor-free and out-of-range behavior. Native default/minimum/dark/light at96/144DPI, actual lifecycle/fanout and paired process performance required. Existing F7 budgets/startup/mixed-monitor limits remain; M4 incomplete, M5/M6 exit-gated, M7 excluded.
+Acceptance: reusable native component, relevant semantic/lifecycle regressions, Release/tests, real native/synthetic clearly separated visual evidence, actual-service paired CPU/WS/private characterization, independent risk-appropriate exact-head review, canonical docs, protected CI and head-pinned integration.
+Evidence: Release solution/current WidgetHost0warnings/errors; finalIntegration67/67 zero skipped.192synthetic exact-text/glyph targets96/144DPI, corrected static96raster/history-independence checks, actual-service ring loss/recovery/reopen/normalclose.26process measurements separate earlier24 from final2 pinned-build observations; no binary equivalence or generalnonregression/budget PASS. Independent GPT-6.1 Sol Medium corrected P2 Ellipse inset and accepts bounded source/evidence; committed-head approval still pending. Canonical QA/UI/PERFORMANCE receipts preserve failed attempts, F7/startup/mixedmonitor and unrun accessibility coverage. Graphify6-file ASTrefresh,0externalLLM/APIcalls; filenamehygiene/diffcheckPASS. Git/PR history is authoritative for final head/CI/integration receipts.
 ## CER-M4-009 — Polling-clock acceptance synchronization
 
-Status: VERIFIED — POLLING_TEST_SYNCHRONIZATION_VERIFIED at bounded test-order scope; final exact-head review/CI/integration pending. Actual hosted failure cause remains unconfirmed.
+Status: DONE — POLLING_TEST_SYNCHRONIZATION_VERIFIED at bounded test-order scope; PR61 integrated5980e6fb38273144e4abeecd0299db4db567cbb1 after exact-head independent review/CI. Actual PR60 hosted failure cause remains unconfirmed.
 Owner: Codex — sole writer; independent concurrency reviewer read-only.
 Branch: `codex/CER-M4-009-polling-test-sync`.
 Base: `5ec68f420831a5e953affe2e8bccc753462274d1` (main/origin-main equal after fetch; clean integrated PR60).

@@ -75,29 +75,37 @@ internal static class MetricPresentation
     }
 }
 
-internal sealed record MetricBarSpec
+internal sealed record MetricRangeSpec
 {
     public MetricPresentationSpec Presentation { get; }
     public double Minimum { get; }
     public double Maximum { get; }
 
-    public MetricBarSpec(MetricPresentationSpec presentation, double minimum, double maximum)
+    public MetricRangeSpec(MetricPresentationSpec presentation, double minimum, double maximum)
     {
         ArgumentNullException.ThrowIfNull(presentation);
         if (!double.IsFinite(minimum) || !double.IsFinite(maximum) || maximum <= minimum ||
             !double.IsFinite(maximum - minimum))
-            throw new ArgumentOutOfRangeException(nameof(maximum), "Bar range must be finite and increasing.");
+            throw new ArgumentOutOfRangeException(nameof(maximum), "Metric range must be finite and increasing.");
         Presentation = presentation;
         Minimum = minimum;
         Maximum = maximum;
     }
 }
 
-internal readonly record struct MetricBarResult(double? FillFraction, string RangeState);
+internal readonly record struct MetricRangeResult(double? FillFraction, string RangeState);
 
-internal static class MetricBarPresentation
+internal static class MetricRangePresentation
 {
-    public static MetricBarResult Create(MetricBarSpec spec, MetricDescriptor? descriptor, MetricSnapshot? snapshot)
+    public static string FormatRange(MetricRangeSpec spec, MetricDescriptor? descriptor, MetricRangeResult result)
+    {
+        var range = $"Range {spec.Minimum.ToString(CultureInfo.InvariantCulture)}–{spec.Maximum.ToString(CultureInfo.InvariantCulture)}";
+        if (descriptor?.Unit is { } unit) range += $" {unit}";
+        if (result.RangeState.Length > 0) range += $" · {result.RangeState}";
+        return range;
+    }
+
+    public static MetricRangeResult Create(MetricRangeSpec spec, MetricDescriptor? descriptor, MetricSnapshot? snapshot)
     {
         ArgumentNullException.ThrowIfNull(spec);
         if (snapshot is null) return new(null, "");

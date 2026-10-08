@@ -21,11 +21,12 @@ public sealed partial class MainWindow : Window
         new(new MetricId("game.fps.display"), "0.0"),
         new(new MetricId("ai.codex.quota.primary.remaining"), "0.0")
     ];
-    private static readonly MetricBarSpec[] Bars =
+    private static readonly MetricRangeSpec[] Bars =
     [
         new(Metrics[0], 0, 100),
         new(Metrics[3], 0, 100)
     ];
+    private static readonly MetricRangeSpec[] Rings = [new(Metrics[0], 0, 100)];
 
     private readonly MetricSubscription[] _subscriptions;
     private readonly CancellationTokenSource _stop = new();
@@ -38,7 +39,9 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = "Cerith";
         _subscriptions = MetricSubscription.ForDistinctMetrics(
-            Metrics.Select(spec => spec.MetricId).Concat(Bars.Select(bar => bar.Presentation.MetricId)),
+            Metrics.Select(spec => spec.MetricId)
+                .Concat(Bars.Select(bar => bar.Presentation.MetricId))
+                .Concat(Rings.Select(ring => ring.Presentation.MetricId)),
             new MetricConnectionAttempt(), MetricIpcProtocol.LocalPipeName);
         foreach (var spec in Metrics)
         {
@@ -53,6 +56,13 @@ public sealed partial class MainWindow : Window
                 MetricsPanel.Children.Add(bar);
                 subscription.Updated += bar.Apply;
                 bar.Apply(subscription);
+            }
+            foreach (var ringSpec in Rings.Where(ring => ring.Presentation.MetricId == spec.MetricId))
+            {
+                var ring = new MetricRing(ringSpec);
+                MetricsPanel.Children.Add(ring);
+                subscription.Updated += ring.Apply;
+                ring.Apply(subscription);
             }
         }
         Root.Loaded += OnLoaded;
