@@ -1,4 +1,4 @@
-# State — CER-M4-006 bounded task accepted
+# State — CER-M4-007 native conformance
 
 CER-M4-006 is DONE at bounded task scope with verdict `COMPOSABLE_METRIC_SURFACE_VERIFIED`. Source-head `6cbf21afef8586a9de3b353359a3180d84461666` received independent technical/visual PASS and bounded performance acceptance. Exact-head Build and Test passed run 37697605476 attempt 2; attempt 1 failed the existing Copilot oversized-child-output timing assertion. Repository Quality passed 37697605475; CodeQL was SKIPPED (37697605502), not security PASS under D-013. Final documentation-delta review, hosted checks and integration receipts belong to PR #58 and Git history; this acceptance does not assert an unobserved merge.
 
@@ -6,7 +6,7 @@ Four distinct MetricIds feed six native consumers. D-025, exact-ID per-pipe tran
 
 Track C: KEEP_CURRENT_BUS; bounded characterization complete with no blocking implementation-specific performance defect established. Expanded-surface CPU/memory increases remain measured; CPU nonregression and budget achievement are not proven. F3 characterized, F4 regression gap addressed; F5 physical DPI/native conformance and F7 budgets remain before M4 exit. F6/F8 remain public-release debt.
 
-M4 remains ACTIVE / INCOMPLETE; M0–M3 DONE; M5/M6/M7 NOT STARTED. Next: protected head-pinned integration after final documentation gates, verify canonical main/clean tree, then claim bounded F5 native DPI/value-state conformance. Fer authorizes interactive available screens and gated autonomous merges. M5/M6 require independent preceding-milestone closure, integration and documentation; M7 is excluded. One writer and one existing same-chat continuation. Ordinary quota reset was verified on resumption; no reset credits or expenses were used. No owned validation processes remain.
+M4 remains ACTIVE / INCOMPLETE; M0–M3 DONE; M5/M6/M7 NOT STARTED. PR #58 was squash-integrated at 905ab5ce09593ad934c9c7aeba8f81bcaf258d17 after final-head independent PASS and successful required checks; reviewed/integrated Git trees match. CER-M4-007 is now IN PROGRESS: bounded native DPI/value-state conformance, sole writer on codex/CER-M4-007-native-conformance. Fer authorizes interactive available screens and gated autonomous merges. M5/M6 require independent preceding-milestone closure, integration and documentation; M7 is excluded. One writer and one existing same-chat continuation. Ordinary quota reset was verified on resumption; no reset credits or expenses were used. No owned validation processes remain.
 
 ## Historical operational snapshot — CER-M4-005
 

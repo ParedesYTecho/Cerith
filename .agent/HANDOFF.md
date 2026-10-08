@@ -1,3 +1,13 @@
+# CER-M4-007 — native conformance investigation — 2026-10-08
+
+PR #58 MERGED with normal squash and --match-head-commit at approved 54e6c55f2ae70d19263108af8ea45bef5a136370. Integrated main/origin-main 905ab5ce09593ad934c9c7aeba8f81bcaf258d17; reviewed/integrated tree d58f9fbf8fa98f7f522d4b63a9a3064002b3e60a identical; clean checkout verified. Final documentation-head review PASS; Build and Test37720501937/Quality37720502000 SUCCESS, CodeQL37720502024 SKIPPED under D-013. CER-M4-006 closed, not the whole M4.
+
+Current task CER-M4-007, branch codex/CER-M4-007-native-conformance, sole writer. See TASKS scope. Next: exercise native real components against explicitly synthetic local protocol fixtures to cover states unavailable from this host's real providers; inspect readable value/state/confidence/layout at default/minimum in both themes. Query/read existing sources first. Only one primary display is currently available; physical higher-DPI behavior is NOT VERIFIED until actual evidence exists. Do not change Windows display settings merely to fabricate a pass. Investigate demonstrated defects before changing source. No owned runtime processes or reviewers at claim. F7 budgets remain open, M4 incomplete, M5/M6 exit-gated, M7 excluded.
+
+Candidate product delta is one XAML file (MetricReadout). Source review PASS and Release build / Integration67/67 PASS. Baseline native UIA detects missing confidence for max-length safe error codes. Temporary runner now waits for exact expected presentations, distinguishes standalone versus bar descendants and checks native client/viewport bounds plus TextPattern characters with unclipped glyph-height references. Earlier rectangle-only checks and black/partial screenshots are exploratory, not final acceptance. Current owned fixture/harness may be running; inspect process state before starting anything. Final dark/light run, live performance and complete exact-head review/CI are pending. Temporary fixture paths and screenshots remain outside Git; no synthetic snapshot is claimed as live evidence.
+
+## Historical CER-M4-006 acceptance handoff
+
 # CERITH CER-M4-006 — bounded acceptance / integration handoff — 2026-10-08
 
 CER-M4-006 is DONE at bounded task scope: `COMPOSABLE_METRIC_SURFACE_VERIFIED`. Branch `codex/CER-M4-006-composable-surface`; starting canonical main `aafc90425b5c17e6514989c4b7f4ddd0f577c6f5`. PR #58/Git history are authoritative for final documentation-head CI, review and integration; do not assume a requested operation succeeded.
