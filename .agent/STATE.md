@@ -1,3 +1,19 @@
+# State — CER-M4-010 verified candidate / integration gates
+
+Canonical main/origin-main5980e6fb38273144e4abeecd0299db4db567cbb1 synchronized afterfetch; mainBuild/Test37727971063 andQuality37727971195 SUCCESS, CodeQL37727971077 SKIPPED underD-013, notsecurityPASS.006–009 integratedPR58/59/60/61. Four prior owned checkpoint docs preserved/reconciled on sole-writer codex/CER-M4-010-native-ring.
+
+CER-M4-010 VERIFIED_PENDING_INTEGRATION: original static nativeCPUring shares internal MetricRange semantics/readout with Bar and existing four-ID subscriptions/sevencomponents. InstalledProgressRing rejected by nativeaccuracy evidence; P2Ellipseinset corrected. Release0warnings/errors/finalIntegration67/67,192synthetic96/144DPItext/range targets, corrected96raster/history-independence and bounded actual-service lifecycle includingfinalpinnedbuild verified.26process observations and artifactphases independently reviewed: boundedcharacterizationaccepted, generalnonregressionINCONCLUSIVE, nooptimization/budgetPASS. No furtherrequiredruntimeprobe/blocker identified. Exact committed-headreview/CI/protectedintegration stillrequired; no taskDONE claim.
+
+Original100% display scale restored/verified, no ownedruntime/test/fixture processes remain. Read-only reviewer completed/reusable; exact nextaction andownership inHANDOFF. Canonical QA/UI/PERFORMANCE retainfailedattempts/source-qualified limits; private rawreceipts outsideGit. GraphifyASTupdated/knownnamespacewarning/0externalAPIcalls, filenamehygiene/diffcheckPASS. M4 ACTIVE/INCOMPLETE, F7/frameworkfloor/startupattribution/mixedmonitor gaps open; M5/M6exitgated,M7excluded. Ordinaryquotaavailableafterverifiednormalreset; noresetcreditaction/expense/installations. Single quietcontinuation, checkpointbeforeexhaustion.
+
+## Historical capacity checkpoint
+# State — overnight capacity checkpoint
+
+Canonical main5980e6fb38273144e4abeecd0299db4db567cbb1; CER-M4-006/007/008/009 integrated through PR58/59/60/61. PR61 exact-head independent review/Build and Test/Quality PASS, CodeQL SKIPPED under D-013, not security PASS. Reviewed/integrated trees match; canonical checkout verified clean before returning to the pushed009 branch for owned four-document checkpoint reconciliation. No implementation pending, runtime or reviewers. Main post-merge Build/Test was still in progress; inspect its actual result after resumption.
+
+Ordinary primary quota93% observed, safe pause under Fer's explicit conditional authorization; normal reset09:57:05 Europe/Madrid (07:57:05Z). Same-chat quiet continuation must check actual availability after reset; no reset credits or expenses. Next action in HANDOFF: reconcile owned checkpoint docs, inspect main CI/Git, then claim the actual ring component gap using existing native/shared range semantics. No ring implementation started. M4 remains incomplete, F7/startup signal/mixed-monitor limits remain; M5/M6 exit-gated, M7 excluded.
+
+## Historical CER-M4-009 state
 # State — CER-M4-009 polling acceptance synchronization
 
 CER-M4-006/007/008 are integrated through PR58/59/60. Latest canonical main5ec68f420831a5e953affe2e8bccc753462274d1 matches approved PR60 tree. Exact-head independentPASS and Build/Test37726489070attempt2SUCCESS/Quality37726489131SUCCESS; CodeQL37726489267SKIPPED underD013, notsecurityPASS. Attempt1 had an unchanged Copilot polling-test timeout; actual CIcause unconfirmed. Original100% display scale restored, noownednative runtime.

@@ -163,9 +163,10 @@ public sealed class MetricSubscriptionTests
         var a = subscriptions.Single(item => item.MetricId == idA);
         var b = subscriptions.Single(item => item.MetricId == idB);
         var spec = new MetricPresentationSpec(idA, "0.0");
-        var barSpec = new MetricBarSpec(spec, 0, 100);
+        var barSpec = new MetricRangeSpec(spec, 0, 100);
         var text = Signal();
         var bar = Signal();
+        var ring = Signal();
         var independent = Signal();
         Action<MetricSubscription> renderText = state =>
         {
@@ -178,8 +179,14 @@ public sealed class MetricSubscriptionTests
         a.Updated += state =>
         {
             if (state.Snapshot is null) return;
-            Assert.AreEqual(0.42, MetricBarPresentation.Create(barSpec, state.Descriptor, state.Snapshot).FillFraction);
+            Assert.AreEqual(0.42, MetricRangePresentation.Create(barSpec, state.Descriptor, state.Snapshot).FillFraction);
             bar.TrySetResult();
+        };
+        a.Updated += state =>
+        {
+            if (state.Snapshot is null) return;
+            Assert.AreEqual(0.42, MetricRangePresentation.Create(barSpec, state.Descriptor, state.Snapshot).FillFraction);
+            ring.TrySetResult();
         };
         b.Updated += state => { if (state.Snapshot is not null) independent.TrySetResult(); };
         var run = Task.WhenAll(subscriptions.Select(item => item.RunAsync(stop.Token)));
@@ -189,7 +196,7 @@ public sealed class MetricSubscriptionTests
             Assert.AreEqual(idB, await acceptB.WaitAsync(stop.Token));
             await Assert.ThrowsAsync<InvalidOperationException>(() => a.RunAsync(stop.Token));
             await MetricIpcProtocol.WriteSnapshotAsync(peerA, Snapshot(idA, 42), stop.Token);
-            await Task.WhenAll(text.Task, bar.Task).WaitAsync(stop.Token);
+            await Task.WhenAll(text.Task, bar.Task, ring.Task).WaitAsync(stop.Token);
             Assert.IsFalse(independent.Task.IsCompleted);
             await MetricIpcProtocol.WriteSnapshotAsync(peerB, Snapshot(idB, 8), stop.Token);
             await independent.Task.WaitAsync(stop.Token);
@@ -275,7 +282,7 @@ public sealed class MetricSubscriptionTests
         {
             if (state.Snapshot?.Value?.AsDouble() != 3) return;
             Assert.AreEqual("Late", state.Descriptor?.DisplayName);
-            Assert.AreEqual(0.3, MetricBarPresentation.Create(new(spec, 0, 10), state.Descriptor, state.Snapshot).FillFraction);
+            Assert.AreEqual(0.3, MetricRangePresentation.Create(new(spec, 0, 10), state.Descriptor, state.Snapshot).FillFraction);
             barLate.TrySetResult();
         };
         var run = subscription.RunAsync(stop.Token);
