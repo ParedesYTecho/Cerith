@@ -7,6 +7,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -51,7 +52,11 @@
                         Background="{ThemeResource CerithSeparatorBrush}" />
             </Grid>
 
-            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Grid.Row="2" Spacing="5" Margin="0,0,0,8">
+                <Button x:Name="ConfigureButton" Content="Configure metrics" Click="OnConfigure" IsEnabled="False" />
+                <TextBlock x:Name="StorageWarning" TextWrapping="Wrap" Visibility="Collapsed" />
+            </StackPanel>
+            <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
             </ScrollViewer>
         </Grid>

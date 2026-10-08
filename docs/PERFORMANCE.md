@@ -312,3 +312,21 @@ The first short connected pair increased+1.3694core percentage points; the secon
 Three additional native actual-service cycles pass loss/recovery/close/absent reopen: loss140.95–158.12ms; recovery1989.05–2035.73ms from service restart launch through readiness to Fresh; connected close75.92–87.35ms and absent close81.22–85.83ms. Their clock includes service startup and is not comparable directly to earlier ready-to-recovery timings. These are individual bounded observations, not latency guarantees. The first long-connected harness generated an unmatched foreach and failed parsing: NOT RUN, no receipt counted. Its corrected script was parsed successfully before only the long measurement was started; the three completed native cycles were preserved and not repeated.
 
 No general nonregression, approximately-zero idle CPU, memory-budget PASS or startup-equivalence claim. F7, native framework floor, mixed-monitor coverage and existing startup attribution remain open. Independent final source/evidence review PASS accepts bounded corroboration with no blocking defect or further required runtime check. Exact committed-head review, CI and protected integration remain required.
+
+
+## CER-M4-013 — bounded configuration/persistence characterization
+
+Eight verified-minimized Release observations on the secondary96DPI display: two per binary/condition, balanced baseline/candidate/candidate/baseline order, fresh processes,4s warm-up and8s process CPU/WS/private sampling. Native IsIconic is checked after warm-up and at every1s sample. Baseline is integrated011 source with only the same pre-show secondary launch adaptation (DLLFABF3D7B390605B72B35E7E9970967427BD010EF408715B4B5840672C0CFB724), not an unchanged integrated executable. Final production013 DLL2DFA7FF8E97C53997797C14FF8D858451D72EE063578B8847B035C1F9AC06648 loads the explicitly saved seven-row defaults. Connected phases use the actual service and verify native snapshots. CPU is percent of one core; memory is median MiB.
+
+| Condition | Binary | Observations | Core CPU % | Working Set MiB | Private MiB |
+| --- | --- | ---: | ---: | ---: | ---: |
+|Absent|Baseline|2|1.2628|122.1348|138.2021|
+|Absent|Candidate|2|0.8756|129.8721|179.5684|
+|Connected|Baseline|2|3.5958|132.2344|140.9414|
+|Connected|Candidate|2|4.8545|139.1514|181.9590|
+
+Absent candidate-minus-control: CPU-0.3872core-percentage-points, WS+7.74MiB, private+41.37MiB.
+
+Connected candidate-minus-control: CPU+1.2587core-percentage-points, WS+6.92MiB, private+41.02MiB.
+
+Memory increase is a measured feature cost; the connected CPU-positive signal is retained. This characterizes the complete configuration/resources/storage change and does not isolate a particular library or prove a leak. Two short observations per condition, host pressure and adapted control leave general nonregression INCONCLUSIVE. F7/framework-floor/startup remain OPEN; no budget PASS or CPU optimization claim. The first eight observations requested minimization without native sustained-state checks: preserved separately as minimization requested/state NOT VERIFIED, excluded from the verified-minimized gate. They also showed increased memory; their different CPU direction does not establish equivalence. No automatic extended benchmark campaign or speculative correction follows an inconclusive signal.
