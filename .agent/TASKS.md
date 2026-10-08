@@ -1,8 +1,16 @@
 # Tasks
 
+## CER-M4-009 — Polling-clock acceptance synchronization
+
+Status: VERIFIED — POLLING_TEST_SYNCHRONIZATION_VERIFIED at bounded test-order scope; final exact-head review/CI/integration pending. Actual hosted failure cause remains unconfirmed.
+Owner: Codex — sole writer; independent concurrency reviewer read-only.
+Branch: `codex/CER-M4-009-polling-test-sync`.
+Base: `5ec68f420831a5e953affe2e8bccc753462274d1` (main/origin-main equal after fetch; clean integrated PR60).
+Scope: existing Copilot backpressure polling tests/private test-time helper and canonical QA/task/operational receipts only. Reuse existing synchronization; preserve backpressure/owner-transition assertions and timeouts. No production telemetry/provider/IPC/UI change, timer abstraction/dependency or timeout inflation. Inspect sibling callers. Runtime/native performance NOT APPLICABLE for test-only changes. M4 incomplete; F7 and startup signal open, M5/M6 exit-gated, M7 excluded.
+Acceptance: bounded timing-order evidence, focused repeated siblings and full relevant Release checks, independent exact-head review/CI and protected integration.
 ## CER-M4-008 — Native DPI and scale lifecycle
 
-Status: VERIFIED — NATIVE_DPI_LIFECYCLE_VERIFIED at bounded single-monitor 96/144 DPI scope; final exact-head review/CI/integration pending.
+Status: DONE — NATIVE_DPI_LIFECYCLE_VERIFIED at bounded single-monitor 96/144 DPI scope; PR60 protected squash5ec68f420831a5e953affe2e8bccc753462274d1 with identical reviewed/integrated tree.
 Owner: Codex — sole writer; independent native/lifecycle reviewers read-only.
 Branch: `codex/CER-M4-008-dpi-lifecycle`.
 Base: `906b25c08bf1bcfbbeef04bf521362c549e89a05` (main/origin-main equal after fetch, clean; PR59 head-pinned squash verified with identical reviewed/integrated trees).

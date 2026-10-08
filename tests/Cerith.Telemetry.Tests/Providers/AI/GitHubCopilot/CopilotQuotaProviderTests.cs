@@ -601,6 +601,7 @@ public sealed class CopilotQuotaProviderTests
         Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
         Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
 
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
         time.Advance(CopilotQuotaProvider.PollInterval);
         await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
         await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
@@ -626,6 +627,26 @@ public sealed class CopilotQuotaProviderTests
 
         cancellation.Cancel();
         await run.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [TestMethod]
+    public async Task PollingTimerMustBeRegisteredBeforeVirtualTimeAdvances()
+    {
+        var lateTime = new TestTimeProvider(InitialUtc);
+        lateTime.Advance(CopilotQuotaProvider.PollInterval);
+        var lateDelay = Task.Delay(CopilotQuotaProvider.PollInterval, lateTime);
+        Assert.IsFalse(lateDelay.IsCompleted);
+        lateTime.Advance(CopilotQuotaProvider.PollInterval);
+        await lateDelay.WaitAsync(TimeSpan.FromSeconds(3));
+
+        var synchronizedTime = new TestTimeProvider(InitialUtc);
+        var registered = synchronizedTime.WaitForTimerScheduledAsync(
+            CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
+        Assert.IsFalse(registered.IsCompleted);
+        var delay = Task.Delay(CopilotQuotaProvider.PollInterval, synchronizedTime);
+        await registered;
+        synchronizedTime.Advance(CopilotQuotaProvider.PollInterval);
+        await delay.WaitAsync(TimeSpan.FromSeconds(3));
     }
 
     [TestMethod]
@@ -655,6 +676,7 @@ public sealed class CopilotQuotaProviderTests
         Assert.IsTrue(await firstRead.WaitAsync(TimeSpan.FromSeconds(3)));
         Assert.AreEqual(80d, reader.Current.Value!.Value.AsDouble());
 
+        await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));
         time.Advance(CopilotQuotaProvider.PollInterval);
         await roundSignals[1].Task.WaitAsync(TimeSpan.FromSeconds(3));
         await time.WaitForTimerScheduledAsync(CopilotQuotaProvider.PollInterval, TimeSpan.FromSeconds(3));

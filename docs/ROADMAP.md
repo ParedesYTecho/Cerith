@@ -186,7 +186,7 @@ The target-accounting gate is satisfied by the individual evidence-backed dispos
 
 ## M4 — Widget Engine & Compact Surfaces
 
-Current status: ACTIVE / INCOMPLETE. CER-M4-001 through CER-M4-007 are complete bounded slices, including the first native surface, performance attribution/isolation, reconnect coordination, MetricId binding contract and mixed-domain composition with a reusable MetricBar and bounded native readout-state conformance at 96 DPI. Native higher-DPI/scale-transition conformance and the existing performance-budget gap remain open. This does not complete M4.
+Current status: ACTIVE / INCOMPLETE. CER-M4-001 through CER-M4-008 are complete bounded slices, including the first native surface, performance attribution/isolation, reconnect coordination, MetricId binding contract and mixed-domain composition with a reusable MetricBar and bounded native readout-state conformance at 96 DPI. Single-monitor native 96/144 DPI and scale-transition conformance are verified; mixed-monitor coverage remains unverified and the existing performance-budget gap remains open. This does not complete M4.
 
 - text;
 - metric;
