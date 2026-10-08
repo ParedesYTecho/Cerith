@@ -1,0 +1,35 @@
+<ContentDialog
+    x:Class="Cerith.WidgetHost.CompositionDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Configure live metrics" PrimaryButtonText="Save and apply" CloseButtonText="Cancel"
+    DefaultButton="Primary">
+    <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="9">
+            <ListView x:Name="RowsList" Height="156" SelectionMode="Single" SelectionChanged="OnSelected" AutomationProperties.Name="Ordered metric rows" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Add" AutomationProperties.AutomationId="CompositionAdd" Click="OnAdd" />
+                <Button Content="Remove" AutomationProperties.AutomationId="CompositionRemove" Click="OnRemove" />
+                <Button Content="Up" AutomationProperties.AutomationId="CompositionUp" Click="OnUp" />
+                <Button Content="Down" AutomationProperties.AutomationId="CompositionDown" Click="OnDown" />
+            </StackPanel>
+            <TextBlock Text="Component" />
+            <ComboBox x:Name="KindField" SelectionChanged="OnKindChanged" AutomationProperties.Name="Component type">
+                <ComboBoxItem Content="Text"/><ComboBoxItem Content="Bar"/><ComboBoxItem Content="Ring"/>
+            </ComboBox>
+            <TextBlock Text="Exact MetricId" />
+            <TextBox x:Name="IdField" AutomationProperties.Name="Exact MetricId" />
+            <TextBlock Text="Numeric format" />
+            <ComboBox x:Name="FormatField" AutomationProperties.Name="Numeric format">
+                <ComboBoxItem Content="0"/><ComboBoxItem Content="0.0"/><ComboBoxItem Content="0.00"/><ComboBoxItem Content="0.000"/>
+            </ComboBox>
+            <StackPanel x:Name="RangeFields" Spacing="5">
+                <TextBlock Text="Minimum (invariant decimal)" />
+                <TextBox x:Name="MinimumField" AutomationProperties.Name="Range minimum" />
+                <TextBlock Text="Maximum (invariant decimal)" />
+                <TextBox x:Name="MaximumField" AutomationProperties.Name="Range maximum" />
+            </StackPanel>
+            <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

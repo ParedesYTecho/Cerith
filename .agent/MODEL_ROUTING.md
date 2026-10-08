@@ -61,10 +61,10 @@ Do not downgrade one of these gates to GPT-6 Luna solely to save quota.
 
 ## Integrated Web agents via Codex Web GPT
 
-Codex Web GPT is an integration route that can provide Web models with the Codex workspace, terminal and local tools. Do not treat it as an isolated browser chat or infer missing repository context from the model name. Verify the installed route's actual capabilities and quota before routing. GPT-6 Sol Web and GPT-5.6 Sol Web may own review or implementation when suitable and supported; a Web writer must be the sole writer of its task.
+Codex Web GPT is an integration route that can provide Web models with the Codex workspace, terminal and local tools. Do not treat it as an isolated browser chat or infer missing repository context from the model name. Verify the installed route's actual capabilities and quota before routing. GPT-6 Sol Web may own review or implementation when suitable and supported; a Web writer must be the sole writer of its task.
 
 ```text
-model  = GPT-6 Sol or GPT-5.6 Sol
+model  = GPT-6 Sol
 effort = choose from supported efforts for the task risk
 route  = Codex Web GPT integration
 ```
@@ -109,25 +109,13 @@ when the work warrants a strong reasoning model and native Codex context/tooling
 - debugging where multiple components/evidence sources must be reconciled;
 - a critical gate where the native harness or broader context materially helps.
 
-After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max.
+After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max when exposed by the active harness. If unavailable, choose a permitted verified route suitable for the task; do not pretend unavailable Luna executed.
 
 CodexGPT Web and GPT-6.1 Sol native are alternative strong routes selected by task shape. There is no rule requiring Web first.
 
-## Exceptional native escalation: GPT-6.1 Sol High
-
-Use GPT-6.1 Sol High only as an exceptional escalation for a concrete unresolved critical problem where Medium is insufficient, for example:
-
-- subtle ABI/interoperability ambiguity with conflicting evidence;
-- high-impact concurrency or security reasoning that remains unresolved;
-- contradictory runtime/upstream evidence that Medium cannot reconcile;
-- a durable architectural decision with major consequences and unresolved trade-offs;
-- conflicting strong reviews that cannot be reconciled from the available evidence.
-
-Escalate the hard question, not the whole mission.
-
 ## Astra routing
 
-GPT-6 Astra is not part of current Cerith routing.
+GPT-5.6 Web and GPT-6 Astra are excluded during this execution under Fer's latest instruction.
 
 ## Preferred pattern
 
@@ -138,9 +126,8 @@ Typical execution:
 ```text
 GPT-6 Luna Max native executes
 → when stronger reasoning is useful, choose by task shape:
-   - integrated GPT-6 Sol / GPT-5.6 Sol Web when verified capabilities and quota suit the task
+   - integrated GPT-6 Sol Web when verified capabilities and quota suit the task
    - GPT-6.1 Sol Medium native for substantial/context-heavy reasoning
-→ GPT-6.1 Sol High native only when a concrete critical issue remains unresolved after Medium
 → GPT-6 Luna Max native normally implements/fixes/finishes
 ```
 
@@ -161,13 +148,20 @@ Use the calling harness's authoritative runtime metadata when available; do not 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
 - Use GPT-6 Luna Max for execution and ordinary work.
-- Consider integrated GPT-6 Sol / GPT-5.6 Sol Web for review and implementation after checking actual tools and quota; preserve single-writer ownership.
+- Consider integrated GPT-6 Sol Web for review and implementation after checking actual tools and quota; preserve single-writer ownership.
 - Use GPT-6.1 Sol Medium native for substantial/context-heavy work where stronger reasoning materially reduces risk.
-- Use GPT-6.1 Sol High only when Medium leaves a concrete critical issue unresolved.
 
 Quota optimization chooses between suitable routes; it does not redefine what level of reasoning the technical risk requires.
 
-## Capability audit — 2026-10-08
+## Latest product priority
+
+Fer prioritizes a coherent M4 vertical slice: configurable native composition, exact MetricId binding and persistent non-secret layout state, using existing components. Investigate pending canonical requirements before adding more graphics primitives. Preserve unintegrated work and its validation limits. M5/M6 still require preceding milestone independent exit/integration/documented closure; no M7. Reuse the existing single continuation; do not repeat verified capabilities or completed CER-M4-011.
+
+Antigravity remains an additional authorized ordinary-quota route when an available installation offers a concrete advantage. Do not install, add expense or assume separate quotas. Any new Web write-capability probe must be small, reversible and isolated; existing historical actual task receipts remain evidence rather than being relabeled NOT RUN.
+
+## Historical capability audit — 2026-10-08
+
+Receipts below describe what actually ran before the latest routing restriction; they do not authorize further GPT-5.6 Web use.
 
 Fer's correction supersedes earlier assumptions about missing Web local context. The installed subagent registry exposes GPT-6 Sol Web and GPT-5.6 Sol Web (Medium/High). Their Codex Native bridge can forward operations into this workspace.
 
@@ -178,10 +172,18 @@ Fer's correction supersedes earlier assumptions about missing Web local context.
 | Canonical documentation | PASS: MODEL_ROUTING and ROADMAP read | PASS: TESTING_QA file SHA-256 via local terminal |
 | Runtime/test evidence | PASS: native receipt file discovery; contents not checked in that probe | PASS: native JSON loss/recovery/close scalars; requested QA/CPU fields not exposed in initial mixed output |
 | Complete bounded agent task | PASS: multi-step read-only probe | PASS: runtime read and subsequent single-command hash probe |
-| Implementation writes | NOT RUN; apply-patch advertised | NOT RUN; apply-patch advertised |
+| Implementation writes | PASS: CER-M4-012 bounded source/test edits via native bridge; Release0warnings/errors, focused7/7 and fullIntegration80/80 | NOT RUN; apply-patch advertised |
 
 GPT-5.6 Sol Web's initial heterogeneous PowerShell output exposed only the native timing table. The compact JSON follow-up was rejected before execution by automatic safety review because it could not determine the request's safety state; no exit code or JSON exists for that attempt. A safer single Get-FileHash command subsequently executed successfully (exit0), returning QA SHA-256 6CC2872C857CB03C00F171232A723A2EB452DDF8CE82E15297C7375C10C6AD2A. This is a specific rejected request, not evidence of unavailable local tools or exhausted quota. The requested QA73/CPU extraction remains unverified through that route.
 
-Terminal, Git, documentation and runtime access are verified as indicated above. Successful small agent tasks do not prove unrestricted full-product execution; writes, arbitrary tool access and end-to-end implementation have not been tested. No parent bridge token was invented; the Web agents used their issued integration context. Both reviewers were closed after the audit; one repository write owner remained throughout.
+Terminal, Git, documentation and runtime access are verified as indicated above. GPT-6 Sol Web subsequently completed CER-M4-012 bounded implementation through real apply-patch and local build/test calls (seven focused tests and80 Integration tests passed). It returned ownership before root edits/native validation; the writer was closed. This proves bounded agent implementation access, not unrestricted arbitrary tools or completion of native/performance/CI/merge gates. GPT-5.6 Sol Web implementation remains NOT RUN. No parent bridge token was invented; the Web agents used their issued integration context. Both reviewers were closed after the audit; one repository write owner remained throughout.
 
 Native ordinary quota98% before probes and100% afterward/weekly55% was observed, with native root audit running in the same interval. Attribution is confounded, no separate Web quota counter is exposed, and quota independence remains UNVERIFIED. After the normal reset, ordinary usage allowed/primary1%/weekly55% was verified. No installation, reset-credit action or paid resource was used. Recheck actual capabilities and available ordinary capacity when selecting a route rather than inferring either from its name.
+
+The subsequent GPT-6 Sol Web next-gap investigation encountered automatic safety rejection on one complex read request; separate single Get-Content reads then succeeded. Rejections are request-specific observations, not blanket evidence of missing workspace access.
+
+### Antigravity availability audit — 2026-10-08
+
+Existing manager2.19.1 and IDE2.5.5 installations were verified by executable metadata. The IDE launcher exists outside PATH and its read-only help exposes `chat` ask/edit/agent modes; this alone proves neither model access nor quota. The manager was launched for availability inspection, including a reversible accessibility launch: its own window remained blank, with no rendered agent/quota controls (UIAutomation and isolated PrintWindow corroboration). Only owned launched windows were closed. No Antigravity prompt, writer, model call, installation or reset was used. Authenticated capacity and quota independence remain UNVERIFIED; the route stays authorized but offers no demonstrated execution advantage in this audit. The community antigravity-agent-manager skill was evaluated, and its installation recommendations were not applied.
+
+CER-M4-013 Web6 successfully edited candidate sources/tests and reported a Release build, then encountered an automatic read-inspection rejection (safe independent reads supplied) and a later stream-disconnection error without final answer. No completed final tests/handoff assumed. The Web writer was closed before Ampere/nativeSol6.1Medium took recovery ownership for outstanding interop/transaction/concurrency debugging. This observed execution failure does not establish a quota limit or revoke the route's verified environment/write capabilities; no quota independence inferred.
