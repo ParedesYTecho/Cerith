@@ -1,3 +1,10 @@
+# State — CER-M4-011 integration gates
+
+Canonical main/origin-main: 14aaed2811545736ccd46d1c7282e792b9ab5516. CER-M4-006–010 are integrated (PR58–62). CER-M4-011 is VERIFIED_PENDING_INTEGRATION on codex/CER-M4-011-reconnect-attribution, PR63. Product head dd14747 passed independent GPT-6.1 Sol Medium review and hosted Build/Test 510/510 (39 Core, 398 Telemetry, 73 Integration), Quality SUCCESS; CodeQL SKIPPED under D-013, not security PASS. This operational documentation reconciliation requires review and CI at its own final HEAD before protected integration. Git/PR history is authoritative for those final receipts.
+
+Normal quota reset was verified: ordinary usage allowed, primary1%, weekly55%; no reset credits or expense. Fer's integrated Web routing correction is recorded in MODEL_ROUTING.md. One write owner; reviewer agents remain read-only. Product/native/performance evidence remains valid: bounded absent CPU reduction about50%, general nonregression INCONCLUSIVE; F7, startup, framework floor and mixed-monitor evidence remain open. M4 is incomplete; M5/M6 require preceding canonical exit review/integration/documented closure; never M7. HANDOFF contains the next action.
+
+## Historical CER-M4-011 candidate state
 # State — CER-M4-010 integrated / CER-M4-011 verified candidate
 
 Canonical main/origin-main14aaed2811545736ccd46d1c7282e792b9ab5516;006–010 integrated PR58–62.010 exact-head review/504tests/QualityPASS, CodeQLSKIPPED underD-013 notsecurityPASS, protectedsquash/identicaltrees/cleanmain verified. Postmerge main Build37761063358attempt2SUCCESS after initial existingKiro cleanup timeout397/398; causeunconfirmed. Owned010 closure reconciliation carried by011.

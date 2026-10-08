@@ -2,7 +2,7 @@
 
 ## CER-M4-011 — Disconnected pipe connection attribution
 
-Status: VERIFIED_PENDING_INTEGRATION — minimal transport-only pacing independently accepted at bounded source/evidence scope; Release0warnings/errors, Integration73/73, native lifecycle and12identifiedproductionobservations complete. Exact committed-head review/CI/protected integration still required. GeneralnonregressionINCONCLUSIVE/F7OPEN.
+Status: VERIFIED_PENDING_INTEGRATION — bounded transport pacing, source/native/performance evidence accepted. Product head dd14747 independent PASS and hosted Build/Test510/510, Quality SUCCESS; CodeQL SKIPPED under D-013, not security PASS. Final operational/routing documentation reconciliation requires its own exact-head review/CI before protected integration. Git/PR history owns final integration receipts; do not declare DONE before merge. General nonregression INCONCLUSIVE/F7 OPEN.
 Owner: Codex — sole repository writer; independent IPC/concurrency reviewer read-only.
 Branch: `codex/CER-M4-011-reconnect-attribution`.
 Base: `14aaed2811545736ccd46d1c7282e792b9ab5516` (main/origin-main equal after fetch; postmerge Build37761063358attempt2 SUCCESS).
