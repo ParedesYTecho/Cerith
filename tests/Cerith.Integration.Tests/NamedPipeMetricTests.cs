@@ -602,6 +602,7 @@ public sealed class NamedPipeMetricTests
         await using var client = new NamedPipeMetricClient(Name());
         using var stop = new CancellationTokenSource();
         var pending = client.ConnectAsync(new MetricId("idle"), stop.Token);
+        await Task.Delay(250);
         stop.Cancel();
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await pending);
     }
@@ -629,6 +630,127 @@ public sealed class NamedPipeMetricTests
         await server.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ClientWaitsForPipeAvailabilityAndDoesNotShortenAcceptance(bool busy)
+    {
+        var name = Name();
+        var id = new MetricId("delayed.metric");
+        var descriptor = new MetricDescriptor(id, "Delayed", "count", MetricValueKind.Int64);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var occupied = busy ? new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly) : null;
+        await using var occupant = busy ? new NamedPipeClientStream(".", name, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly) : null;
+        if (busy)
+        {
+            var accepted = occupied!.WaitForConnectionAsync(stop.Token);
+            await occupant!.ConnectAsync(stop.Token);
+            await accepted;
+        }
+        await using var client = new NamedPipeMetricClient(name);
+        var connecting = client.ConnectAsync(id, stop.Token);
+        await Task.Delay(350, stop.Token);
+        Assert.IsFalse(connecting.IsCompleted);
+        if (busy)
+        {
+            await occupant!.DisposeAsync();
+            await occupied!.DisposeAsync();
+        }
+        await using var peer = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await peer.WaitForConnectionAsync(stop.Token);
+        Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+        await Task.Delay(250, stop.Token);
+        Assert.IsFalse(connecting.IsCompleted);
+        await MetricIpcProtocol.WriteAcceptedAsync(peer, descriptor, stop.Token);
+        await connecting.WaitAsync(stop.Token);
+        Assert.AreEqual(descriptor.Id, client.Descriptor?.Id);
+        Assert.AreEqual(descriptor.DisplayName, client.Descriptor?.DisplayName);
+        Assert.AreEqual(descriptor.Unit, client.Descriptor?.Unit);
+        Assert.AreEqual(descriptor.ValueKind, client.Descriptor?.ValueKind);
+    }
+
+    [TestMethod]
+    public async Task ClientCancellationDuringStalledAcceptanceAllowsRetry()
+    {
+        var name = Name();
+        var id = new MetricId("stalled.metric");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var peer = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await using var client = new NamedPipeMetricClient(name);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+        var connecting = client.ConnectAsync(id, deadline.Token);
+        await peer.WaitForConnectionAsync(stop.Token);
+        Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+        deadline.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await connecting);
+        Assert.IsNull(client.Descriptor);
+        peer.Disconnect();
+        connecting = client.ConnectAsync(id, stop.Token);
+        await peer.WaitForConnectionAsync(stop.Token);
+        Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+        await MetricIpcProtocol.WriteAcceptedAsync(peer, stop.Token);
+        await connecting.WaitAsync(stop.Token);
+        Assert.IsNull(client.Descriptor);
+    }
+    [TestMethod]
+    public async Task ClientCancellationOnBusyPipeAllowsRetry()
+    {
+        var name = Name();
+        var id = new MetricId("busy.metric");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var peer = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await using var occupant = new NamedPipeClientStream(".", name, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        var accepted = peer.WaitForConnectionAsync(stop.Token);
+        await occupant.ConnectAsync(stop.Token);
+        await accepted;
+        await using var client = new NamedPipeMetricClient(name);
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+        var connecting = client.ConnectAsync(id, cancelled.Token);
+        await Task.Delay(250, stop.Token);
+        Assert.IsFalse(connecting.IsCompleted);
+        cancelled.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await connecting);
+        await occupant.DisposeAsync();
+        peer.Disconnect();
+        connecting = client.ConnectAsync(id, stop.Token);
+        await peer.WaitForConnectionAsync(stop.Token);
+        Assert.AreEqual(id, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+        await MetricIpcProtocol.WriteAcceptedAsync(peer, stop.Token);
+        await connecting.WaitAsync(stop.Token);
+    }
+
+    [TestMethod]
+    public async Task CompetingClientsRecoverWhenSinglePipeInstanceIsReleased()
+    {
+        var name = Name();
+        var idA = new MetricId("busy.a");
+        var idB = new MetricId("busy.b");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var peer = new NamedPipeServerStream(name, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await using var a = new NamedPipeMetricClient(name);
+        await using var b = new NamedPipeMetricClient(name);
+        var connectA = a.ConnectAsync(idA, stop.Token);
+        var connectB = b.ConnectAsync(idB, stop.Token);
+        await peer.WaitForConnectionAsync(stop.Token);
+        var first = await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token);
+        Assert.IsTrue(first == idA || first == idB);
+        await MetricIpcProtocol.WriteAcceptedAsync(peer, stop.Token);
+        await (first == idA ? connectA : connectB).WaitAsync(stop.Token);
+        Assert.IsFalse((first == idA ? connectB : connectA).IsCompleted);
+        await (first == idA ? a : b).DisposeAsync();
+        peer.Disconnect();
+        await peer.WaitForConnectionAsync(stop.Token);
+        Assert.AreEqual(first == idA ? idB : idA, await MetricIpcProtocol.ReadSubscribeAsync(peer, stop.Token));
+        await MetricIpcProtocol.WriteAcceptedAsync(peer, stop.Token);
+        await (first == idA ? connectB : connectA).WaitAsync(stop.Token);
+    }
     private static MetricSnapshot Snapshot(MetricId id) => new(id, MetricValue.From(1L),
         DateTimeOffset.UtcNow, MetricState.Fresh, MetricConfidence.Unknown);
 

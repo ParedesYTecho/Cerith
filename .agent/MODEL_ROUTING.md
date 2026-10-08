@@ -59,14 +59,14 @@ Examples include:
 
 Do not downgrade one of these gates to GPT-6 Luna solely to save quota.
 
-## Bounded strong worker via CodexGPT → ChatGPT Web
+## Integrated Web agents via Codex Web GPT
 
-Use this route selectively when stronger reasoning than a normal Luna worker or subagent is useful, the task is short and tightly bounded, and its required context fits comfortably in ChatGPT Web.
+Codex Web GPT is an integration route that can provide Web models with the Codex workspace, terminal and local tools. Do not treat it as an isolated browser chat or infer missing repository context from the model name. Verify the installed route's actual capabilities and quota before routing. GPT-6 Sol Web and GPT-5.6 Sol Web may own review or implementation when suitable and supported; a Web writer must be the sole writer of its task.
 
 ```text
-model  = GPT-5.6 Sol
-effort = High
-route  = CodexGPT → ChatGPT Web
+model  = GPT-6 Sol or GPT-5.6 Sol
+effort = choose from supported efforts for the task risk
+route  = Codex Web GPT integration
 ```
 
 Good examples:
@@ -78,7 +78,7 @@ Good examples:
 - interpret a small set of upstream sources;
 - provide a high-quality second opinion.
 
-This is not the default worker or the normal owner for broad/context-heavy missions. It is generally slower and has less practical context than the native route. When another agent owns the repository task, this worker is read-only by default.
+Task size alone does not exclude this route. Use verified tool access, context limits, observed latency, model suitability and available quota to choose between integrated Web and native execution. When another agent owns the task, a Web reviewer remains read-only. Do not assume Web and native quotas are independent without evidence.
 
 Prefer a compact evidence packet:
 
@@ -138,7 +138,7 @@ Typical execution:
 ```text
 GPT-6 Luna Max native executes
 → when stronger reasoning is useful, choose by task shape:
-   - GPT-5.6 Sol High via CodexGPT → ChatGPT Web for short bounded work
+   - integrated GPT-6 Sol / GPT-5.6 Sol Web when verified capabilities and quota suit the task
    - GPT-6.1 Sol Medium native for substantial/context-heavy reasoning
 → GPT-6.1 Sol High native only when a concrete critical issue remains unresolved after Medium
 → GPT-6 Luna Max native normally implements/fixes/finishes
@@ -161,8 +161,27 @@ Use the calling harness's authoritative runtime metadata when available; do not 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
 - Use GPT-6 Luna Max for execution and ordinary work.
-- Use GPT-5.6 Sol High via CodexGPT → ChatGPT Web selectively for short, bounded strong-reasoning work.
+- Consider integrated GPT-6 Sol / GPT-5.6 Sol Web for review and implementation after checking actual tools and quota; preserve single-writer ownership.
 - Use GPT-6.1 Sol Medium native for substantial/context-heavy work where stronger reasoning materially reduces risk.
 - Use GPT-6.1 Sol High only when Medium leaves a concrete critical issue unresolved.
 
 Quota optimization chooses between suitable routes; it does not redefine what level of reasoning the technical risk requires.
+
+## Capability audit — 2026-10-08
+
+Fer's correction supersedes earlier assumptions about missing Web local context. The installed subagent registry exposes GPT-6 Sol Web and GPT-5.6 Sol Web (Medium/High). Their Codex Native bridge can forward operations into this workspace.
+
+| Capability | GPT-6 Sol Web | GPT-5.6 Sol Web |
+| --- | --- | --- |
+| Local terminal | PASS: forwarded codex_exec, exit0 | PASS: forwarded codex_exec, exit0 |
+| Repository/Git status | PASS: actual root, branch, HEAD and pending files | NOT RUN separately |
+| Canonical documentation | PASS: MODEL_ROUTING and ROADMAP read | PASS: TESTING_QA file SHA-256 via local terminal |
+| Runtime/test evidence | PASS: native receipt file discovery; contents not checked in that probe | PASS: native JSON loss/recovery/close scalars; requested QA/CPU fields not exposed in initial mixed output |
+| Complete bounded agent task | PASS: multi-step read-only probe | PASS: runtime read and subsequent single-command hash probe |
+| Implementation writes | NOT RUN; apply-patch advertised | NOT RUN; apply-patch advertised |
+
+GPT-5.6 Sol Web's initial heterogeneous PowerShell output exposed only the native timing table. The compact JSON follow-up was rejected before execution by automatic safety review because it could not determine the request's safety state; no exit code or JSON exists for that attempt. A safer single Get-FileHash command subsequently executed successfully (exit0), returning QA SHA-256 6CC2872C857CB03C00F171232A723A2EB452DDF8CE82E15297C7375C10C6AD2A. This is a specific rejected request, not evidence of unavailable local tools or exhausted quota. The requested QA73/CPU extraction remains unverified through that route.
+
+Terminal, Git, documentation and runtime access are verified as indicated above. Successful small agent tasks do not prove unrestricted full-product execution; writes, arbitrary tool access and end-to-end implementation have not been tested. No parent bridge token was invented; the Web agents used their issued integration context. Both reviewers were closed after the audit; one repository write owner remained throughout.
+
+Native ordinary quota98% before probes and100% afterward/weekly55% was observed, with native root audit running in the same interval. Attribution is confounded, no separate Web quota counter is exposed, and quota independence remains UNVERIFIED. After the normal reset, ordinary usage allowed/primary1%/weekly55% was verified. No installation, reset-credit action or paid resource was used. Recheck actual capabilities and available ordinary capacity when selecting a route rather than inferring either from its name.

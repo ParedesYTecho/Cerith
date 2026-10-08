@@ -1,3 +1,16 @@
+# State — CER-M4-011 integration gates
+
+Canonical main/origin-main: 14aaed2811545736ccd46d1c7282e792b9ab5516. CER-M4-006–010 are integrated (PR58–62). CER-M4-011 is VERIFIED_PENDING_INTEGRATION on codex/CER-M4-011-reconnect-attribution, PR63. Product head dd14747 passed independent GPT-6.1 Sol Medium review and hosted Build/Test 510/510 (39 Core, 398 Telemetry, 73 Integration), Quality SUCCESS; CodeQL SKIPPED under D-013, not security PASS. This operational documentation reconciliation requires review and CI at its own final HEAD before protected integration. Git/PR history is authoritative for those final receipts.
+
+Normal quota reset was verified: ordinary usage allowed, primary1%, weekly55%; no reset credits or expense. Fer's integrated Web routing correction is recorded in MODEL_ROUTING.md. One write owner; reviewer agents remain read-only. Product/native/performance evidence remains valid: bounded absent CPU reduction about50%, general nonregression INCONCLUSIVE; F7, startup, framework floor and mixed-monitor evidence remain open. M4 is incomplete; M5/M6 require preceding canonical exit review/integration/documented closure; never M7. HANDOFF contains the next action.
+
+## Historical CER-M4-011 candidate state
+# State — CER-M4-010 integrated / CER-M4-011 verified candidate
+
+Canonical main/origin-main14aaed2811545736ccd46d1c7282e792b9ab5516;006–010 integrated PR58–62.010 exact-head review/504tests/QualityPASS, CodeQLSKIPPED underD-013 notsecurityPASS, protectedsquash/identicaltrees/cleanmain verified. Postmerge main Build37761063358attempt2SUCCESS after initial existingKiro cleanup timeout397/398; causeunconfirmed. Owned010 closure reconciliation carried by011.
+
+CER-M4-011 VERIFIED_PENDING_INTEGRATION, solewriter codex/CER-M4-011-reconnect-attribution: minimaltransport-only stdlibpacing preservesACK/deadline/security/independentpipes/singleflight. Release0warnings/errors, Integration73/73 zero skipped, nativeactual lifecycle+3cyclesPASS.16isolated+12identifiedproductionobservations corroborate ~50% disconnectedCPUreduction atboundedhostscope; candidate0.4931%core residual, memorysmallincreases. Shortconnectedpositive retained;4longconnected observations donotconsistentlyreproduce it; generalnonregressionINCONCLUSIVE/F7/startup/frameworkfloor/mixedmonitorOPEN. Independent source/evidencePASS no furtherrequiredruntimecheck; exact-commit review/CI/integration pending. No ownedruntime; graph3C#refresh/hygiene/diffcheckPASS. CanonicalQA/PERFORMANCE preservesfailures/artifactlimits; HANDOFF exactnextaction. Latestordinaryquota90%, safecheckpointbeforeexhaustion/singlecontinuation; noresetcreditaction/expense/installations. M4incomplete, M5/M6exitgated, neverM7.
+## Historical CER-M4-010 candidate checkpoint
 # State — CER-M4-010 verified candidate / integration gates
 
 Canonical main/origin-main5980e6fb38273144e4abeecd0299db4db567cbb1 synchronized afterfetch; mainBuild/Test37727971063 andQuality37727971195 SUCCESS, CodeQL37727971077 SKIPPED underD-013, notsecurityPASS.006–009 integratedPR58/59/60/61. Four prior owned checkpoint docs preserved/reconciled on sole-writer codex/CER-M4-010-native-ring.
