@@ -34,11 +34,14 @@ public sealed partial class MainWindow : Window
     private readonly List<MetricReadout> _overview = [];
     private int _page;
     private bool _details;
+    private bool _compact;
+    private RectInt32? _normalBounds;
     private bool _overviewPending;
     private ImmutableArray<(int Start, int Count, bool Fits)> _pages = [];
     private sealed record PreparedComposition(MetricComposition Composition, MetricSubscription[] Subscriptions,
         List<(UIElement Element, MetricSubscription Subscription, Action<MetricSubscription> Apply)> Elements,
-        List<(MetricReadout Element, MetricSubscription Subscription)> Overview);
+        List<(MetricReadout Element, MetricSubscription Subscription)> Overview,
+        List<(MetricReadout Element, MetricSubscription Subscription)> Compact);
 
     public MainWindow(DisplayArea? startupDisplay = null)
     {
@@ -98,7 +101,10 @@ public sealed partial class MainWindow : Window
         var overview = composition.OverviewRows().Select(row =>
             (new MetricReadout(new MetricPresentationSpec(new MetricId(row.Id), row.Format)),
              subscriptions.Single(item => item.MetricId == new MetricId(row.Id)))).ToList();
-        return new PreparedComposition(composition, subscriptions, elements, overview);
+        var compact = composition.OverviewRows().Take(2).Select(row =>
+            (new MetricReadout(new MetricPresentationSpec(new MetricId(row.Id), row.Format)),
+             subscriptions.Single(item => item.MetricId == new MetricId(row.Id)))).ToList();
+        return new PreparedComposition(composition, subscriptions, elements, overview, compact);
     }
 
     private void Install(PreparedComposition prepared)
@@ -108,6 +114,7 @@ public sealed partial class MainWindow : Window
         _compositionStop = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         MetricsPanel.Children.Clear();
         OverviewPanel.Children.Clear();
+        CompactPanel.Children.Clear();
         _overview.Clear();
         _pages = [];
         _page = 0;
@@ -125,13 +132,19 @@ public sealed partial class MainWindow : Window
             readout.Apply(subscription);
             _overview.Add(readout);
         }
+        foreach (var (readout, subscription) in prepared.Compact)
+        {
+            CompactPanel.Children.Add(readout);
+            subscription.Updated += readout.Apply;
+            readout.Apply(subscription);
+        }
         ScheduleOverviewPage();
         _active = prepared.Composition;
     }
 
     private void ScheduleOverviewPage()
     {
-        if (_overviewPending || _closing || _details) return;
+        if (_overviewPending || _closing || _details || _compact) return;
         _overviewPending = true;
         if (!DispatcherQueue.TryEnqueue(() => { _overviewPending = false; ShowOverviewPage(); }))
             _overviewPending = false;
@@ -139,7 +152,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowOverviewPage()
     {
-        if (_closing || _details || OverviewViewport.ActualWidth <= 0) return;
+        if (_closing || _details || _compact || OverviewViewport.ActualWidth <= 0) return;
         double width = OverviewViewport.ActualWidth;
         // The star row already excludes the navigation's actual arranged height.
         double availableHeight = Math.Max(0, OverviewViewport.ActualHeight);
@@ -191,6 +204,59 @@ public sealed partial class MainWindow : Window
         DetailsView.Visibility = _details ? Visibility.Visible : Visibility.Collapsed;
         DetailsButtonText.Text = _details ? "Back to overview" : "Composition details";
         if (!_details) ScheduleOverviewPage();
+    }
+
+    private void OnToggleCompact(object sender, RoutedEventArgs args)
+    {
+        if (_closing) return;
+        if (!_compact)
+        {
+            var position = AppWindow.Position;
+            var size = AppWindow.Size;
+            _normalBounds = new RectInt32(position.X, position.Y, size.Width, size.Height);
+        }
+        _compact = !_compact;
+        NormalShell.Visibility = _compact ? Visibility.Collapsed : Visibility.Visible;
+        CompactShell.Visibility = _compact ? Visibility.Visible : Visibility.Collapsed;
+        if (!_compact)
+        {
+            CompactPinButton.IsChecked = false;
+            if (AppWindow.Presenter is OverlappedPresenter presenter)
+                presenter.IsAlwaysOnTop = false;
+        }
+        UpdateMinimumForScale();
+        var current = AppWindow.Position;
+        var target = _compact
+            ? new RectInt32(current.X, current.Y, (int)Math.Ceiling(300d * _scale), (int)Math.Ceiling(250d * _scale))
+            : _normalBounds ?? new RectInt32(current.X, current.Y, AppWindow.Size.Width, AppWindow.Size.Height);
+        MoveWithinStartupDisplay(target);
+        if (_compact) ExpandButton.Focus(FocusState.Programmatic);
+        else
+        {
+            CompactButton.Focus(FocusState.Programmatic);
+            ScheduleOverviewPage();
+        }
+    }
+
+    private void OnTogglePin(object sender, RoutedEventArgs args)
+    {
+        if (!_closing && AppWindow.Presenter is OverlappedPresenter presenter)
+            presenter.IsAlwaysOnTop = CompactPinButton.IsChecked == true;
+    }
+
+    private void MoveWithinStartupDisplay(RectInt32 bounds)
+    {
+        if (_startupDisplay is not { } display)
+        {
+            AppWindow.MoveAndResize(bounds);
+            return;
+        }
+        var work = display.WorkArea;
+        var width = Math.Min(bounds.Width, work.Width);
+        var height = Math.Min(bounds.Height, work.Height);
+        AppWindow.MoveAndResize(new RectInt32(
+            Math.Clamp(bounds.X, work.X, work.X + work.Width - width),
+            Math.Clamp(bounds.Y, work.Y, work.Y + work.Height - height), width, height));
     }
 
     private void StartSubscriptions()
@@ -327,8 +393,8 @@ public sealed partial class MainWindow : Window
         _scale = Root.XamlRoot?.RasterizationScale ?? 1d;
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.PreferredMinimumWidth = Math.Min((int)Math.Ceiling(360d * _scale), _startupDisplay?.WorkArea.Width ?? int.MaxValue);
-            presenter.PreferredMinimumHeight = Math.Min((int)Math.Ceiling(340d * _scale), _startupDisplay?.WorkArea.Height ?? int.MaxValue);
+            presenter.PreferredMinimumWidth = Math.Min((int)Math.Ceiling((_compact ? 260d : 360d) * _scale), _startupDisplay?.WorkArea.Width ?? int.MaxValue);
+            presenter.PreferredMinimumHeight = Math.Min((int)Math.Ceiling((_compact ? 170d : 340d) * _scale), _startupDisplay?.WorkArea.Height ?? int.MaxValue);
         }
     }
 
