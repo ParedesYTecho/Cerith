@@ -99,6 +99,40 @@ public sealed class MetricCompositionTests
     }
 
     [TestMethod]
+    public void ConfiguredSparklineRoundTripsInVersionOneWithoutChangingDefaults()
+    {
+        var original = new MetricComposition([
+            new(CompositionKind.Text, "CPU.Mixed.é", "0"),
+            new(CompositionKind.Sparkline, "CPU.Mixed.é", "0.000", -12.5, 125.25),
+            new(CompositionKind.Ring, "ram.usage", "0.0", 0, 100)]);
+        var json = original.Serialize();
+        StringAssert.Contains(json, "\"version\":1");
+        CollectionAssert.AreEqual(original.Rows.ToArray(), MetricComposition.Parse(Encoding.UTF8.GetBytes(json)).Rows.ToArray());
+        Assert.AreEqual(7, MetricComposition.Default.Rows.Length);
+        Assert.IsFalse(MetricComposition.Default.Rows.Any(row => row.Kind == CompositionKind.Sparkline));
+    }
+
+    [TestMethod]
+    public void SparklineRequiresFiniteIncreasingRangeAndStrictDefinitionShape()
+    {
+        (double? Min, double? Max)[] invalidRanges = [
+            (null, 100), (0, null), (5, 5), (6, 5),
+            (double.NaN, 100), (0, double.PositiveInfinity),
+            (double.NegativeInfinity, 100), (double.MinValue, double.MaxValue)];
+        foreach (var (min, max) in invalidRanges)
+            Assert.ThrowsExactly<InvalidDataException>(() => new MetricComposition([
+                new(CompositionKind.Sparkline, "CPU.Mixed", "0.0", min, max)]));
+        string[] invalid = [
+            """{"version":1,"rows":[{"kind":"Sparkline","id":"CPU.Mixed","format":"0.0"}]}""",
+            """{"version":1,"rows":[{"kind":"Sparkline","id":"CPU.Mixed","format":"0.0","min":5,"max":5}]}""",
+            """{"version":1,"rows":[{"kind":"sparkline","id":"CPU.Mixed","format":"0.0","min":0,"max":100}]}""",
+            """{"version":1,"rows":[{"kind":"3","id":"CPU.Mixed","format":"0.0","min":0,"max":100}]}""",
+            """{"version":1,"rows":[{"kind":"Sparkline","id":"CPU.Mixed","format":"0.0","min":0,"max":100,"samples":[]}]}"""];
+        foreach (var json in invalid)
+            Assert.ThrowsExactly<InvalidDataException>(() => MetricComposition.Parse(Encoding.UTF8.GetBytes(json)), json);
+    }
+
+    [TestMethod]
     public void RejectInvalidIdentifiersFormatsAndRanges()
     {
         Assert.ThrowsExactly<InvalidDataException>(() => new MetricComposition([new(CompositionKind.Text, "x\uD800", "0")]));

@@ -78,12 +78,20 @@ public sealed partial class MainWindow : Window
                     element = bar;
                     apply = bar.Apply;
                 }
-                else
+                else if (row.Kind == CompositionKind.Ring)
                 {
                     var ring = new MetricRing(range);
                     element = ring;
                     apply = ring.Apply;
                 }
+                else if (row.Kind == CompositionKind.Sparkline)
+                {
+                    var sparkline = new MetricSparkline(range);
+                    element = sparkline;
+                    apply = sparkline.Apply;
+                }
+                else
+                    throw new InvalidOperationException("Unknown composition renderer.");
             }
             elements.Add((element, subscription, apply));
         }

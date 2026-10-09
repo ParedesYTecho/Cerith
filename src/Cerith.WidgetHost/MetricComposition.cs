@@ -10,7 +10,7 @@ using Cerith.Core;
 
 namespace Cerith.WidgetHost;
 
-internal enum CompositionKind { Text, Bar, Ring }
+internal enum CompositionKind { Text, Bar, Ring, Sparkline }
 
 internal sealed record CompositionRow(CompositionKind Kind, string Id, string Format, double? Minimum = null, double? Maximum = null)
 {
@@ -126,7 +126,7 @@ internal sealed class MetricComposition
             {
                 if (element.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid row.");
                 var kindString = element.GetProperty("kind").GetString();
-                if (kindString is not ("Text" or "Bar" or "Ring"))
+                if (kindString is not ("Text" or "Bar" or "Ring" or "Sparkline"))
                     throw new InvalidDataException("Unknown composition kind.");
                 var kind = Enum.Parse<CompositionKind>(kindString);
                 RequireProperties(element, kind == CompositionKind.Text
