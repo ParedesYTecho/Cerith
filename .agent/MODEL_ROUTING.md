@@ -2,6 +2,12 @@
 
 Operational preference only. This may change frequently.
 
+## Current human override — 2026-10-09
+
+Ordinary execution uses GPT-6 Luna Max/native when exposed; while Luna is unavailable, use integrated GPT-6 Sol Web as the ordinary sole writer. Normal independent reviews use integrated Sol Web first. Reserve native GPT-6.1 Sol for a concrete complex-risk gate; duration, task size or an ordinary retry alone is not escalation. GPT-5.6 and Astra are excluded. Preserve verified capabilities, single-writer ownership and the distinction between model, effort and route; do not repeat capability probes or infer separate quotas.
+
+This override controls any conflicting older guidance below. Historical audit receipts describe what actually ran and remain preserved.
+
 ## Historical CER-M3-004 routing
 
 The final ZCode correction on 2026-10-03 used GPT-6.1 Sol Medium. That task-specific route is historical and does not override the current policy below.
@@ -16,9 +22,9 @@ Choose the reasoning tier from the **technical risk and difficulty of the work**
 
 Task duration, token volume, native code, repeated iterations or a first failed probe are not escalation reasons by themselves.
 
-## Default execution / write owner
+## Earlier default execution / write owner
 
-Current default:
+Earlier default:
 
 ```text
 model  = GPT-6 Luna
@@ -111,7 +117,7 @@ when the work warrants a strong reasoning model and native Codex context/tooling
 
 After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max when exposed by the active harness. If unavailable, choose a permitted verified route suitable for the task; do not pretend unavailable Luna executed.
 
-CodexGPT Web and GPT-6.1 Sol native are alternative strong routes selected by task shape. There is no rule requiring Web first.
+Historically, CodexGPT Web and GPT-6.1 Sol native were alternative strong routes selected by task shape without a Web-first rule; current normal-review routing follows the human override above.
 
 ## Astra routing
 

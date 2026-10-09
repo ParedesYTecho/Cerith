@@ -12,6 +12,73 @@ namespace Cerith.Integration.Tests;
 public sealed class MetricCompositionTests
 {
     [TestMethod]
+    public void OverviewKeepsExactCaseOrderAndFirstConfiguredFormatWithoutChangingSavedRows()
+    {
+        var composition = new MetricComposition([
+            new(CompositionKind.Bar, "CPU", "0.000", 0, 100),
+            new(CompositionKind.Text, "ram", "0.0"),
+            new(CompositionKind.Ring, "CPU", "0", 0, 100),
+            new(CompositionKind.Text, "cpu", "0.00")]);
+        string saved = composition.Serialize();
+        var overview = composition.OverviewRows();
+        CollectionAssert.AreEqual(new[] { "CPU", "ram", "cpu" }, overview.Select(row => row.Id).ToArray());
+        Assert.AreEqual("0.000", overview[0].Format);
+        Assert.AreEqual(saved, composition.Serialize());
+        Assert.AreEqual(4, MetricComposition.Default.OverviewRows().Length);
+    }
+
+    [TestMethod]
+    public void OverviewPagesUseMeasuredHeightsAndRetainEveryRowInOrder()
+    {
+        double[] heights = [40, 60, 100, 20, 80];
+        var pages = MetricComposition.OverviewPages(heights, 100);
+        CollectionAssert.AreEqual(new[] { (0, 2, true), (2, 1, true), (3, 2, true) }, pages.ToArray());
+        CollectionAssert.AreEqual(Enumerable.Range(0, heights.Length).ToArray(),
+            pages.SelectMany(page => Enumerable.Range(page.Start, page.Count)).ToArray());
+        var four = MetricComposition.OverviewPages([70, 70, 70, 70], 280);
+        CollectionAssert.AreEqual(new[] { (0, 4, true) }, four.ToArray());
+        CollectionAssert.AreEqual(new[] { (0, 3, true), (3, 1, true) },
+            MetricComposition.OverviewPages([70, 70, 70, 70], 279.5).ToArray());
+        CollectionAssert.AreEqual(new[] { (0, 4, true), (4, 1, true) },
+            MetricComposition.OverviewPages([1, 1, 1, 1, 1], 100).ToArray());
+    }
+
+    [TestMethod]
+    public void OversizedRowsRemainExplicitPagesAndRecoverWhenSpaceIncreases()
+    {
+        CollectionAssert.AreEqual(new[] { (0, 1, true), (1, 1, false), (2, 1, true) },
+            MetricComposition.OverviewPages([40, 201, 40], 200).ToArray());
+        CollectionAssert.AreEqual(new[] { (0, 3, true) },
+            MetricComposition.OverviewPages([40, 201, 40], 281).ToArray());
+        CollectionAssert.AreEqual(new[] { (0, 1, false), (1, 1, false) },
+            MetricComposition.OverviewPages([70, 70], 0).ToArray());
+        Assert.IsTrue(MetricComposition.OverviewPages([], 100).IsEmpty);
+        foreach (double invalid in new[] { -1d, double.NaN, double.PositiveInfinity })
+        {
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => MetricComposition.OverviewPages([invalid], 100));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => MetricComposition.OverviewPages([70], invalid));
+        }
+    }
+
+    [TestMethod]
+    public void ReconfigurationAndChangingHeightsProduceFreshPagesWithoutMutatingOldSelection()
+    {
+        var original = MetricComposition.Default.OverviewRows();
+        var oldPages = MetricComposition.OverviewPages([70, 70, 70, 70], 280);
+        var replacement = new MetricComposition([
+            new(CompositionKind.Ring, "ram.usage", "0.00", 0, 100),
+            new(CompositionKind.Text, "ram.usage", "0"),
+            new(CompositionKind.Text, "RAM.usage", "0.000")]).OverviewRows();
+        CollectionAssert.AreEqual(new[] { "ram.usage", "RAM.usage" }, replacement.Select(row => row.Id).ToArray());
+        Assert.AreEqual("0.00", replacement[0].Format);
+        CollectionAssert.AreEqual(new[] { (0, 2, true) }, MetricComposition.OverviewPages([70, 70], 280).ToArray());
+        CollectionAssert.AreEqual(new[] { (0, 1, true), (1, 1, true) },
+            MetricComposition.OverviewPages([220, 70], 280).ToArray());
+        Assert.AreEqual(4, original.Length);
+        CollectionAssert.AreEqual(new[] { (0, 4, true) }, oldPages.ToArray());
+    }
+
+    [TestMethod]
     public void DefaultRoundTripPreservesSevenOrderedRows()
     {
         var original = MetricComposition.Default;
