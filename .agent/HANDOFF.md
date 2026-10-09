@@ -1,3 +1,12 @@
+# Current handoff — CER-M4-017 (2026-10-09)
+
+PR #69 is Draft at https://github.com/ParedesYTecho/Cerith/pull/69, branch `codex/CER-M4-017-startup-theme`. The code accepts `--theme=system|light|dark` at startup and uses the existing resource dictionaries. Source implementation is committed; no MainWindow/composition/PR67/PR68 files changed. Worktree source tests: focused parser 3/3 PASS; WidgetHost Release build PASS, zero warnings/errors; diff check PASS; Graphify refreshed. The hosted workflows must be checked against the latest PR head before any advancement.
+
+Native display acceptance remains NOT VERIFIED. A prior call to the secondary-display acceptance helper was blocked by platform safety controls. Do not repeat the same operation or switch tools to evade the block. No runtime was launched for this feature and the user's `layout.db` was not accessed or changed. Keep PR #69 Draft until native appearance is demonstrated on DISPLAY2 and review/CI requirements pass.
+
+The separate PR67/PR68 candidates remain Draft. Preserve all of their uncommitted documents and worktrees. Their connected performance, accessibility/keyboard, raster/state visuals, physical 144 DPI, and independent final review gates remain open. Do not merge either or close PR65/66. M4 remains ACTIVE.
+
+Exact next action: read CI status for the current PR #69 HEAD; if checks pass, record their disposition without claiming native acceptance, then wait for a permitted secondary-only native theme validation. No additional M4 implementation is started from this checkpoint.
 # Active continuation checkpoint —2026-10-08
 
 Fer's new pasted long-duration authorization supersedes the stop below. Root sole013 writer; preserve all pending work. ONE automation cerith-avance-nocturno ACTIVE. Strict visual secondary only; verify nonprimary topology each launch, no fallback. Current secondary96DPI,1280x720 atx2560; primary untouched. GPT6SolWeb fresh architecture reviewer Mendel CLOSED with conditional source approval and twoP2 addressed (SQLite tradeoff documented; valid storage UI failure classified separately). Native startup reviewer Galileo CLOSED SOURCEPASS after clamping Loaded size/minimums. Critical final reviewer Raman01a11d5f-1467-7d72-8875-5e6c387d97df completed critical SOURCEPASS; exact-head continuation pending. No other writer or owned runtime/test process remains.

@@ -1,10 +1,10 @@
 ## CER-M4-017 — Startup theme selection
 
-Status: SOURCE COMPLETE / ACCEPTANCE INCOMPLETE. Owner: GPT-6 Sol Web High via Codex Web GPT, sole writer. Branch `codex/CER-M4-017-startup-theme`, isolated worktree based on `10a6ebf32ab453fb7d453873e77a1d84c3a0059f`. No other writer owns this task. Runtime and `layout.db` are not owned or modified; no native runtime has been started for this task.
+Status: PR #69 DRAFT / NATIVE ACCEPTANCE OPEN. Source owner: GPT-6 Sol Web High via Codex Web GPT, sole writer; ownership released after publication. Branch `codex/CER-M4-017-startup-theme`, isolated worktree based on `10a6ebf32ab453fb7d453873e77a1d84c3a0059f`. No other writer owns this task. Runtime and `layout.db` are not owned or modified; no native runtime has been started for this task.
 
 Scope: expose the existing WidgetHost Light/Dark theme dictionaries through a startup-only `--theme=system|light|dark` option, with system as the default. Keep the option parsing independent of WinUI for focused regression tests. Do not change MainWindow, composition, subscription, Compact, PR67 or PR68 files; add no settings store, dependency or new project. Invalid/conflicting theme options are ignored and the app keeps the system theme.
 
-Acceptance so far: focused parser tests PASS 3/3; WidgetHost Release build PASS with zero warnings/errors; source diff and `git diff --check` reviewed. Native visual acceptance is NOT VERIFIED because the prior secondary-display acceptance helper invocation was refused by the platform safety control; this operation was not repeated. Hosted exact-head CI remains pending. Publish Draft and do not merge until native behavior and required review/CI are demonstrated. M4 remains ACTIVE.
+Acceptance so far: focused parser tests PASS 3/3; WidgetHost Release build PASS with zero warnings/errors; source diff and `git diff --check` reviewed. Native visual acceptance is NOT VERIFIED because the prior secondary-display acceptance helper invocation was refused by the platform safety control; this operation was not repeated. PR #69 is Draft. Check hosted CI on the latest PR head; do not mark ready or merge until native behavior and review requirements are demonstrated. M4 remains ACTIVE.
 # Tasks
 
 ## CER-M4-013 — Configurable persistent MetricId composition

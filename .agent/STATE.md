@@ -1,3 +1,15 @@
+# Current state — CER-M4-017 (2026-10-09)
+
+M4 remains ACTIVE / INCOMPLETE. PR67 and PR68 remain Draft with their mandatory gates open: connected performance, accessibility/keyboard, raster and visual states, physical 144 DPI, and final independent review. Their source and worktrees were not changed in this task.
+
+CER-M4-017 adds startup theme selection to the existing WidgetHost palettes. PR #69 is Draft: https://github.com/ParedesYTecho/Cerith/pull/69, branch `codex/CER-M4-017-startup-theme`, based on main `10a6ebf32ab453fb7d453873e77a1d84c3a0059f`. Release WidgetHost build passed with zero warnings/errors; the focused parser suite passed 3/3; Graphify and `git diff --check` completed. Native visual acceptance is NOT VERIFIED. The previously used secondary-display acceptance helper was refused by the platform safety control; do not repeat that call or bypass it. CodeQL is not a PASS when skipped.
+
+WORKTREE: `C:\Users\Fer\.codex\worktrees\m4-theme-startup\Cerith`
+HEAD: `codex/CER-M4-017-startup-theme` (latest source commit `1ab4934`; documentation checkpoint follows)
+OWNER: source writer released; no native runtime or `layout.db` ownership taken
+LAST_VERIFIED_RESULT: focused tests 3/3 PASS; WidgetHost Release build 0 warnings/errors; CI must be read from the latest PR head
+CURRENT_BLOCKER: native theme appearance not demonstrated because the permitted acceptance helper was safety-blocked
+NEXT_EXACT_ACTION: inspect exact-head CI for PR #69 and leave Draft; run a DISPLAY2-only native theme check only if an already permitted mechanism becomes available. Keep PR67/68 gates open.
 # State — autonomous continuation active
 
 Fer explicitly resumed long-duration execution on 2026-10-08. The single cerith-avance-nocturno continuation is ACTIVE. Visual operations are restricted to the actual active non-primary monitor; no primary fallback. Current topology: one secondary at96DPI. No monitor topology/resolution changes.
