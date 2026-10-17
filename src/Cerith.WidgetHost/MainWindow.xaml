@@ -53,12 +53,46 @@
             </Grid>
 
             <StackPanel Grid.Row="2" Spacing="5" Margin="0,0,0,8">
-                <Button x:Name="ConfigureButton" Content="Configure metrics" Click="OnConfigure" IsEnabled="False" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="ConfigureButton" HorizontalAlignment="Stretch" Click="OnConfigure" IsEnabled="False">
+                        <TextBlock Text="Configure metrics" TextWrapping="Wrap" />
+                    </Button>
+                    <Button x:Name="DetailsButton" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnToggleDetails">
+                        <TextBlock x:Name="DetailsButtonText" Text="Composition details" TextWrapping="Wrap" />
+                    </Button>
+                </Grid>
                 <TextBlock x:Name="StorageWarning" TextWrapping="Wrap" Visibility="Collapsed" />
             </StackPanel>
-            <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
-            </ScrollViewer>
+            <Grid Grid.Row="3">
+                <Grid x:Name="OverviewView">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid x:Name="OverviewViewport">
+                        <StackPanel x:Name="OverviewPanel" VerticalAlignment="Top" />
+                        <TextBlock x:Name="OverviewSizeWarning" Visibility="Collapsed" TextWrapping="Wrap"
+                                   Text="This metric needs more space. Enlarge the window or open Composition details." />
+                    </Grid>
+                    <Grid x:Name="OverviewNavigation" Grid.Row="1" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="PreviousButton" Content="Previous" Click="OnPrevious" />
+                        <TextBlock x:Name="PageText" Grid.Column="1" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                        <Button x:Name="NextButton" Grid.Column="2" Content="Next" Click="OnNext" />
+                    </Grid>
+                </Grid>
+                <ScrollViewer x:Name="DetailsView" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
+                </ScrollViewer>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

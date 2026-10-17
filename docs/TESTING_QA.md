@@ -163,3 +163,15 @@ A separately identified native fixture changes only theme selection and a contro
 Opt-in --secondary-display selects an active nonprimary using Windows App SDK, positions before activation and bounds initial size/minima to its work area; absence exits before constructing/showing a window. Actual96DPI placement passes. FindAll LINQ enumeration failed with InvalidCastException on this SDK; indexed access avoids the failing projection. Early hidden-HWND assertions and summed absolute work-area coordinates are excluded failed attempts. A screen-region capture was occluded and excluded; owned-window PrintWindow captures remain private. Higher physical DPI/cross-DPI, screen-reader, high-contrast and long repeated-rebind retention coverage for013 remain NOT RUN. These limits do not replace M4 exit requirements.
 
 A separately identified slow-save native fixture inserts a cancellable delay before SQLite mutation, waits until the operation enters, then closes the window. Close/cancellation exits normally in one124.9743ms observation and retains committed bytes. This tests the native tracked-operation close path under controlled delay; production timing, crash durability and an in-flight initial-load race are not inferred.
+
+## CER-M4-014 — overview/detail candidate evidence
+
+Final solution Release build PASS: zero warnings/errors, 9.43s. Integration PASS: 97/97, zero skipped, 16.571s. Four new pure regressions cover exact-case deduplication/order/first format without changing saved rows, measured page-height boundaries/four-item cap/all-index retention, explicit oversized/zero-space pages and recovery, and fresh selection/pages after composition or height changes. They do not prove WinUI Measure/arrangement, dispatcher behavior, live reconfiguration or window close. Repository artifact hygiene and diff checks passed; these are not security or performance acceptance.
+
+One independent integrated Sol Web reviewer (Banach) returned CONDITIONAL SOURCE PASS and closed, with no demonstrated P0/P1 or required source correction. The review was qualified against actual confidence presentation: enum.ToString() or the literal No snapshot, not arbitrary provider strings. Three bounded native-evidence checks remain OPEN:
+
+1. State/confidence width with the bounded confidence strings, long safe error codes and large values/units at the supported minimum width.
+2. Actual viewport and navigation arrangement: four default IDs on one readable page at the normal viewport; complete pages at small sizes; long labels/values, themes/DPI and explicit oversized-row access through details.
+3. Dispatcher enqueue failure/coalescing, page updates during reconfiguration and safe close without late UI/subscription work.
+
+Native/usability/lifecycle and performance are NOT RUN because the secondary display is absent. Earlier CER-M4-013 native evidence does not validate this changed layout. CER-M4-014 CI/publication remain pending; this candidate is not native accepted and M4 remains INCOMPLETE.

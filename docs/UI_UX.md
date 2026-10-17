@@ -321,7 +321,7 @@ Measured, estimated, stale, unavailable, error and loading states must be visual
 
 A beautiful wrong number is worse than `--`.
 
-## Current composable surface (CER-M4-006)
+## Earlier composable demonstration (CER-M4-006)
 
 The bounded native demonstration uses CPU total usage and RAM usage (Hardware), displayed FPS (Gaming), and Codex primary quota remaining (AI). CPU and quota each appear as both `MetricReadout` and `MetricBar`, sharing their exact MetricId stream. FPS remains textual. Native layout and the existing themed edge/state rail are retained; a ScrollViewer accommodates the larger content at the existing minimum size. The intended default is 420×620 logical pixels. This is not the Hardware page, a layout editor or a final container framework.
 
@@ -331,7 +331,9 @@ No component tree is rebuilt for numeric changes. Readout presentation/label equ
 
 At 96 DPI, default and minimum sizes passed dark/light inspection and native scrolling. Minimum dimensions belong to the outer AppWindow presenter; do not duplicate them as client Grid minima, because the caption/frame reduce the visible client area and can clip the final component. The bottom range must be fully inside both the native client rectangle and scroll viewport. CER-M4-008 additionally verifies the current surface at actual 144 DPI in both themes and live 96→144→96 transitions on one monitor. Explicit PerMonitorV2 belongs to the build-consumed application manifest; live XamlRoot scale changes update only presenter minima, preserving user sizing. Mixed-monitor hardware transitions remain unverified; detailed native evidence and failed attempts are recorded in TESTING_QA.
 
-## Native readout overflow conformance
+## Earlier native readout overflow conformance
+
+This records the earlier accepted readout layout. The CER-M4-014 candidate below changes wrapping and state/confidence placement; the earlier native evidence does not validate that candidate.
 
 State and confidence share finite Grid columns: state uses the remaining width and confidence reserves its native desired width. A long safe error code wraps without pushing confidence out of the row. The decorative separator is omitted to keep short states readable beside a long value at the minimum width. Values wrap within the existing width cap instead of ellipsis so a large out-of-range number retains its actual text. Labels retain intentional trimming and their full accessible name. Taller exceptional rows remain inspectable through the existing ScrollViewer; range inspection is separate from bringing the full readout into view. This is the same readout for standalone and bar consumers, with unchanged state/confidence and Automation-name semantics.
 
@@ -348,3 +350,11 @@ WidgetHost provides one native configuration dialog for the ordered Text/Bar/Rin
 Missing storage uses the existing unsaved seven-component default. Corrupt, unsupported or unreadable existing storage remains preserved; defaults display with a persistent warning and saving over that file is blocked. Sanitized errors distinguish failed saving from a successfully saved composition whose live application failed. Metric labels, units, values and states continue to come from exact-ID descriptor/snapshot streams; none are persisted as configuration.
 
 CER-M4-013 native acceptance verifies ordered Text/Bar/Ring configuration, exact bindings/formats/ranges, Save/restart restoration and truthful storage/application warnings on a secondary96DPI monitor. Existing WinUI controls scroll at360x340; separately qualified theme probes verify Light/Dark action bounds and reachable fields. --secondary-display provides opt-in placement before visibility without monitor changes or an ordinary-launch change. Higher physical/cross-DPI013 validation remains unverified; this is not M4 visual exit.
+
+## Overview and composition details candidate (CER-M4-014)
+
+The normal native Overview uses one existing MetricReadout per distinct exact-case MetricId, in saved first-occurrence order and with that row's configured numeric format. Composition details explicitly opens the full ordered Text/Bar/Ring composition. Both views consume the same prepared subscriptions; switching views adds no read loops and changes neither the saved definition nor the seven-component default.
+
+Overview has no horizontal or vertical scrolling. Pages contain at most four complete readouts, using native measurements at the available width and the viewport height after navigation is arranged. Page/count navigation retains every selected ID; smaller viewports or taller presentations may require more pages. The current metric anchor survives repagination, while applying a new composition resets selection. An oversized single readout has an explicit page and a resize/details warning rather than cropped telemetry. This fallback does not establish that every payload fits the normal viewport.
+
+Labels and values wrap; state and confidence occupy a full-width row with 12-DIP text and unchanged semantic/accessible-name behavior. Details and configuration may scroll. This is a source-reviewed candidate, not native acceptance: default-four-on-one-page, bounded state/confidence width, actual navigation/viewport geometry and native lifecycle evidence remain open in TESTING_QA.
