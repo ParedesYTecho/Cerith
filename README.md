@@ -3,15 +3,10 @@
 </div>
 
 <div align="center">
-
-**Your system, in focus.**
-
-A native Windows telemetry platform for hardware, gaming and AI usage — built around one idea: every real metric should work in any design, on any desktop surface.
-
-**Windows** · **C# / .NET 10** · **WinUI 3** · **Local-first**
-
-[Explore Cerith Home](#cerith-home) · [How it works](#one-metric-language-many-surfaces) · [Roadmap](#development-status) · [Contribute](#explore-the-project)
-
+  <p><strong>Your system, in focus.</strong></p>
+  <p>A native Windows telemetry platform for hardware, gaming and AI usage — built around one idea: every real metric should work in any design, on any desktop surface.</p>
+  <p><strong>Windows</strong> · <strong>C# / .NET 10</strong> · <strong>WinUI 3</strong> · <strong>Local-first</strong></p>
+  <p><a href="#cerith-home">Explore Cerith Home</a> · <a href="#one-metric-language-many-surfaces">How it works</a> · <a href="#development-status">Roadmap</a> · <a href="#explore-the-project">Contribute</a></p>
 </div>
 
 ---
@@ -104,9 +99,6 @@ The visual idea is staged rather than promised all at once: **M4** supplies the 
 Cerith is developed in a public repository, but the **final code, documentation and brand licensing decisions remain pending**. Consult the [open-source strategy](docs/OPEN_SOURCE_STRATEGY.md) before reusing code or brand assets. *Cerith* is a working product name until clearance is complete.
 
 <div align="center">
-
-**Any metric. Any design. Anywhere on your desktop.**
-
-<sub>Native by design. Honest by default.</sub>
-
+  <p><strong>Any metric. Any design. Anywhere on your desktop.</strong></p>
+  <p><sub>Native by design. Honest by default.</sub></p>
 </div>
