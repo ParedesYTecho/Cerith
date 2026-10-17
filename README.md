@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/cerith-hero.svg" alt="Cerith: an orbital mark and editorial wordmark over a midnight-blue horizon" width="100%" />
+  <img src="docs/assets/cerith-hero.webp" alt="Cerith: an orbital mark and editorial wordmark over a midnight-blue horizon" width="100%" />
 </div>
 
 <div align="center">
@@ -24,7 +24,7 @@ Different sources. **The same truthful metric model.** Every surface consumes a 
 ## Cerith Home
 
 <div align="center">
-  <img src="docs/assets/cerith-home-concept.svg" alt="Cerith Home concept showing a sidebar, five system metric cards and two AI allowance cards" width="100%" />
+  <img src="docs/assets/cerith-home-concept.webp" alt="Cerith Home concept showing a sidebar, five system metric cards and two AI allowance cards" width="100%" />
 </div>
 
 > **Visual direction, not a product screenshot.** The interface and all numbers above are illustrative. Cerith Home is a proposed landing experience; it is **not** an implemented, working dashboard in the current milestone.

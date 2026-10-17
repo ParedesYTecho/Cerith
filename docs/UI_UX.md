@@ -23,7 +23,7 @@ External references expand the design vocabulary; they do not define the product
 
 **Status:** Approved direction for design exploration, **not** an implemented screen or a new M4 exit requirement. The reference concept is an editorial dark dashboard, with an orbital Cerith identity, a compact navigation rail, a hardware summary row and larger AI allowance cards.
 
-![Cerith Home visual exploration](assets/cerith-home-concept.svg)
+![Cerith Home visual exploration](assets/cerith-home-concept.webp)
 
 *Concept art uses sample values; it is not a runtime screenshot or evidence of available telemetry. The orbital identity is also exploratory while name/brand clearance is pending.*
 
