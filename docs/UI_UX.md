@@ -19,6 +19,62 @@ External references expand the design vocabulary; they do not define the product
 - premium without noise;
 - highly configurable without requiring design expertise.
 
+## Cerith Home — visual direction
+
+**Status:** Future native landing-page direction, **not** an implemented screen or a new M4 exit requirement. The target is an editorial dashboard with legible hardware and AI summaries, adaptable navigation and honest status information.
+
+The dashboard concept is intentionally **not included as a screenshot or promotional image** until an actual Home surface exists. The current [orbital hero](assets/cerith-hero.webp) and [logo lockup](assets/cerith-logo.webp) are brand studies cropped from user-supplied project artwork, not UI captures. The name and mark remain provisional pending clearance.
+
+### Identity and hierarchy
+
+- Retain the memorable crescent/orbit/star mark, serif wordmark and restrained midnight/ivory visual language as the **brand direction**. It is a proposal, not a finalized trademark or a license grant.
+- The atmospheric planetary landscape belongs to banners and launch/brand material, **not** the live Home workspace; content and legibility take priority inside the app.
+- Treat the left navigation as a scalable Home shell, not a mandatory sidebar in every widget. Keep a concise system/service health indicator and a discreet entry to Home customization.
+- On a generous viewport, show a scannable row of real hardware metrics, then distinct AI allowance/activity areas; do not hardcode five cards or any provider as a permanent requirement.
+- Use clear typography, measured contrast, restrained accents and subtle edge treatment. The reference artwork's tiny secondary text is not an accessibility target. Use state colors for meaning rather than decorating every value.
+
+### Three distinct experiences
+
+| Experience | User question | Density and interaction |
+| --- | --- | --- |
+| **Home** | What matters now across my system and tools? | Native landing page with customizable summaries and drill-down |
+| **Floating/taskbar/tray/overlay** | What do I need to glance at without opening Cerith? | Purpose-built compact surfaces, with expansion when appropriate |
+| **Details / inspection** | Why does this reading look wrong, and what does the source actually say? | More complete information, provenance, state, units and accessible scrolling |
+
+All three use the same MetricId semantics and design tokens. Home is **not** the existing bounded M4 WidgetHost demonstration, and it must not be implemented as a collage of independent provider dashboards.
+
+### Responsive composition and density
+
+- **Wide:** arrange several hardware cards across a row and larger detail sections side by side when space allows.
+- **Medium:** allow cards to wrap and information panels to stack while preserving a useful first-screen summary.
+- **Narrow:** prioritize essential metrics; collapse navigation, simplify secondary visualizations and let detailed material scroll.
+- Reflow according to measured available client width, height, font scale and DPI; **do not uniformly scale a screenshot or clip values**. Avoid hard-coded thresholds until the native component measurements justify them.
+- Offer independent **comfortable / standard / compact** density choices where appropriate; density is not determined solely by window size.
+- Preserve keyboard order, screen-reader names, focus visibility, reduced-motion settings, high contrast and long/localized values through every layout change. Test resizes at typical 100–200% DPI, not just a perfect desktop size.
+
+### Customization as progressive disclosure
+
+Default Home must look deliberate and be useful without editing. The later editor should permit choosing MetricIds, showing/hiding and reordering sections, changing component types, resizing panels, switching themes/density and saving/restoring layouts. Keep a simple **Customize Home** entry separate from the persistent monitoring experience.
+
+Layout persistence stores component identities and presentation choices, **not** provider-owned readouts, fabricated defaults or personal transcripts. Editing must have an understandable preview/Cancel/revert path. One composition model should serve Home and widgets where their capabilities overlap; no parallel provider-specific dashboard configuration system.
+
+### AI and metric truth in the visual design
+
+- Explicitly label quota **used** versus **remaining**. A five-hour allowance and a weekly allowance are separate windows with their own actual resets; never assume their durations from presentation alone.
+- Token consumption, quota allowance, credits/balance, estimated cost and billing are different measurements. Show only those for which the source publishes a validated MetricId.
+- Include source state and freshness without visual noise: Fresh, Stale, Unavailable, Error and pending/connecting must have honest empty or warning treatments. A historical chart requires real historical data (M7); an M4 sparkline can only depict its bounded observed samples.
+- Brand glyphs may identify Claude, ChatGPT and future services **as labels**; the components still subscribe solely by MetricId. Avoid depending on third-party trademarks or artwork without the appropriate usage rights.
+- Concepts and promotional renders may use illustrative values only when clearly marked; acceptance screenshots must come from a real native build and identified sources.
+
+### Milestone boundary
+
+- **M4** — semantic/native components, binding, persistence and compact surfaces; the current WidgetHost remains a bounded delivery.
+- **M5** — visual Home and widget editing, drag/resize, presets, layers and reversible changes.
+- **M6** — contextual profiles and reactions when their rules actually exist.
+- **M7** — retention, trends, cost/model breakdown and historical dashboard composition.
+
+This direction must not silently expand M4, claim that Home already runs, or bypass the milestone's native, performance and accessibility gates. Native implementation and visual acceptance are future work, not proven by this document.
+
 ## Visual editor
 
 Conceptually inspired by professional design tools.
