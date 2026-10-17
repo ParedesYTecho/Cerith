@@ -21,11 +21,9 @@ External references expand the design vocabulary; they do not define the product
 
 ## Cerith Home — visual direction
 
-**Status:** Approved direction for design exploration, **not** an implemented screen or a new M4 exit requirement. The reference concept is an editorial dark dashboard, with an orbital Cerith identity, a compact navigation rail, a hardware summary row and larger AI allowance cards.
+**Status:** Future native landing-page direction, **not** an implemented screen or a new M4 exit requirement. The target is an editorial dashboard with legible hardware and AI summaries, adaptable navigation and honest status information.
 
-![Cerith Home visual exploration](assets/cerith-home-concept.webp)
-
-*Concept art uses sample values; it is not a runtime screenshot or evidence of available telemetry. The orbital identity is also exploratory while name/brand clearance is pending.*
+The dashboard concept is intentionally **not included as a screenshot or promotional image** until an actual Home surface exists. The current [orbital hero](assets/cerith-hero.webp) and [logo lockup](assets/cerith-logo.webp) are brand studies cropped from user-supplied project artwork, not UI captures. The name and mark remain provisional pending clearance.
 
 ### Identity and hierarchy
 

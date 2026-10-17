@@ -1,104 +1,120 @@
 <div align="center">
-  <img src="docs/assets/cerith-hero.webp" alt="Cerith: an orbital mark and editorial wordmark over a midnight-blue horizon" width="100%" />
-</div>
-
-<div align="center">
-  <p><strong>Your system, in focus.</strong></p>
-  <p>A native Windows telemetry platform for hardware, gaming and AI usage — built around one idea: every real metric should work in any design, on any desktop surface.</p>
-  <p><strong>Windows</strong> · <strong>C# / .NET 10</strong> · <strong>WinUI 3</strong> · <strong>Local-first</strong></p>
-  <p><a href="#cerith-home">Explore Cerith Home</a> · <a href="#one-metric-language-many-surfaces">How it works</a> · <a href="#development-status">Roadmap</a> · <a href="#explore-the-project">Contribute</a></p>
+  <img src="docs/assets/cerith-hero.webp" alt="Cerith orbital symbol and wordmark above a luminous, midnight-blue mountain landscape" width="100%" />
+  <h1>Cerith</h1>
+  <p><strong>Any metric. Any design. Anywhere on your desktop.</strong></p>
+  <p>Native Windows telemetry for the things you care about — your hardware, your games, and your AI tools.</p>
+  <p>
+    <a href="https://github.com/ParedesYTecho/Cerith/actions/workflows/build.yml"><img src="https://github.com/ParedesYTecho/Cerith/actions/workflows/build.yml/badge.svg" alt="Build and Test status" /></a>
+    <a href="https://github.com/ParedesYTecho/Cerith/actions/workflows/quality.yml"><img src="https://github.com/ParedesYTecho/Cerith/actions/workflows/quality.yml/badge.svg" alt="Repository Quality status" /></a>
+  </p>
+  <p>
+    <a href="#what-is-cerith">Overview</a> &nbsp;·&nbsp;
+    <a href="#architecture">Architecture</a> &nbsp;·&nbsp;
+    <a href="#development-roadmap">Roadmap</a> &nbsp;·&nbsp;
+    <a href="#build-from-source">Build</a> &nbsp;·&nbsp;
+    <a href="#contributing">Contribute</a>
+  </p>
 </div>
 
 ---
 
-## Clarity at a glance. Depth when you need it.
+## What is Cerith?
 
-Cerith brings three kinds of observability into one coherent native experience:
+Cerith is an **openly developed, Windows-first telemetry platform**. It brings hardware performance, gaming data and AI usage into one native system, so the same metric can appear as a readout, a graph, a compact desktop widget or — when implemented — another surface you choose.
 
-| **Hardware** | **Gaming** | **AI observability** |
+The philosophy is simple: **powerful under the hood, calm on the desktop**. You should be able to start with a useful default, then control the information, appearance and placement without surrendering accuracy or performance.
+
+| Hardware | Gaming | AI observability |
 | :--- | :--- | :--- |
-| CPU, GPU, memory, storage, network and verified sensors. | FPS, frame time and measured game/session telemetry. | Subscription quotas, reset windows and local tool activity — without conflating them. |
+| CPU, GPU, memory, storage and network measurements from verified local sources. | FPS, frame time and performance telemetry with explicit measurement semantics. | Subscription allowances, reset windows and local tool activity, clearly separated from token costs and billing. |
+| **Foundation delivered in M1.** | **PresentMon pipeline delivered in M2.** | **Initial quota and activity vertical slices delivered in M3.** |
 
-Different sources. **The same truthful metric model.** Every surface consumes a `MetricId`, not a provider-specific UI implementation.
+The wider catalog is evolving. **Not every planned metric or surface is implemented today.**
 
-## Cerith Home
+## What makes it different
 
-<div align="center">
-  <img src="docs/assets/cerith-home-concept.webp" alt="Cerith Home concept showing a sidebar, five system metric cards and two AI allowance cards" width="100%" />
-</div>
+- **One metric, many presentations.** Components bind to stable `MetricId` contracts, not provider-specific widgets.
+- **Native and local-first.** C#, .NET 10, WinUI 3 and Windows APIs; no Electron or browser engine in the always-on monitoring path.
+- **Honest data.** Measured, estimated, stale, unavailable and error states are distinct. Unknown never silently becomes zero.
+- **Built for customization.** Components and saved composition come before a future drag-and-drop visual editor.
+- **Performance with evidence.** CPU, memory, DPI, keyboard access and lifecycle behavior are measured, not assumed.
+- **Privacy is part of the architecture.** A usage counter is not permission to collect prompts, source code or credentials.
 
-> **Visual direction, not a product screenshot.** The interface and all numbers above are illustrative. Cerith Home is a proposed landing experience; it is **not** an implemented, working dashboard in the current milestone.
-
-A calm, information-rich home for your desktop. Hardware readouts sit alongside clearly labelled AI allowance windows, with the most useful information immediately visible and deeper inspection one interaction away.
-
-**Designed to become yours:** a polished first-run layout, followed by selectable metrics, movable and resizable sections, comfortable-to-compact density, themes and saved layouts. Narrow windows **reflow** their content rather than shrinking the entire UI to illegibility.
-
-The orbital identity, restrained color, generous hierarchy and fine borders come from the **Cerith Home** design direction. Branding artwork belongs in the product identity; decorative scenery does not compete with live measurements inside the application.
-
-[Read the visual direction and interaction contract →](docs/UI_UX.md#cerith-home--visual-direction)
-
-## One metric language. Many surfaces.
+## Architecture
 
 ```text
-Hardware · PresentMon · AI quota/activity sources
-                    │
-             MetricSnapshot
-                    │
-          MetricRegistry / MetricBus
-                    │
-                  IPC
-                    │
-        MetricId-bound native components
-                    │
-   Home · Floating widgets · Taskbar · Tray · Overlay
+ Hardware          Gaming            AI sources
+     └────────────────┼─────────────────┘
+                      ▼
+           Providers / acquisition
+                      ▼
+           MetricSnapshot + MetricBus
+                      ▼
+               Named-pipe IPC
+                      ▼
+             MetricId bindings
+                      ▼
+      Native components and surfaces
 ```
 
-Cerith is built **native-first**. The monitoring path is local, and the interface must not become the workload. Components can present data differently, but they cannot silently rewrite its meaning.
+A widget never needs to know whether a metric came from a GPU sensor, PresentMon or an AI quota source. [Architecture](docs/ARCHITECTURE.md) · [Metric semantics](docs/METRICS.md) · [AI telemetry](docs/AI_TELEMETRY.md).
 
-- **Truth before appearance.** Missing data is not zero. Estimated data is not measured data.
-- **Privacy by default.** Local-first acquisition; no prompts, source code or credentials masquerading as telemetry.
-- **Performance is measured.** Windows, DPI, accessibility and idle overhead are quality gates, not marketing claims.
-- **Deep customization without the initial setup tax.** Useful defaults first; advanced composition for people who want it.
+## Design, with purpose
 
-## Development status
+Cerith's visual direction pairs an **orbital mark and editorial typography** with midnight tones, warm highlights and restrained motion. It is a brand exploration based on original project artwork, not a screenshot of a running application.
 
-**Active development · no public release yet.** This README distinguishes the shipped repository code from the design direction and roadmap.
+The product experience is intended to be **dense but calm**: readable hierarchy, purposeful motion, adaptable density, accessible states and layout that responds to actual window size and DPI. Its eventual Home view, editor and historical dashboards are specified in the roadmap; none is represented here by a fictional screenshot.
 
-| Milestone | State | Scope |
+[Visual principles and interaction rules →](docs/UI_UX.md) · [Product vision →](docs/PRODUCT_SPEC.md)
+
+## Development roadmap
+
+Cerith is in **active development**. There is **no public installer or stable release** yet.
+
+| Milestone | Status | Focus |
 | :--- | :--- | :--- |
-| **M0 · Foundation** | Complete | Metric contracts, runtime skeleton, IPC and project safeguards |
-| **M1 · Hardware** | Complete | Initial native hardware acquisition |
-| **M2 · Gaming** | Complete | PresentMon-based FPS, frame-time and session foundations |
-| **M3 · AI telemetry** | Complete | Initial quota integrations and a bounded local activity collector |
-| **M4 · Widget engine** | **In progress** | Native metric components, composition and compact surfaces |
-| **M5 · Visual editor** | Planned | Drag, resize, layers, alignment and property inspector |
-| **M6 · Rules & profiles** | Planned | Context-aware presentation and alerts |
-| **M7 · History & analytics** | Planned | Retained data, trends, model breakdown and historical dashboards |
+| **M0 — Foundation** | Complete | Core contracts, IPC, development baseline |
+| **M1 — Hardware MVP** | Complete | Verified initial hardware telemetry |
+| **M2 — Gaming pipeline** | Complete | PresentMon and frame-time foundations |
+| **M3 — AI telemetry** | Complete | Initial quota integrations and local activity |
+| **M4 — Widget engine & compact surfaces** | **In progress** | Native components, composition and desktop surfaces |
+| **M5 — Visual editor** | Planned | Canvas, resize, layers and property inspector |
+| **M6 — Rules & profiles** | Planned | Conditions, alerts and contextual presentation |
+| **M7 — History & analytics** | Planned | Local history, trends and extended dashboards |
 
-The current M4 branch work is reviewable in [pull requests](https://github.com/ParedesYTecho/Cerith/pulls); **a draft PR is not a completed feature on `main`**. See the [canonical roadmap](docs/ROADMAP.md) for full scope and acceptance criteria.
+The table describes milestones, **not complete coverage of every future provider or feature**. Current M4 candidates may exist in [draft pull requests](https://github.com/ParedesYTecho/Cerith/pulls); draft work is not part of `main`. [See the canonical roadmap →](docs/ROADMAP.md)
 
-### How Home fits the roadmap
+## Build from source
 
-The visual idea is staged rather than promised all at once: **M4** supplies the honest metric components and native surfaces; **M5** supplies visual editing and saved composition workflows; **M6** can add contextual profiles; **M7** supplies real historical charts and token/cost analytics. No mockup chart implies a source or history store that does not yet exist.
+For contributors and developers on **Windows**, use the .NET 10 SDK and the Windows tooling required by WinUI 3. The commands below reflect the repository's [Build and Test workflow](.github/workflows/build.yml).
 
-## Explore the project
+```powershell
+git clone https://github.com/ParedesYTecho/Cerith.git
+cd Cerith
 
-| Read | Why |
-| :--- | :--- |
-| [Product specification](docs/PRODUCT_SPEC.md) | Vision, surfaces and long-term scope |
-| [UI / UX](docs/UI_UX.md) | Cerith Home, customization, density, motion and honest states |
-| [Architecture](docs/ARCHITECTURE.md) | MetricId, providers, runtime and boundaries |
-| [Metrics](docs/METRICS.md) | Units, confidence and telemetry semantics |
-| [AI telemetry](docs/AI_TELEMETRY.md) | Quotas versus tokens and source limitations |
-| [Roadmap](docs/ROADMAP.md) | Milestones and sequencing |
-| [Contributing](CONTRIBUTING.md) | Branches, PR quality and verification |
-| [Security](SECURITY.md) | Responsible handling and privacy |
+dotnet restore Cerith.sln
+dotnet build Cerith.sln --configuration Release --no-restore
+```
 
-**Development stack:** C#, .NET 10, WinUI 3 / Windows App SDK, LibreHardwareMonitor, PresentMon and SQLite where required. No Electron or browser engine in the always-on monitoring path.
+Run the repository's three test projects:
 
-Cerith is developed in a public repository, but the **final code, documentation and brand licensing decisions remain pending**. Consult the [open-source strategy](docs/OPEN_SOURCE_STRATEGY.md) before reusing code or brand assets. *Cerith* is a working product name until clearance is complete.
+```powershell
+dotnet test tests/Cerith.Core.Tests/Cerith.Core.Tests.csproj --configuration Release --no-build
+dotnet test tests/Cerith.Telemetry.Tests/Cerith.Telemetry.Tests.csproj --configuration Release --no-build
+dotnet test tests/Cerith.Integration.Tests/Cerith.Integration.Tests.csproj --configuration Release --no-build
+```
+
+This is a **developer build**, not an installation or feature-completeness guarantee. Native runtime/DPI checks still require suitable Windows hardware and are tracked separately.
+
+## Contributing
+
+Cerith aims to be open to collaboration without compromising telemetry integrity or code quality. Contributions should be small, independently understandable and reviewable, with provenance for any external code.
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_QUALITY.md](CODE_QUALITY.md), [SECURITY.md](SECURITY.md) and the [development workflow](DEVELOPMENT_WORKFLOW.md).
+
+**Source availability is not a license grant.** The code, documentation and brand policies are still being finalized; see [Open Source Strategy](docs/OPEN_SOURCE_STRATEGY.md). The Cerith name and artwork are provisional pending clearance.
 
 <div align="center">
-  <p><strong>Any metric. Any design. Anywhere on your desktop.</strong></p>
+  <img src="docs/assets/cerith-logo.webp" alt="Cerith orbital logo and typographic lockup, brand exploration" width="300" />
   <p><sub>Native by design. Honest by default.</sub></p>
 </div>
