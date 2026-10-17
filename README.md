@@ -38,7 +38,7 @@ The wider catalog is evolving. **Not every planned metric or surface is implemen
 - **Honest data.** Measured, estimated, stale, unavailable and error states are distinct. Unknown never silently becomes zero.
 - **Built for customization.** Components and saved composition come before a future drag-and-drop visual editor.
 - **Performance with evidence.** CPU, memory, DPI, keyboard access and lifecycle behavior are measured, not assumed.
-- **Privacy is part of the architecture.** A usage counter is not permission to collect prompts, source code or credentials.
+- **Privacy is part of the architecture.** Local processing and IPC do not imply offline-only acquisition: some quota sources require authenticated HTTPS requests to their providers. Cerith does not operate a cloud telemetry backend, and a usage counter is not permission to collect prompts, source code or credentials.
 
 ## Architecture
 
@@ -69,20 +69,11 @@ The product experience is intended to be **dense but calm**: readable hierarchy,
 
 ## Development roadmap
 
-Cerith is in **active development**. There is **no public installer or stable release** yet.
+**Under active development — no public installer or stable release yet.**
 
-| Milestone | Status | Focus |
-| :--- | :--- | :--- |
-| **M0 — Foundation** | Complete | Core contracts, IPC, development baseline |
-| **M1 — Hardware MVP** | Complete | Verified initial hardware telemetry |
-| **M2 — Gaming pipeline** | Complete | PresentMon and frame-time foundations |
-| **M3 — AI telemetry** | Complete | Initial quota integrations and local activity |
-| **M4 — Widget engine & compact surfaces** | **In progress** | Native components, composition and desktop surfaces |
-| **M5 — Visual editor** | Planned | Canvas, resize, layers and property inspector |
-| **M6 — Rules & profiles** | Planned | Conditions, alerts and contextual presentation |
-| **M7 — History & analytics** | Planned | Local history, trends and extended dashboards |
+The repository has foundational hardware, gaming and AI telemetry implementations, with work continuing on native widget components and compact surfaces. Later phases introduce a visual editor, contextual rules, and retained history/analytics.
 
-The table describes milestones, **not complete coverage of every future provider or feature**. Current M4 candidates may exist in [draft pull requests](https://github.com/ParedesYTecho/Cerith/pulls); draft work is not part of `main`. [See the canonical roadmap →](docs/ROADMAP.md)
+The **canonical milestone statuses and exit criteria live in [ROADMAP.md](docs/ROADMAP.md)**. Please consult that document and the [open pull requests](https://github.com/ParedesYTecho/Cerith/pulls) rather than treating a README summary or a draft PR as proof that a feature has shipped.
 
 ## Build from source
 
