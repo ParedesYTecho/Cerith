@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="430" viewBox="0 0 1440 430" role="img" aria-labelledby="title desc">
+<title id="title">Cerith — an editorial orbital identity</title>
+<desc id="desc">An ivory orbital symbol and Cerith wordmark on midnight blue, with a luminous planetary arc and the line Any metric. Any design. Anywhere on your desktop.</desc>
+<defs>
+  <linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#080d13"/><stop offset=".55" stop-color="#111d29"/><stop offset="1" stop-color="#080d12"/></linearGradient>
+  <radialGradient id="glow" cx=".78" cy=".22" r=".75"><stop stop-color="#46606c" stop-opacity=".44"/><stop offset=".45" stop-color="#1b3543" stop-opacity=".14"/><stop offset="1" stop-color="#071018" stop-opacity="0"/></radialGradient>
+  <linearGradient id="ivory" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8f5ec"/><stop offset=".55" stop-color="#e5d6c4"/><stop offset="1" stop-color="#b79d81"/></linearGradient>
+  <linearGradient id="horizon" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#d9b68b" stop-opacity="0"/><stop offset=".5" stop-color="#f7dfbd" stop-opacity=".95"/><stop offset="1" stop-color="#fff1d8" stop-opacity=".10"/></linearGradient>
+  <filter id="bloom" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="13"/></filter>
+  <pattern id="grid" width="62" height="62" patternUnits="userSpaceOnUse"><path d="M62 0H0V62" fill="none" stroke="#b7cbd5" stroke-opacity=".055" stroke-width="1"/></pattern>
+</defs>
+<rect width="1440" height="430" rx="20" fill="url(#night)"/>
+<rect width="1440" height="430" rx="20" fill="url(#glow)"/>
+<rect width="1440" height="430" rx="20" fill="url(#grid)"/>
+<path d="M0 1H1440M0 429H1440" stroke="#9bb0ba" stroke-opacity=".18"/>
+<circle cx="1332" cy="-58" r="376" fill="none" stroke="#eccda9" stroke-opacity=".20" stroke-width="33" filter="url(#bloom)"/>
+<circle cx="1332" cy="-58" r="376" fill="none" stroke="url(#horizon)" stroke-width="2.5"/>
+<circle cx="1332" cy="-58" r="365" fill="#132531" fill-opacity=".48"/>
+<path d="M940 408C1032 352 1168 330 1440 349V430H920Z" fill="#080e14" fill-opacity=".64"/>
+<path d="M950 399C1085 367 1231 359 1440 376" fill="none" stroke="#c9b39b" stroke-opacity=".18"/>
+<g fill="#d1e4e7">
+<circle cx="900" cy="72" r="1.4" opacity=".6"/><circle cx="1082" cy="48" r="1.1" opacity=".48"/><circle cx="1375" cy="290" r="1" opacity=".6"/><circle cx="973" cy="280" r=".8" opacity=".4"/><circle cx="1247" cy="340" r="1.1" opacity=".4"/>
+</g>
+<g transform="translate(126 195)">
+  <circle cx="6" cy="0" r="78" fill="none" stroke="#f3e3cf" stroke-opacity=".55" stroke-width="1" stroke-dasharray="1 7"/>
+  <path d="M-18-83C-64-69-91-24-77 28C-66 73-32 89 8 78C-32 52-47 5-32-42C-28-58-23-72-18-83Z" fill="url(#ivory)"/>
+  <path d="M0-103V104" stroke="#f5eee3" stroke-width="1.8"/>
+  <path d="M0-19C3-6 9-3 22 0C9 3 3 7 0 20C-3 7-9 3-22 0C-9-3-3-6 0-19Z" fill="#fcf8ee"/>
+  <path d="M78-1H93" stroke="#f5eee3" stroke-width="1.8"/>
+</g>
+<text x="258" y="216" font-size="116" font-family="Georgia, 'Times New Roman', serif" letter-spacing="-5" fill="url(#ivory)">Cerith</text>
+<text x="266" y="259" font-size="13" letter-spacing="6.2" font-family="Segoe UI, Arial, sans-serif" fill="#e1d7c9">SYSTEM INTELLIGENCE</text>
+<text x="268" y="307" font-size="20" letter-spacing=".2" font-family="Segoe UI, Arial, sans-serif" fill="#cad4d7">Any metric. Any design. Anywhere on your desktop.</text>
+<path d="M268 334H635" stroke="#e1c7a7" stroke-opacity=".35"/>
+<text x="54" y="44" font-size="10" letter-spacing="4.5" font-family="Segoe UI, Arial, sans-serif" fill="#9cacb5">AN OPEN DEVELOPMENT PROJECT</text>
+<text x="1394" y="401" text-anchor="end" font-size="10" letter-spacing="3.1" font-family="Segoe UI, Arial, sans-serif" fill="#bbc5c9">WINDOWS · NATIVE · LOCAL FIRST</text>
+<rect x=".5" y=".5" width="1439" height="429" rx="19.5" fill="none" stroke="#c8d0d4" stroke-opacity=".17"/>
+</svg>

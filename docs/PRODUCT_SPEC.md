@@ -47,6 +47,14 @@ ANY SURFACE
 - dashboard;
 - future remote display.
 
+## Cerith Home — landing experience
+
+Cerith Home is the proposed **native, configurable landing page** for a quick overview of hardware, gaming and AI telemetry. It is distinct from the small always-visible widgets and from the expanded inspection views. It should offer a polished default composition, responsive reflow, honest metric states and a path to deep personalization without imposing an editor on first launch.
+
+The current visual direction uses an editorial midnight palette, an orbital brand mark, a concise navigation rail, hardware summaries and expanded AI usage/allowance cards. The supplied concept artwork is **illustrative**, not a working product screenshot or evidence for any displayed measurement. Exact composition, responsive breakpoints and final identity are subject to native usability/accessibility checks and brand clearance.
+
+Home depends on capabilities delivered progressively: M4 metric components and native surfaces, M5 visual editing and presets, M6 contextual profiles and M7 persisted history/analytics. This direction **does not** change M4 exit criteria or authorize claiming unbuilt history, editor or provider functions. The actionable UX contract and concept live in [UI_UX.md](UI_UX.md#cerith-home--visual-direction).
+
 ## Capability groups
 
 ### Hardware
