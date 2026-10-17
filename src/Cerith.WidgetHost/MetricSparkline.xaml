@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="Cerith.WidgetHost.MetricSparkline"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsTabStop="False">
+    <StackPanel>
+        <ContentControl x:Name="ReadoutHost" IsTabStop="False" HorizontalContentAlignment="Stretch" />
+        <StackPanel Margin="17,0,2,10" Spacing="4">
+            <Grid x:Name="Plot" Height="42" MinWidth="32" Visibility="Collapsed" SizeChanged="OnPlotSizeChanged">
+                <Polyline x:Name="Line" Stroke="{ThemeResource CerithAccentBrush}"
+                          StrokeThickness="2" Stretch="None" Visibility="Collapsed" />
+            </Grid>
+            <TextBlock x:Name="RangeText" FontSize="10"
+                       Foreground="{ThemeResource CerithMutedTextBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

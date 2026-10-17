@@ -44,6 +44,45 @@ public sealed class MetricCompositionStoreTests
     private static string TempPath() => Path.Combine(Path.GetTempPath(), "CerithCompositionTests", Guid.NewGuid().ToString("N"), "layout.db");
 
     [TestMethod]
+    public async Task ConfiguredSparklineReloadsDefinitionWithoutObservedSamples()
+    {
+        var path = TempPath();
+        try
+        {
+            var original = new MetricComposition([
+                new(CompositionKind.Text, "CPU.Mixed.é", "0"),
+                new(CompositionKind.Sparkline, "CPU.Mixed.é", "0.000", -12.5, 125.25)]);
+            var row = original.Rows[1];
+            var spec = new MetricRangeSpec(new(new(row.Id), row.Format), row.Minimum!.Value, row.Maximum!.Value);
+            var sequence = new MetricSparklineSequence(spec);
+            var time = new DateTimeOffset(2026, 10, 8, 10, 0, 0, TimeSpan.Zero);
+            sequence.Apply(null, new(new(row.Id), Cerith.Core.MetricValue.From(25d), time,
+                Cerith.Core.MetricState.Fresh, Cerith.Core.MetricConfidence.Measured));
+            sequence.Apply(null, new(new(row.Id), Cerith.Core.MetricValue.From(50d), time.AddSeconds(9),
+                Cerith.Core.MetricState.Fresh, Cerith.Core.MetricConfidence.Measured));
+            Assert.AreEqual(2, sequence.Samples.Count);
+            var store = new MetricCompositionStore(path);
+            await store.SaveAsync(original, await store.LoadAsync(CancellationToken.None), CancellationToken.None);
+            var loaded = await new MetricCompositionStore(path).LoadAsync(CancellationToken.None);
+            Assert.AreEqual(CompositionLoadState.Valid, loaded.State);
+            CollectionAssert.AreEqual(original.Rows.ToArray(), loaded.Composition!.Rows.ToArray());
+            using var payload = System.Text.Json.JsonDocument.Parse(loaded.Payload!);
+            CollectionAssert.AreEqual(new[] { "kind", "id", "format", "min", "max" },
+                payload.RootElement.GetProperty("rows")[1].EnumerateObject().Select(property => property.Name).ToArray());
+            var restored = loaded.Composition.Rows[1];
+            var restarted = new MetricSparklineSequence(new(new(new(restored.Id), restored.Format),
+                restored.Minimum!.Value, restored.Maximum!.Value));
+            Assert.AreEqual(0, restarted.Samples.Count);
+            Assert.AreEqual(TimeSpan.Zero, restarted.Span);
+            var reordered = new MetricComposition(loaded.Composition.Rows.Reverse());
+            await store.SaveAsync(reordered, loaded, CancellationToken.None);
+            CollectionAssert.AreEqual(reordered.Rows.ToArray(),
+                (await new MetricCompositionStore(path).LoadAsync(CancellationToken.None)).Composition!.Rows.ToArray());
+        }
+        finally { if (Directory.Exists(Path.GetDirectoryName(path)!)) Directory.Delete(Path.GetDirectoryName(path)!, true); }
+    }
+
+    [TestMethod]
     public async Task NativeBindingSurvivesGcAndPreservesUnicodeAndQuotes()
     {
         var path = TempPath();
