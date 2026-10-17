@@ -1,8 +1,17 @@
 # Tasks
 
+## CER-M4-014 — Native overview and composition details
+
+Status: CANDIDATE_READY_FOR_ROOT_PUBLICATION — final solution Release 0 warnings/errors (9.43s); Integration 97/97 PASS, zero skipped (16.571s), four pure regressions. One independent integrated Sol Web review (Banach) CONDITIONAL SOURCE PASS, closed; no demonstrated P0/P1 or required source correction. Canonical UI/QA documentation reconciled. Three native-evidence checks OPEN; native/performance NOT RUN, CI/publication pending. Not native accepted; M4 INCOMPLETE.
+Owner: RELEASED after DOCS-ONLY reconciliation; source/test hashes preserved. Root owns commit/push/draft PR/CI, root documentation and separate 012 PR65. No active 014 writer; no merge authorized.
+Branch: codex/CER-M4-014-overview-detail. Base: 10a6ebf32ab453fb7d453873e77a1d84c3a0059f.
+Scope: existing MetricId subscriptions, distinct overview with bounded page navigation, explicit ordered composition details. No schema/provider/IPC change, native launch or merge.
+
 ## CER-M4-013 — Configurable persistent MetricId composition
 
-Status: READY_FOR_EXACT_HEAD_REVIEW_AND_CI — Release0warnings/errors, Integration93/93 zero skipped; bounded independent architecture/source review PASS with corrections. Actual secondary96 native Save/restart/exact composition/rebind/loss/recovery and locked/corrupt storage preservation/retry PASS. Qualified native Light/Dark minimum/application-fault/slow-save-close probes PASS. Verified-minimized bounded performance retains memory increase/connected CPU-positive signal; general nonregression INCONCLUSIVE/F7OPEN. Higher physical DPI/cross-DPI and extended retention NOT RUN. No task DONE or milestone-exit claim before integration.
+Current disposition: INTEGRATED via PR64 on main 10a6ebf; the pre-integration checkpoint below is retained as historical evidence.
+
+Historical pre-integration status: READY_FOR_EXACT_HEAD_REVIEW_AND_CI — Release0warnings/errors, Integration93/93 zero skipped; bounded independent architecture/source review PASS with corrections. Actual secondary96 native Save/restart/exact composition/rebind/loss/recovery and locked/corrupt storage preservation/retry PASS. Qualified native Light/Dark minimum/application-fault/slow-save-close probes PASS. Verified-minimized bounded performance retains memory increase/connected CPU-positive signal; general nonregression INCONCLUSIVE/F7OPEN. Higher physical DPI/cross-DPI and extended retention NOT RUN. No task DONE or milestone-exit claim before integration.
 Owner: Codex root — sole writer after explicit native recovery handoff and writer shutdown; independent reviewer read-only.
 Branch: codex/CER-M4-013-persistent-composition.
 Base:119c5d3a6865b9fbb1af6532a617470e526e8c38 (fresh main/origin-main verified, integrated011 exact/main CI PASS; CodeQLSKIPPED D013 notsecurityPASS).

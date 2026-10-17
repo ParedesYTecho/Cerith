@@ -1,4 +1,12 @@
-# State — autonomous continuation active
+# State — CER-M4-014 isolated worktree
+
+Current branch: codex/CER-M4-014-overview-detail; base/main 10a6ebf32ab453fb7d453873e77a1d84c3a0059f includes CER-M4-013 via PR64. CER-M4-014 is not committed. Documentation handoff is complete and writer ownership released; root owns Git publication/CI, root documentation and the separate 012 draft PR65 (source fe8).
+
+Release solution build PASS, 0 warnings/errors (9.43s). Integration PASS 97/97, zero skipped (16.571s), including four new overview-selection/paging regressions. Repository artifact hygiene and diff check PASS. Overview uses measured complete readouts, explicit page/count/order and a visible size warning for an oversized single readout; composition details retain all configured controls and shared subscriptions. Persistence/default definitions unchanged.
+
+Independent integrated Sol Web review (Banach): CONDITIONAL SOURCE PASS, reviewer closed, no demonstrated P0/P1 or required source correction. Three native-evidence checks remain OPEN in docs/TESTING_QA.md; native/usability/lifecycle/performance NOT RUN because the secondary display is absent. CI/publication pending with root. The current C# AST graph is present: 92 files, 3148 nodes, 10064 edges, 105 communities, zero API calls; XAML/docs semantic extraction excluded. Initial stdin multiprocessing failure was recovered by fallback extraction; the current bounded query passes. M4 remains ACTIVE / INCOMPLETE. Current routing is in MODEL_ROUTING; historical ownership/display/integration notes below are not current state.
+
+## Historical operational checkpoint (preserved)
 
 Fer explicitly resumed long-duration execution on 2026-10-08. The single cerith-avance-nocturno continuation is ACTIVE. Visual operations are restricted to the actual active non-primary monitor; no primary fallback. Current topology: one secondary at96DPI. No monitor topology/resolution changes.
 

@@ -3,6 +3,7 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Cerith.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Foundation;
 using Windows.Graphics;
 
 namespace Cerith.WidgetHost;
@@ -29,13 +31,21 @@ public sealed partial class MainWindow : Window
     private bool _closing;
     private double _scale;
     private readonly DisplayArea? _startupDisplay;
+    private readonly List<MetricReadout> _overview = [];
+    private int _page;
+    private bool _details;
+    private bool _overviewPending;
+    private ImmutableArray<(int Start, int Count, bool Fits)> _pages = [];
     private sealed record PreparedComposition(MetricComposition Composition, MetricSubscription[] Subscriptions,
-        List<(UIElement Element, MetricSubscription Subscription, Action<MetricSubscription> Apply)> Elements);
+        List<(UIElement Element, MetricSubscription Subscription, Action<MetricSubscription> Apply)> Elements,
+        List<(MetricReadout Element, MetricSubscription Subscription)> Overview);
 
     public MainWindow(DisplayArea? startupDisplay = null)
     {
         _startupDisplay = startupDisplay;
         InitializeComponent();
+        OverviewViewport.SizeChanged += (_, _) => ScheduleOverviewPage();
+        OverviewNavigation.SizeChanged += (_, _) => ScheduleOverviewPage();
         Title = "Cerith";
         Install(Prepare(_active));
         Root.Loaded += OnLoaded;
@@ -68,16 +78,27 @@ public sealed partial class MainWindow : Window
                     element = bar;
                     apply = bar.Apply;
                 }
-                else
+                else if (row.Kind == CompositionKind.Ring)
                 {
                     var ring = new MetricRing(range);
                     element = ring;
                     apply = ring.Apply;
                 }
+                else if (row.Kind == CompositionKind.Sparkline)
+                {
+                    var sparkline = new MetricSparkline(range);
+                    element = sparkline;
+                    apply = sparkline.Apply;
+                }
+                else
+                    throw new InvalidOperationException("Unknown composition renderer.");
             }
             elements.Add((element, subscription, apply));
         }
-        return new PreparedComposition(composition, subscriptions, elements);
+        var overview = composition.OverviewRows().Select(row =>
+            (new MetricReadout(new MetricPresentationSpec(new MetricId(row.Id), row.Format)),
+             subscriptions.Single(item => item.MetricId == new MetricId(row.Id)))).ToList();
+        return new PreparedComposition(composition, subscriptions, elements, overview);
     }
 
     private void Install(PreparedComposition prepared)
@@ -86,13 +107,90 @@ public sealed partial class MainWindow : Window
         _subscriptions = prepared.Subscriptions;
         _compositionStop = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         MetricsPanel.Children.Clear();
+        OverviewPanel.Children.Clear();
+        _overview.Clear();
+        _pages = [];
+        _page = 0;
         foreach (var (element, subscription, apply) in prepared.Elements)
         {
             MetricsPanel.Children.Add(element);
             subscription.Updated += apply;
             apply(subscription);
         }
+        foreach (var (readout, subscription) in prepared.Overview)
+        {
+            readout.PresentationChanged += ScheduleOverviewPage;
+            readout.SizeChanged += (_, _) => ScheduleOverviewPage();
+            subscription.Updated += readout.Apply;
+            readout.Apply(subscription);
+            _overview.Add(readout);
+        }
+        ScheduleOverviewPage();
         _active = prepared.Composition;
+    }
+
+    private void ScheduleOverviewPage()
+    {
+        if (_overviewPending || _closing || _details) return;
+        _overviewPending = true;
+        if (!DispatcherQueue.TryEnqueue(() => { _overviewPending = false; ShowOverviewPage(); }))
+            _overviewPending = false;
+    }
+
+    private void ShowOverviewPage()
+    {
+        if (_closing || _details || OverviewViewport.ActualWidth <= 0) return;
+        double width = OverviewViewport.ActualWidth;
+        // The star row already excludes the navigation's actual arranged height.
+        double availableHeight = Math.Max(0, OverviewViewport.ActualHeight);
+        int anchor = _pages.IsEmpty ? 0 : _pages[Math.Clamp(_page, 0, _pages.Length - 1)].Start;
+        var heights = new double[_overview.Count];
+        for (int index = 0; index < _overview.Count; index++)
+        {
+            _overview[index].Measure(new Size(width, double.PositiveInfinity));
+            heights[index] = _overview[index].DesiredSize.Height;
+        }
+        _pages = MetricComposition.OverviewPages(heights, availableHeight);
+        if (_pages.IsEmpty) return;
+        _page = 0;
+        while (_page + 1 < _pages.Length && _pages[_page + 1].Start <= anchor) _page++;
+        var (start, count, fits) = _pages[_page];
+        int visibleCount = fits ? count : 0;
+        bool same = OverviewPanel.Children.Count == visibleCount;
+        for (int i = 0; same && i < visibleCount; i++)
+            same = ReferenceEquals(OverviewPanel.Children[i], _overview[start + i]);
+        if (!same)
+        {
+            OverviewPanel.Children.Clear();
+            for (int i = start; i < start + visibleCount; i++) OverviewPanel.Children.Add(_overview[i]);
+        }
+        OverviewSizeWarning.Visibility = fits ? Visibility.Collapsed : Visibility.Visible;
+        string page = $"Page {_page + 1}/{_pages.Length} · Metrics {start + 1}–{start + count}/{_overview.Count}";
+        if (PageText.Text != page) PageText.Text = page;
+        PreviousButton.IsEnabled = _page > 0;
+        NextButton.IsEnabled = _page + 1 < _pages.Length;
+    }
+
+    private void OnPrevious(object sender, RoutedEventArgs args)
+    {
+        if (_closing || _details || _page == 0) return;
+        _page--;
+        ScheduleOverviewPage();
+    }
+    private void OnNext(object sender, RoutedEventArgs args)
+    {
+        if (_closing || _details || _page + 1 >= _pages.Length) return;
+        _page++;
+        ScheduleOverviewPage();
+    }
+    private void OnToggleDetails(object sender, RoutedEventArgs args)
+    {
+        if (_closing) return;
+        _details = !_details;
+        OverviewView.Visibility = _details ? Visibility.Collapsed : Visibility.Visible;
+        DetailsView.Visibility = _details ? Visibility.Visible : Visibility.Collapsed;
+        DetailsButtonText.Text = _details ? "Back to overview" : "Composition details";
+        if (!_details) ScheduleOverviewPage();
     }
 
     private void StartSubscriptions()
@@ -221,6 +319,7 @@ public sealed partial class MainWindow : Window
     {
         if (!_closing && sender.RasterizationScale != _scale)
             UpdateMinimumForScale();
+        ScheduleOverviewPage();
     }
 
     private void UpdateMinimumForScale()
