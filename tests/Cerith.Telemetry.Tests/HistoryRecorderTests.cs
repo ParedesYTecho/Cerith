@@ -83,4 +83,19 @@ public sealed class HistoryRecorderTests
         using var reader = HistoryStore.OpenReader(path);
         Assert.AreEqual(1, reader.ReadRaw(Cpu, at.AddSeconds(-1), at.AddMinutes(1)).Count);
     }
+
+    [TestMethod]
+    public async Task DisposeFlushesSnapshotsPublishedAfterTheLoopStopped()
+    {
+        var path = Path.Combine(_dir, "history.db");
+        var at = DateTimeOffset.UtcNow.AddMinutes(-1);
+        using var bus = new MetricBus(1);
+        var recorder = new HistoryRecorder(bus, HistoryStore.OpenWriter(path), HistoryRetention.Default, TimeSpan.FromMinutes(10), 16);
+
+        await bus.PublishAsync(Sample(4, at));
+        recorder.Dispose();
+
+        using var reader = HistoryStore.OpenReader(path);
+        Assert.AreEqual(1, reader.ReadRaw(Cpu, at.AddSeconds(-1), at.AddMinutes(1)).Count);
+    }
 }

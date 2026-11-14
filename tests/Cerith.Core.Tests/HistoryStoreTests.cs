@@ -158,6 +158,74 @@ public sealed class HistoryStoreTests
     }
 
     [TestMethod]
+    public void StaleRepublishNeverOverwritesTheFreshSampleAtTheSameInstant()
+    {
+        using var store = HistoryStore.OpenWriter(DbPath);
+        store.Append([
+            Fresh(Cpu, MetricValue.From(10.0), T0),
+            new MetricSnapshot(Cpu, MetricValue.From(10.0), T0, MetricState.Stale, MetricConfidence.Measured)
+        ]);
+
+        Assert.AreEqual(MetricState.Fresh, store.ReadRaw(Cpu, T0, T0.AddHours(1)).Single().State);
+    }
+
+    [TestMethod]
+    public void LateSamplesBehindTheWatermarkAreRolledUpOnTheNextMaintenance()
+    {
+        using var store = HistoryStore.OpenWriter(DbPath);
+        var retention = new HistoryRetention(TimeSpan.FromDays(1), TimeSpan.FromDays(10), TimeSpan.FromDays(100));
+        store.Append([Fresh(Cpu, MetricValue.From(10.0), T0.AddHours(1))]);
+        store.Maintain(T0.AddHours(3), retention);
+
+        store.Append([Fresh(Cpu, MetricValue.From(30.0), T0.AddHours(1).AddSeconds(10))]);
+        store.Maintain(T0.AddHours(3), retention);
+
+        var bucket = store.ReadRollup(Cpu, TimeSpan.FromMinutes(1), T0, T0.AddHours(2)).Single();
+        Assert.AreEqual(2, bucket.Count);
+        Assert.AreEqual(20.0, bucket.Average);
+    }
+
+    [TestMethod]
+    public void WatermarkInTheFutureAfterAClockJumpIsPulledBack()
+    {
+        using var store = HistoryStore.OpenWriter(DbPath);
+        var retention = new HistoryRetention(TimeSpan.FromDays(1), TimeSpan.FromDays(10), TimeSpan.FromDays(100));
+        store.Append([Fresh(Cpu, MetricValue.From(1.0), T0)]);
+        store.Maintain(T0.AddDays(5), retention);
+        store.Append([Fresh(Cpu, MetricValue.From(2.0), T0.AddHours(2))]);
+
+        store.Maintain(T0.AddHours(4), retention);
+
+        Assert.AreEqual(2, store.ReadRollup(Cpu, TimeSpan.FromMinutes(1), T0, T0.AddHours(3)).Count);
+    }
+
+    [TestMethod]
+    public void AStateRowPrunedAwayIsStoredAgainSoTheStateStaysVisible()
+    {
+        using var store = HistoryStore.OpenWriter(DbPath);
+        store.Append([Gap(Cpu, T0, MetricState.Unavailable)]);
+        store.Maintain(T0.AddHours(30), new HistoryRetention(TimeSpan.FromHours(12), TimeSpan.FromDays(10), TimeSpan.FromDays(100)));
+
+        store.Append([Gap(Cpu, T0.AddHours(30), MetricState.Unavailable)]);
+
+        Assert.AreEqual(1, store.ReadRaw(Cpu, T0.AddHours(29), T0.AddHours(31)).Count);
+    }
+
+    [TestMethod]
+    public void HugeIntegersDoNotBreakRollups()
+    {
+        using var store = HistoryStore.OpenWriter(DbPath);
+        store.Append([
+            Fresh(Cpu, MetricValue.From(long.MaxValue - 1), T0),
+            Fresh(Cpu, MetricValue.From(long.MaxValue - 2), T0.AddSeconds(1))
+        ]);
+
+        store.Maintain(T0.AddHours(3), HistoryRetention.Default);
+
+        Assert.AreEqual(2, store.ReadRollup(Cpu, TimeSpan.FromMinutes(1), T0, T0.AddHours(1)).Single().Count);
+    }
+
+    [TestMethod]
     public void RefusesAndPreservesAForeignFile()
     {
         File.WriteAllText(DbPath, "not a database");

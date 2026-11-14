@@ -90,7 +90,7 @@ internal sealed class HistoryRecorder : IDisposable
             var result = _store.Append(batch);
             if (result.Rejected > 0) Interlocked.Add(ref _rejected, result.Rejected);
         }
-        catch (Exception error) when (error is System.IO.IOException or InvalidOperationException)
+        catch (Exception)
         {
             Interlocked.Add(ref _dropped, batch.Count);
             Console.Error.WriteLine("History: batch write failed; batch dropped.");
@@ -100,7 +100,7 @@ internal sealed class HistoryRecorder : IDisposable
     private void TryMaintain()
     {
         try { _store.Maintain(DateTimeOffset.UtcNow, _retention); }
-        catch (System.IO.IOException)
+        catch (Exception)
         {
             Console.Error.WriteLine("History: maintenance failed; will retry.");
         }
@@ -110,6 +110,7 @@ internal sealed class HistoryRecorder : IDisposable
     {
         _tap.Dispose();
         _queue.Writer.TryComplete();
+        Flush();
         _store.Dispose();
     }
 }

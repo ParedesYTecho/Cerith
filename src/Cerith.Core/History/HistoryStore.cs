@@ -105,14 +105,27 @@ public sealed class HistoryStore : IDisposable
         ArgumentNullException.ThrowIfNull(batch);
         if (batch.Count == 0) return default;
 
-        _insert ??= _db.Prepare("INSERT OR REPLACE INTO sample(metric, at, state, confidence, num, txt) VALUES(?1,?2,?3,?4,?5,?6)");
+        _insert ??= _db.Prepare("INSERT INTO sample(metric, at, state, confidence, num, txt) VALUES(?1,?2,?3,?4,?5,?6) " +
+            "ON CONFLICT(metric, at) DO UPDATE SET state=excluded.state, confidence=excluded.confidence, num=excluded.num, txt=excluded.txt WHERE sample.state <> 0");
         int written = 0, rejected = 0;
         _db.Execute("BEGIN IMMEDIATE");
         try
         {
+            var watermark = Meta("minute_until");
+            var late = long.MaxValue;
             foreach (var snapshot in batch)
             {
                 if (TryWrite(snapshot)) written++; else rejected++;
+                var at = snapshot.ObservedAt.ToUnixTimeMilliseconds();
+                if (watermark is not null && at < watermark) late = Math.Min(late, at);
+            }
+
+            if (late != long.MaxValue)
+            {
+                // Samples older than the rollup watermark: rewind it so their buckets are rolled up again.
+                SetMeta("minute_until", late / MinuteMs * MinuteMs);
+                var hours = Meta("hour_until");
+                if (hours is not null && hours > late / HourMs * HourMs) SetMeta("hour_until", late / HourMs * HourMs);
             }
 
             _db.Execute("COMMIT");
@@ -121,6 +134,8 @@ public sealed class HistoryStore : IDisposable
         {
             TryRollback();
             _lastState.Clear();
+            _metrics.Clear();
+            LoadMetrics();
             throw;
         }
 
@@ -189,6 +204,7 @@ public sealed class HistoryStore : IDisposable
             Prune("rollup", "start", nowMs - (long)retention.Minute.TotalMilliseconds, "hour_until", $"bucket={MinuteMs} AND ");
             Prune("rollup", "start", nowMs - (long)retention.Hour.TotalMilliseconds, null, $"bucket={HourMs} AND ");
             _db.Execute("COMMIT");
+            _lastState.Clear(); // a state row may just have been pruned; the next snapshot must store its state again
         }
         catch
         {
@@ -327,12 +343,19 @@ public sealed class HistoryStore : IDisposable
     private void RollUpMinutes(long safeNow)
     {
         var until = safeNow / MinuteMs * MinuteMs;
-        var from = Meta("minute_until") ?? _db.ScalarInt64("SELECT min(at) FROM sample") / MinuteMs * MinuteMs;
+        var from = Meta("minute_until");
+        if (from > until) // clock moved backwards: never trust a watermark in the future
+        {
+            from = until;
+            SetMeta("minute_until", until);
+        }
+
+        from ??= _db.ScalarInt64("SELECT min(at) FROM sample") / MinuteMs * MinuteMs;
         if (from is null || from >= until) return;
 
         using var statement = _db.Prepare(
             $"INSERT OR REPLACE INTO rollup(bucket, metric, start, n, min, max, sum) " +
-            $"SELECT {MinuteMs}, s.metric, s.at / {MinuteMs} * {MinuteMs}, count(*), min(s.num), max(s.num), sum(s.num) " +
+            $"SELECT {MinuteMs}, s.metric, s.at / {MinuteMs} * {MinuteMs}, count(*), min(s.num), max(s.num), total(s.num) " +
             $"FROM sample s JOIN metric m ON m.id = s.metric " +
             $"WHERE s.at >= ?1 AND s.at < ?2 AND s.state = {(int)MetricState.Fresh} AND m.kind IN ({NumericKinds}) AND s.num IS NOT NULL " +
             $"GROUP BY s.metric, s.at / {MinuteMs}");
@@ -347,7 +370,14 @@ public sealed class HistoryStore : IDisposable
         var minuteUntil = Meta("minute_until");
         if (minuteUntil is null) return;
         var until = Math.Min(safeNow, minuteUntil.Value) / HourMs * HourMs;
-        var from = Meta("hour_until") ?? _db.ScalarInt64($"SELECT min(start) FROM rollup WHERE bucket={MinuteMs}") / HourMs * HourMs;
+        var from = Meta("hour_until");
+        if (from > until)
+        {
+            from = until;
+            SetMeta("hour_until", until);
+        }
+
+        from ??= _db.ScalarInt64($"SELECT min(start) FROM rollup WHERE bucket={MinuteMs}") / HourMs * HourMs;
         if (from is null || from >= until) return;
 
         using var statement = _db.Prepare(
