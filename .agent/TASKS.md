@@ -1,5 +1,10 @@
 # Tasks
 
+## CER-M4-014 — Overview and composition detail experience
+
+Status: IN_PROGRESS / native acceptance pending. Managed worktree cer-m4-overview, branch codex/CER-M4-014-overview-detail, pushed HEAD6e04ec3504d1abd2908b2cf7dbcbdea751647dd3; PR66 OPEN DRAFT. Exact independent integrated Sol Web conditional SOURCE PASS; Build37877323155 SUCCESS534tests0fail0skip, QualitySUCCESS, CodeQLSKIPPED underD013 not securityPASS. Four operational docs pending separately; no product edits after approved source.
+Owner: Codex root — sole M4 writer after Descartes01a11d94-6fab-7cd1-a21b-26987f60b9c1 explicitly released its native runtime/harness and CER-M4-014 scope on 2026-10-09. Root owns private native validation, product source, operational docs and integration; no parallel writer was observed at takeover. Preserve both branches' pending operational documentation.
+Actual nonprimary DISPLAY2 returned1280x720 at2560,0; DPI requires fresh measurement. Strict secondary-only guards apply. Next: actual default four readouts/units/states/confidence without scroll/hiding, minimum viewport/navigation/details/liveSave/rebind/recovery/close evidence, then paired performance. Prior pure tests/source review/CI do not prove native acceptance. Report source bugs before authorizing one writer correction. M4 remains incomplete; no014merge/DONE.
 ## CER-M4-013 — Configurable persistent MetricId composition
 
 Status: DONE — bounded configurable composition integrated by protected PR64 squash10a6ebf32ab453fb7d453873e77a1d84c3a0059f. Approved exactHEADb79ca1f3bf1e57e74d4e1d1162c890aac73400ad/tree221086002b008a7b5f17c7ed05b7049900ef5dff independently reviewedPASS; CI530/530, QualitySUCCESS, CodeQLSKIPPEDunderD013notPASS. Identical integrated tree/cleanFFmain and postmergeBuild37847334534SUCCESS/Quality37847334577SUCCESS/CodeQL37847334643SKIPPED verified. Runtime/evidence limits and performance signals remain canonicalQA/PERFORMANCE; M4 notclosed.

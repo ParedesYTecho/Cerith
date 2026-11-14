@@ -111,11 +111,11 @@ when the work warrants a strong reasoning model and native Codex context/tooling
 
 After the difficult reasoning point is resolved, implementation normally returns to GPT-6 Luna Max when exposed by the active harness. If unavailable, choose a permitted verified route suitable for the task; do not pretend unavailable Luna executed.
 
-CodexGPT Web and GPT-6.1 Sol native are alternative strong routes selected by task shape. There is no rule requiring Web first.
+Fers latest correction makes integrated GPT-6 Sol Web the first choice for research, audits and normal independent code/documentation/UI reviews when available. Reserve native GPT-6.1 Sol Medium for complex architecture, critical persistence/concurrency/security, difficult debugging and important decisions with a concrete technical need. Unavailable Luna is not an automatic escalation to native Sol6.1; prefer a suitable verified Web route.
 
 ## Astra routing
 
-GPT-5.6 Web and GPT-6 Astra are excluded during this execution under Fer's latest instruction.
+All GPT-5.6 routes and GPT-6 Astra are excluded during this execution under Fer's latest instruction.
 
 ## Preferred pattern
 
@@ -125,12 +125,16 @@ Typical execution:
 
 ```text
 GPT-6 Luna Max native executes
-→ when stronger reasoning is useful, choose by task shape:
+→ research/audit/normal independent review: integrated GPT-6 Sol Web first when available
+→ when complex risk requires additional native reasoning, choose by concrete technical need:
    - integrated GPT-6 Sol Web when verified capabilities and quota suit the task
    - GPT-6.1 Sol Medium native for substantial/context-heavy reasoning
 → GPT-6 Luna Max native normally implements/fixes/finishes
 ```
 
+## Delegation discipline
+
+Before spawning, identify whether Luna or integrated Sol Web can resolve the scope. One sufficiently grounded independent review is preferable to redundant native Sol6.1 reviewers; reuse its findings and context for necessary corrections. Do not repeat verified Web access probes or infer quota independence. A concrete route failure may justify a suitable fallback, but does not make Sol6.1 the ordinary default. Existing Antigravity capacity remains an additional option when actual availability and a useful independent scope are verified. Do not destructively interrupt a nearly completed reviewer; finish its findings before changing the route for new work.
 ## Ownership
 
 One repository write task has one write owner at a time.
@@ -148,8 +152,8 @@ Use the calling harness's authoritative runtime metadata when available; do not 
 Optimize quality per scarce native quota **without weakening high-risk gates**.
 
 - Use GPT-6 Luna Max for execution and ordinary work.
-- Consider integrated GPT-6 Sol Web for review and implementation after checking actual tools and quota; preserve single-writer ownership.
-- Use GPT-6.1 Sol Medium native for substantial/context-heavy work where stronger reasoning materially reduces risk.
+- Prefer integrated GPT-6 Sol Web for research/audit/normal independent review and suitable implementation when Luna is unavailable; check actual tools and quota, preserve single-writer ownership.
+- Reserve GPT-6.1 Sol Medium native for complex architecture, critical persistence/concurrency/security, difficult debugging and important decisions with an explicit technical justification.
 
 Quota optimization chooses between suitable routes; it does not redefine what level of reasoning the technical risk requires.
 
