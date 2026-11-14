@@ -25,7 +25,7 @@ public readonly record struct HistoryAppendResult(int Written, int Rejected);
 /// </summary>
 public sealed partial class HistoryStore : IDisposable
 {
-    private const int SchemaVersion = 2, ApplicationId = 0x43455248;
+    private const int SchemaVersion = 3, ApplicationId = 0x43455248;
     private const long MinuteMs = 60_000, HourMs = 3_600_000, RollupDelayMs = 5 * MinuteMs;
     private const int MaxTextBytes = 1024;
     private const string NumericKinds = "1,2"; // MetricValueKind.Double, Int64
@@ -69,6 +69,9 @@ public sealed partial class HistoryStore : IDisposable
             db.Execute("CREATE TABLE IF NOT EXISTS session(id INTEGER PRIMARY KEY, label TEXT NOT NULL, start INTEGER NOT NULL, \"end\" INTEGER)");
             db.Execute("CREATE TABLE IF NOT EXISTS session_stat(session INTEGER NOT NULL, metric INTEGER NOT NULL, " +
                        "n INTEGER NOT NULL, min REAL NOT NULL, max REAL NOT NULL, sum REAL NOT NULL, PRIMARY KEY(session, metric)) WITHOUT ROWID");
+            db.Execute("CREATE TABLE IF NOT EXISTS ai_event(source TEXT NOT NULL, at INTEGER NOT NULL, model TEXT NOT NULL, provider TEXT NOT NULL, " +
+                       "input INTEGER NOT NULL, output INTEGER NOT NULL, reasoning INTEGER NOT NULL, cache_read INTEGER NOT NULL, " +
+                       "cache_write INTEGER NOT NULL, PRIMARY KEY(source, at)) WITHOUT ROWID");
             db.Execute($"PRAGMA application_id={ApplicationId}");
             db.Execute($"PRAGMA user_version={SchemaVersion}");
             db.Execute("COMMIT");
@@ -124,6 +127,7 @@ public sealed partial class HistoryStore : IDisposable
                 {
                     written++;
                     TrackSession(snapshot);
+                    TrackAiEvent(snapshot);
                 }
                 else rejected++;
 
@@ -220,6 +224,7 @@ public sealed partial class HistoryStore : IDisposable
             Prune("rollup", "start", nowMs - (long)retention.Minute.TotalMilliseconds, "hour_until", $"bucket={MinuteMs} AND ");
             Prune("rollup", "start", nowMs - (long)retention.Hour.TotalMilliseconds, null, $"bucket={HourMs} AND ");
             PruneSessions(nowMs - (long)retention.Hour.TotalMilliseconds);
+            PruneAiEvents(nowMs - (long)retention.Hour.TotalMilliseconds);
             _db.Execute("COMMIT");
             _lastState.Clear(); // a state row may just have been pruned; the next snapshot must store its state again
         }

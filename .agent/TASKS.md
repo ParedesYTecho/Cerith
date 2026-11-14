@@ -6,10 +6,6 @@ Only open work is listed. Finished tasks live in git history and merged PRs. Tas
 
 Status: open, small. Let the service run for a day on the owner's machine (do not disturb their use); record file size, row rate and service CPU in `docs/PERFORMANCE.md`, and tune raw retention if the file is too large.
 
-## CER-M5-003 — AI usage events and quota history
-
-Status: open, ready. Quota snapshots are already metrics and are recorded by the history store (D-030). Add what a time series cannot express: per-activity token events from the OpenCode collector, de-duplicated across polls.
-
 ## CER-M6-001 — ControlCenter history view
 
 Status: open, ready. Read the history store through `HistoryStore.OpenReader` (D-030). ControlCenter is an empty project today. First screen: pick a metric and a time range, see a chart from the history store. Functional before pretty; reuse the design tokens.
