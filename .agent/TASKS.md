@@ -1,5 +1,11 @@
 # Tasks
 
+## CER-M4-015 — Integrated Overview + configurable Sparkline; M4 continuation
+
+Status: ACTIVE / INCOMPLETE. Combined candidate HEAD `7492c0f` is draft PR #67; PR #65/#66 remain open drafts. Release solution build PASS, zero warnings/errors; CI-aligned Core 39/39, Telemetry 398/398, Integration 107/107 PASS, zero skipped on the combined HEAD (2026-10-09). Hosted build/hygiene SUCCESS, CodeQL SKIPPED, `git diff --check` PASS. Previous physical secondary-only 96-DPI Save/rebind/restart/loss/recovery receipt PASS with exact layout restore. Fresh secondary-safety helper BLOCKED by platform; Sparkline physical 144-DPI glyph/raster, stale opacity, keyboard/contrast, paging breadth, connected performance and final independent review OPEN. Merge gated; M4 incomplete.
+Owner: GPT-6 Sol Web coordinator (2026-10-09), sole writer on branch codex/CER-M4-015-integrated-surfaces. Previous 012/014 writers released; current preflight found no running WidgetHost/TelemetryService. Preserve the separate source worktrees and root local documents; if ownership changes, stop writing.
+Scope: close PR #65/#66 combination with visual tests exclusively on the verified physical nonprimary display and protected integration after all gates. While a required PR #67 gate is blocked, independent M4 work may continue on a separate worktree with sole ownership (currently CER-M4-016); do not mix its changes into PR #67. No M5–M7, extra telemetry acquisition or secret capture.
+
 ## CER-M4-014 — Native overview and composition details
 
 Status: CANDIDATE_READY_FOR_ROOT_PUBLICATION — final solution Release 0 warnings/errors (9.43s); Integration 97/97 PASS, zero skipped (16.571s), four pure regressions. One independent integrated Sol Web review (Banach) CONDITIONAL SOURCE PASS, closed; no demonstrated P0/P1 or required source correction. Canonical UI/QA documentation reconciled. Three native-evidence checks OPEN; native/performance NOT RUN, CI/publication pending. Not native accepted; M4 INCOMPLETE.

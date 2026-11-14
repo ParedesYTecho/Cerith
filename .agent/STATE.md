@@ -1,3 +1,9 @@
+# State — CER-M4-015 integrated continuation (2026-10-09)
+
+Sole write owner: integrated worktree `C:/Users/Fer/.codex/worktrees/cer-m4-integrated/Cerith`, branch `codex/CER-M4-015-integrated-surfaces`, HEAD `7492c0f` / draft PR #67 combining PR #65 and #66. `origin/main` remains `10a6ebf`; both source PRs are open drafts. Other worktrees and root's pending documents are preserved. At this HEAD, Release build passed with zero warnings/errors; CI-aligned Core 39/39, Telemetry 398/398 and Integration 107/107 passed with zero skipped (544/544); `git diff --check` passed. PR #67 hosted build and hygiene passed at the same HEAD; CodeQL SKIPPED. Prior actual secondary-only 96-DPI save/rebind/restart/loss/recovery receipt remains PASS with original layout restored. A fresh secondary safety helper invocation was blocked by the platform; 144-DPI Sparkline raster/glyph/stale-opacity, keyboard/contrast conformance and connected performance remain UNVERIFIED. Protected merge is gated; M4 ACTIVE/INCOMPLETE.
+
+## Prior CER-M4-014 checkpoint (historical)
+
 # State — CER-M4-014 isolated worktree
 
 Current branch: codex/CER-M4-014-overview-detail; base/main 10a6ebf32ab453fb7d453873e77a1d84c3a0059f includes CER-M4-013 via PR64. CER-M4-014 is not committed. Documentation handoff is complete and writer ownership released; root owns Git publication/CI, root documentation and the separate 012 draft PR65 (source fe8).

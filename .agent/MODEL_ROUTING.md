@@ -2,7 +2,11 @@
 
 Operational preference only. This may change frequently.
 
-## Current human override — 2026-10-09
+## Latest human override — integration of PR #65/#66 (2026-10-09)
+
+Primary model GPT-6 Sol, Web route, High effort; optional subagents exclusively GPT-6 Luna. Do not route this integration to GPT-6.1, GPT-5.6 or Astra. This task-specific instruction supersedes older routing paragraphs below until this integration closes.
+
+## Previous human override — 2026-10-09
 
 Ordinary execution uses GPT-6 Luna Max/native when exposed; while Luna is unavailable, use integrated GPT-6 Sol Web as the ordinary sole writer. Normal independent reviews use integrated Sol Web first. Reserve native GPT-6.1 Sol for a concrete complex-risk gate; duration, task size or an ordinary retry alone is not escalation. GPT-5.6 and Astra are excluded. Preserve verified capabilities, single-writer ownership and the distinction between model, effort and route; do not repeat capability probes or infer separate quotas.
 
