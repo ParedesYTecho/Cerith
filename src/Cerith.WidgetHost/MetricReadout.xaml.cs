@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using Cerith.Core;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -10,6 +11,7 @@ public sealed partial class MetricReadout : UserControl
 {
     private readonly MetricPresentationSpec _spec;
     private MetricPresentationResult? _lastPresentation;
+    internal event Action? PresentationChanged;
 
     internal MetricReadout(MetricPresentationSpec spec)
     {
@@ -37,5 +39,6 @@ public sealed partial class MetricReadout : UserControl
         };
         AutomationProperties.SetName(this,
             $"{label}, {presentation.ValueText}, {presentation.StateText}, {presentation.ConfidenceText}");
+        PresentationChanged?.Invoke();
     }
 }

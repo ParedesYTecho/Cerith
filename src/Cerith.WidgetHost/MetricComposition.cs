@@ -10,7 +10,7 @@ using Cerith.Core;
 
 namespace Cerith.WidgetHost;
 
-internal enum CompositionKind { Text, Bar, Ring }
+internal enum CompositionKind { Text, Bar, Ring, Sparkline }
 
 internal sealed record CompositionRow(CompositionKind Kind, string Id, string Format, double? Minimum = null, double? Maximum = null)
 {
@@ -57,6 +57,31 @@ internal sealed class MetricComposition
         new(CompositionKind.Bar, "ai.codex.quota.primary.remaining", "0.0", 0, 100)
     ]);
 
+    internal ImmutableArray<CompositionRow> OverviewRows() =>
+        Rows.DistinctBy(row => row.Id, StringComparer.Ordinal).ToImmutableArray();
+
+    internal static ImmutableArray<(int Start, int Count, bool Fits)> OverviewPages(
+        IReadOnlyList<double> heights, double availableHeight)
+    {
+        if (!double.IsFinite(availableHeight) || availableHeight < 0)
+            throw new ArgumentOutOfRangeException(nameof(availableHeight));
+        foreach (double height in heights)
+            if (!double.IsFinite(height) || height < 0)
+                throw new ArgumentOutOfRangeException(nameof(heights));
+
+        var pages = ImmutableArray.CreateBuilder<(int Start, int Count, bool Fits)>();
+        for (int start = 0; start < heights.Count;)
+        {
+            double used = heights[start];
+            int count = 1;
+            while (count < 4 && start + count < heights.Count && used + heights[start + count] <= availableHeight)
+                used += heights[start + count++];
+            pages.Add((start, count, used <= availableHeight));
+            start += count;
+        }
+        return pages.ToImmutable();
+    }
+
     internal string Serialize()
     {
         using var stream = new MemoryStream();
@@ -101,7 +126,7 @@ internal sealed class MetricComposition
             {
                 if (element.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid row.");
                 var kindString = element.GetProperty("kind").GetString();
-                if (kindString is not ("Text" or "Bar" or "Ring"))
+                if (kindString is not ("Text" or "Bar" or "Ring" or "Sparkline"))
                     throw new InvalidDataException("Unknown composition kind.");
                 var kind = Enum.Parse<CompositionKind>(kindString);
                 RequireProperties(element, kind == CompositionKind.Text

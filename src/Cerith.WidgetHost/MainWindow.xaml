@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="Root" Background="{ThemeResource CerithSurfaceBrush}">
-        <Grid Padding="24,18,24,20">
+        <Grid x:Name="NormalShell" Padding="24,18,24,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -53,11 +53,70 @@
             </Grid>
 
             <StackPanel Grid.Row="2" Spacing="5" Margin="0,0,0,8">
-                <Button x:Name="ConfigureButton" Content="Configure metrics" Click="OnConfigure" IsEnabled="False" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="ConfigureButton" HorizontalAlignment="Stretch" Click="OnConfigure" IsEnabled="False">
+                        <TextBlock Text="Configure metrics" TextWrapping="Wrap" />
+                    </Button>
+                    <Button x:Name="DetailsButton" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnToggleDetails">
+                        <TextBlock x:Name="DetailsButtonText" Text="Composition details" TextWrapping="Wrap" />
+                    </Button>
+                    <Button x:Name="CompactButton" Grid.Column="2" Content="Compact" Click="OnToggleCompact" />
+                </Grid>
                 <TextBlock x:Name="StorageWarning" TextWrapping="Wrap" Visibility="Collapsed" />
             </StackPanel>
-            <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
+            <Grid Grid.Row="3">
+                <Grid x:Name="OverviewView">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid x:Name="OverviewViewport">
+                        <StackPanel x:Name="OverviewPanel" VerticalAlignment="Top" />
+                        <TextBlock x:Name="OverviewSizeWarning" Visibility="Collapsed" TextWrapping="Wrap"
+                                   Text="This metric needs more space. Enlarge the window or open Composition details." />
+                    </Grid>
+                    <Grid x:Name="OverviewNavigation" Grid.Row="1" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="PreviousButton" Content="Previous" Click="OnPrevious" />
+                        <TextBlock x:Name="PageText" Grid.Column="1" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                        <Button x:Name="NextButton" Grid.Column="2" Content="Next" Click="OnNext" />
+                    </Grid>
+                </Grid>
+                <ScrollViewer x:Name="DetailsView" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="MetricsPanel" VerticalAlignment="Top" />
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+        <Grid x:Name="CompactShell" Visibility="Collapsed" Padding="12,10,12,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid ColumnSpacing="8" Margin="0,0,0,9">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="CERITH" FontSize="11" FontWeight="SemiBold"
+                           CharacterSpacing="160" VerticalAlignment="Center"
+                           Foreground="{ThemeResource CerithMutedTextBrush}" />
+                <Button x:Name="ExpandButton" Grid.Column="1" Content="Expand" Click="OnToggleCompact" />
+                <ToggleButton x:Name="CompactPinButton" Grid.Column="2" Content="Pin"
+                              AutomationProperties.Name="Keep Cerith on top" Click="OnTogglePin" />
+            </Grid>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="CompactPanel" />
             </ScrollViewer>
         </Grid>
     </Grid>

@@ -330,3 +330,18 @@ Absent candidate-minus-control: CPU-0.3872core-percentage-points, WS+7.74MiB, pr
 Connected candidate-minus-control: CPU+1.2587core-percentage-points, WS+6.92MiB, private+41.02MiB.
 
 Memory increase is a measured feature cost; the connected CPU-positive signal is retained. This characterizes the complete configuration/resources/storage change and does not isolate a particular library or prove a leak. Two short observations per condition, host pressure and adapted control leave general nonregression INCONCLUSIVE. F7/framework-floor/startup remain OPEN; no budget PASS or CPU optimization claim. The first eight observations requested minimization without native sustained-state checks: preserved separately as minimization requested/state NOT VERIFIED, excluded from the verified-minimized gate. They also showed increased memory; their different CPU direction does not establish equivalence. No automatic extended benchmark campaign or speculative correction follows an inconclusive signal.
+
+## CER-M4-012 — pending configured sparkline characterization
+
+A bounded alternating comparison is prepared between the integrated013 production binary and the configurable Sparkline candidate: seven ordered rows in both, first CPU Text versus CPU Sparkline, real-service connected and absent phases, verified minimization and identified DLLs, process CPU/Working Set/private memory. The harness preserves/restores the owned default layout and rejects existing runtimes. Execution was refused at the initial nonprimary-monitor guard when the secondary display disappeared, before any layout modification or native launch. Result: NOT RUN, no performance/nonregression/budget PASS. Existing F7, framework-floor and startup evidence remain open. Resume this bounded measurement when a secondary monitor is available; do not extrapolate sequence-unit or synthetic fixture results into production overhead.
+
+## CER-M4-015 — integrated Overview/Sparkline disconnected minimized comparison, 2026-10-09
+
+Four real Release `Cerith.WidgetHost.exe` executions compared CER-M4-014 PR66's binary SHA256 `7C02E6D32C4518CF3CF6B5F4F9FD91B1A283E7235E89E23738F3ACC0EFFC27E6` against the integrated staged CER-M4-015 binary SHA256 `1CE266D62D1C7B75A1249CD3767659FD8DAC76B53220162A80CB878FB48A0E25`. Sequence: baseline/candidate/candidate/baseline, each verified with a visible owned HWND entirely on the nonprimary DISPLAY2 at 96 DPI, minimized using the native window API, 0.8 seconds of warm-up then seven seconds of process TotalProcessorTime, followed by the process Working Set and Private Bytes endpoint. No service was running and no Sparkline was actively receiving samples. The persisted user layout SHA256 remained `A720E264F0E02E1DD562CA3E2AF777FF40B91590FC4E87F0B83F171D3DF82FF3` before/after; all four owned runtimes closed.
+
+| Release build | Startup visible HWND ms (two runs) | CPU seconds per 7 s (two runs) | WS MiB (two endpoints) | Private MiB (two endpoints) |
+| --- | --- | --- | --- | --- |
+| PR66 baseline | 985 / 442 | 0.1719 / 0.1719 | 129.55 / 128.39 | 177.83 / 175.02 |
+| PR66 + PR65 integrated candidate | 555 / 561 | 0.2031 / 0.1094 | 128.23 / 129.14 | 175.16 / 176.70 |
+
+CPU is raw per-process CPU time over each nominal seven-second interval; it has not been normalized to a claimed per-core throughput or attributed to a specific component. Two measurements and warm/cold launch differences make startup and performance nonregression INCONCLUSIVE. This is a narrow disconnected baseline comparison, not the pending **configured Sparkline versus text with actual-service data** characterization above. Native 144 DPI, painted raster and stale-opacity conformance, sustained memory/CPU and F7 budgets remain OPEN.

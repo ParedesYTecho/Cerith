@@ -10,6 +10,8 @@
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricPresentation.cs" Link="MetricPresentation.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricSubscription.cs" Link="MetricSubscription.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricComposition.cs" Link="MetricComposition.cs" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\MetricSparklineSequence.cs" Link="MetricSparklineSequence.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricCompositionStore.cs" Link="MetricCompositionStore.cs" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\WidgetThemeArguments.cs" Link="WidgetThemeArguments.cs" />
   </ItemGroup>
 </Project>
