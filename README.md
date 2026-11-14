@@ -101,7 +101,7 @@ This is a **developer build**, not an installation or feature-completeness guara
 
 Cerith aims to be open to collaboration without compromising telemetry integrity or code quality. Contributions should be small, independently understandable and reviewable, with provenance for any external code.
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_QUALITY.md](CODE_QUALITY.md), [SECURITY.md](SECURITY.md) and the [development workflow](DEVELOPMENT_WORKFLOW.md).
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_QUALITY.md](CODE_QUALITY.md) and [SECURITY.md](SECURITY.md); agents follow [AGENTS.md](AGENTS.md).
 
 **Source availability is not a license grant.** The code, documentation and brand policies are still being finalized; see [Open Source Strategy](docs/OPEN_SOURCE_STRATEGY.md). The Cerith name and artwork are provisional pending clearance.
 

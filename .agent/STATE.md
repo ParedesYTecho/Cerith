@@ -1,9 +1,25 @@
-# State — autonomous continuation active
+# State
 
-Fer explicitly resumed long-duration execution on 2026-10-08. The single cerith-avance-nocturno continuation is ACTIVE. Visual operations are restricted to the actual active non-primary monitor; no primary fallback. Current topology: one secondary at96DPI. No monitor topology/resolution changes.
+Last rewritten: 2026-11-14.
 
-Canonical main/origin-main/current branch base119c5d3a6865b9fbb1af6532a617470e526e8c38 after fresh fetch. CER-M4-006–011 integrated PR58–63; PR63 hosted checks verified SUCCESS/SUCCESS/CodeQLSKIPPED underD013, not security PASS. M4 ACTIVE/INCOMPLETE; M5/M6/M7 not entered.
+## Where the project is
 
-Current branch codex/CER-M4-013-persistent-composition:18 owned pending files preserved, candidate ready for commit/exact-head review/CI; integration not yet verified. Root sole writer. Release0warnings/errors and Integration93/93 zero skipped. Actual secondary96 Save/Close/Restart/exact ordered IDs/formats/ranges/service loss/recovery PASS. Locked-save preservation/retry with real RAM data and corrupt-file byte preservation/disabled overwrite/valid restore PASS. Private native fixture only theme override and controlled apply exception verifies truthful application failure plus Light/Dark minimum dialog at96DPI. Final source build and critical source review PASS. Eight verified-minimized phases complete, with memory increase and connected CPU-positive signal preserved; general nonregression INCONCLUSIVE. Exact-head review/CI/protected integration pending. Higher physical DPI and cross-DPI transitions NOT RUN for013. See HANDOFF and canonical domain evidence.
+- M0 foundation, M1 hardware, M2 gaming and M3 AI telemetry/quotas are done (see `docs/ROADMAP.md`).
+- **M4 — Widget Engine & Compact Surfaces is active.** On `main`: native WinUI WidgetHost with `MetricReadout`, `MetricBar`, `MetricRing`, shared exact-`MetricId` subscriptions, a configuration dialog and persisted ordered composition (SQLite, non-secret layout only).
+- Not yet on `main`: sparkline, overview/details split, compact floating surface, startup theme selection (see open tasks). Not started: taskbar surface, tray indicators, simple graph, design tokens, Home.
+- The repository is public. CI runs Build and Test, Repository Quality and CodeQL on every PR. `main` has no branch protection.
 
-012 remains preserved/pushed4e7eed9 on its own branch, unmerged;144DPIglyphfailure unresolved. F7/framework floor/startup and remaining M4 surfaces/features open. Ordinary capacity available; native/Web quota independence and authenticated Antigravity capacity UNVERIFIED. No reset credit, expense or installation used. Luna is not exposed in current multi-agent registry; nativeSol6.1Medium and integratedWeb6 used according to technical risk. Backend goal still shows historical PAUSED and exposes no resume setter; user authorization and active continuation govern execution, no duplicate goal created.
+## How we work now
+
+The agent workflow was simplified on 2026-11-14: short state files, vendor-neutral model tiers, proportional verification, small PRs merged when green. `AGENTS.md` is the single source for process. The previous checkpoint logs (`HANDOFF.md`, `WORKLOG.md`) were removed; their content remains in git history and merged PRs.
+
+## Known limits (do not block on these)
+
+- Higher physical DPI (144+) and mixed-monitor transitions are verified only on a single monitor at 96/144 DPI. One sparkline range-text clipping case at 144 DPI is unresolved.
+- WidgetHost idle cost is above the aspirational targets in `docs/PERFORMANCE.md`; most memory is the WinUI framework floor. General CPU non-regression is not established.
+- Several AI quota providers remain evidence-blocked or deferred; dispositions are in `docs/PROVIDERS_AI_QUOTAS.md` and `docs/AI_TELEMETRY.md`.
+- The product name and brand mark are provisional pending clearance.
+
+## Next
+
+See `.agent/TASKS.md`.
