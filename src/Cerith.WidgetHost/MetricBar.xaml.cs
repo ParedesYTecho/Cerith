@@ -17,7 +17,7 @@ public sealed partial class MetricBar : UserControl
     {
         _spec = spec;
         InitializeComponent();
-        _readout = new MetricReadout(spec.Presentation);
+        _readout = new MetricReadout(spec.Presentation, separator: false);
         ReadoutHost.Content = _readout;
     }
 

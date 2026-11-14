@@ -6,7 +6,7 @@ Only open work is listed. Finished tasks live in git history and merged PRs. Tas
 
 Status: open, no owner.
 
-Tokens, custom title bar and state colours are on `main` (see `docs/UI_UX.md`). Remaining ideas, in order of value: split value and unit typographically; let a bar, ring or sparkline replace the readout's hairline instead of sitting under it; restyle the configuration dialog with the same tokens; a first motion token for value and state changes that respects reduced motion; high-contrast check.
+Tokens, custom title bar and state colours are on `main` (see `docs/UI_UX.md`). Remaining ideas, in order of value: restyle the configuration dialog with the same tokens; a first motion token for value and state changes that respects reduced motion; high-contrast check.
 
 ## CER-M4-020 — Tray indicator and window state
 

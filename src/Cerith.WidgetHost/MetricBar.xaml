@@ -5,7 +5,7 @@
     IsTabStop="False">
     <StackPanel>
         <ContentControl x:Name="ReadoutHost" IsTabStop="False" HorizontalContentAlignment="Stretch" />
-        <StackPanel Margin="0,8,0,12" Spacing="4">
+        <StackPanel Margin="0,0,0,12" Spacing="4">
             <Grid x:Name="Track" Height="3" Background="{ThemeResource CerithSeparatorBrush}">
                 <Border x:Name="Fill" Background="{ThemeResource CerithAccentBrush}">
                     <Border.RenderTransform>
@@ -15,5 +15,6 @@
             </Grid>
             <TextBlock x:Name="RangeText" Style="{StaticResource CerithCaptionTextStyle}" />
         </StackPanel>
+        <Border Height="1" Background="{ThemeResource CerithSeparatorBrush}" />
     </StackPanel>
 </UserControl>

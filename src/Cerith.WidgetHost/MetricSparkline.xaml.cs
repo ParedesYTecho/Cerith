@@ -21,7 +21,7 @@ public sealed partial class MetricSparkline : UserControl
         _spec = spec;
         _sequence = new(spec);
         InitializeComponent();
-        _readout = new MetricReadout(spec.Presentation);
+        _readout = new MetricReadout(spec.Presentation, separator: false);
         ReadoutHost.Content = _readout;
     }
 
