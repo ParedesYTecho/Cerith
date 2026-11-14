@@ -2,8 +2,8 @@
 
 ## CER-M4-014 — Native overview and composition details
 
-Status: CANDIDATE_READY_FOR_ROOT_PUBLICATION — final solution Release 0 warnings/errors (9.43s); Integration 97/97 PASS, zero skipped (16.571s), four pure regressions. One independent integrated Sol Web review (Banach) CONDITIONAL SOURCE PASS, closed; no demonstrated P0/P1 or required source correction. Canonical UI/QA documentation reconciled. Three native-evidence checks OPEN; native/performance NOT RUN, CI/publication pending. Not native accepted; M4 INCOMPLETE.
-Owner: RELEASED after DOCS-ONLY reconciliation; source/test hashes preserved. Root owns commit/push/draft PR/CI, root documentation and separate 012 PR65. No active 014 writer; no merge authorized.
+Status: DRAFT_PR66_OPEN / NATIVE_ACCEPTANCE_PENDING — final solution Release 0 warnings/errors (9.43s); Integration 97/97 PASS, zero skipped (16.571s), four pure regressions. One independent integrated Sol Web review (Banach) CONDITIONAL SOURCE PASS, closed; no demonstrated P0/P1 or required source correction. Canonical UI/QA documentation reconciled. Three native-evidence checks OPEN; native/performance NOT RUN. Product HEAD6e04ec3504d1abd2908b2cf7dbcbdea751647dd3 pushed; exactindependentconditionalPASS/Build534PASS/QualitySUCCESS/CodeQLSKIPPEDnotsecurityPASS. Not native accepted; M4 INCOMPLETE.
+Owner: Codex — sole CER-M4-014 source correction and private native harness/runtime owner, isolated worktree only; root retains docs and Git. Production edit scope limited to MainWindow.xaml/.cs, MetricReadout.xaml/.cs and relevant existing tests if needed. No commit/push/merge.
 Branch: codex/CER-M4-014-overview-detail. Base: 10a6ebf32ab453fb7d453873e77a1d84c3a0059f.
 Scope: existing MetricId subscriptions, distinct overview with bounded page navigation, explicit ordered composition details. No schema/provider/IPC change, native launch or merge.
 
