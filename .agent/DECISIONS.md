@@ -197,3 +197,14 @@ A tray indicator stays in M4 because the shell supports it and a monitoring widg
 ## D-027 — Agent workflow (2026-11-14)
 
 Process lives in `AGENTS.md`; `.agent/STATE.md` and `.agent/TASKS.md` are short and rewritten, not appended; routing is by capability tier. Verification is proportional to risk, evidence goes in PR descriptions, and a check that cannot be run is recorded as a limit instead of blocking a merge. This replaces the checkpoint-log workflow (HANDOFF/WORKLOG) and supersedes the process parts of D-006. Reason: the mandatory reading had grown past 130 KB and five finished PRs sat unmerged for a month behind gates that could not be run.
+
+## D-028 — Function-first sequence: history before editor (2026-11-14)
+
+The owner's priority is a complete, usable product: collect verifiable telemetry, record it locally, and be able to query and analyse it. The old order put the visual editor (M5) and rules (M6) before history (M7).
+
+New order: M5 History & Recording, M6 Analysis & Dashboard, M7 Telemetry breadth, M8 Overlay & surfaces, M9 Rules/alerts/profiles, M10 Visual editor & personalisation, M11 Distribution. The plugin SDK, ecosystem and remote telemetry are unscheduled. The current visual design is provisional; the definitive identity waits for M10.
+
+M4's remaining exit criteria (144 DPI sparkline case, dialog tokens and high contrast, idle cost) are finishing checks and do not block M5.
+
+Initial direction for the history store, to be confirmed by the M5 design task: TelemetryService is the only writer; storage is SQLite through the Windows-provided `winsqlite3.dll` already used for layouts, so no new dependency; other processes open the file read-only.
+

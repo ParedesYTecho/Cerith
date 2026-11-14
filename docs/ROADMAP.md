@@ -198,60 +198,81 @@ Exit criteria (see D-026):
 4. The configuration dialog uses the design tokens, and the surfaces are checked in high contrast.
 5. Idle CPU and memory are measured against `docs/PERFORMANCE.md` and the budget is either met or revised with a recorded reason.
 
+Criteria 1, 4 and 5 are finishing checks. They do not block M5 from starting (D-028).
+
 Moved out of M4 by D-026: the taskbar surface (no supported Windows 11 API; revisit as its own decision), the multi-series graph (needs history, M7) and a separate container component (the ordered composition already fills that role until the M5 editor).
 
 The same MetricId-driven component semantics must feed every surface. Gengchou and AI Limits are interaction/compactness references, not architecture bases. Provider-specific drawing logic is not allowed.
 
-## M5 — Visual Editor
+## Sequence after M4 (D-028)
 
-- canvas;
-- selection;
-- snap;
-- layers;
-- inspector;
-- undo/redo;
-- alignment;
-- copy/paste.
+Function before finish: record, then analyse, then widen the telemetry, then add surfaces and customisation. Each milestone ends when its exit list is true on `main`, not when every idea in it is built.
 
-## M6 — Rules & Profiles
+## M5 — History & Recording
 
-- conditions;
-- alerts;
-- visual reactions;
-- contextual profiles.
+Cerith remembers what it measures.
 
-## M7 — History & Analytics Dashboard
+- one local SQLite history store owned by TelemetryService (single writer), read-only for other processes;
+- every published `MetricSnapshot` that carries a value can be recorded, with its state and confidence;
+- retention and downsampling so the store stays small and writes stay cheap;
+- gaming sessions (start, end, target, summary statistics) and AI usage events as first-class records;
+- a query path for ranges, aggregates and sessions;
+- privacy: only values Cerith already publishes; no prompts, paths, command lines or credentials.
 
-- SQLite;
-- retention/downsampling;
-- charts;
-- sessions;
-- AI usage trends;
-- model/provider breakdown;
-- local cost analysis with explicit pricing provenance;
-- GitHub-style activity heatmap;
-- safe project attribution;
-- dashboard composition over the same metric/history contracts used by widgets.
+Exit: after a day of normal use the store holds queryable hardware, gaming and AI history; its size and the service's CPU/IO cost are measured and recorded; a restart or crash loses at most a few seconds and never corrupts the store.
 
-TokenTracker is a product/information-architecture reference for the dashboard, not a mandate to embed its web stack or cloud features. Local history remains authoritative by default.
+## M6 — Analysis & Dashboard
 
-## M8 — Public Plugin SDK
+ControlCenter becomes the place to look at history.
 
-- stable versioned contracts;
-- permissions;
-- examples;
-- docs.
+- time-range charts for any recorded metric;
+- gaming session list and per-session detail (FPS, frame time, lows, hardware alongside);
+- AI usage trends, model/provider breakdown, quota history, cost estimates with explicit pricing provenance;
+- export of a range or session to CSV/JSON;
+- settings for retention and providers.
 
-## M9 — Ecosystem
+Exit: a user can answer "what happened in yesterday's session" and "how much AI quota did I use this week" from the app.
 
-- widget/theme packs;
-- registry concept;
-- import/export.
+## M7 — Telemetry breadth
 
-## M10 — Remote / Multi-PC
+Add sources only with verified semantics (`docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`).
 
-- remote metric protocol;
-- second-machine dashboards.
+- hardware: GPU/CPU temperatures, power, clocks, fan RPM where identity is certain, network and disk throughput;
+- gaming: 0.1% low, frame pacing, presented/displayed distinction, automatic target detection;
+- AI: revisit evidence-blocked quota providers and activity collectors that became verifiable;
+- system: battery, uptime, per-process top consumers if cheap.
+
+## M8 — Overlay & more surfaces
+
+- in-game overlay for a chosen set of metrics, with measured frame-time impact;
+- taskbar surface only if a supportable technique is found (see D-026);
+- detail popup from compact surfaces.
+
+## M9 — Rules, alerts & profiles
+
+- conditions over any metric, including history-based ones;
+- notifications and visual reactions;
+- contextual profiles (gaming, coding, desktop).
+
+## M10 — Visual editor & personalisation
+
+- canvas, selection, snap, layers, inspector, undo/redo;
+- themes and presets built on the design tokens;
+- the definitive visual identity is applied here, not earlier.
+
+## M11 — Distribution
+
+- installer or package, signing, start with Windows, single-instance behaviour, update path;
+- first-run detection of hardware and AI tools;
+- crash handling and diagnostics a user can send.
+
+Start-with-Windows and single-instance behaviour may land earlier if daily use needs them.
+
+## Later
+
+Public plugin SDK, widget/theme ecosystem, remote and multi-PC telemetry. Not scheduled.
+
+TokenTracker remains a product reference for the dashboard, not a mandate to embed its web stack or cloud features. Local history is authoritative by default.
 
 ## Rule
 
