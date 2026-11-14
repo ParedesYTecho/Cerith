@@ -9,20 +9,56 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#F7F8FA" />
-                    <SolidColorBrush x:Key="CerithTextBrush" Color="#171A20" />
-                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#626872" />
-                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#D9DCE2" />
-                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#52678E" />
+                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#F6F3EC" />
+                    <SolidColorBrush x:Key="CerithTextBrush" Color="#14171E" />
+                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#666B75" />
+                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#DDD8CC" />
+                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#7A6238" />
+                    <SolidColorBrush x:Key="CerithStaleBrush" Color="#9A6B00" />
+                    <SolidColorBrush x:Key="CerithErrorBrush" Color="#B3402E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#111318" />
-                    <SolidColorBrush x:Key="CerithTextBrush" Color="#F1F3F6" />
-                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#9DA4AF" />
-                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#30343C" />
-                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#91A4C9" />
+                    <SolidColorBrush x:Key="CerithSurfaceBrush" Color="#0C0E13" />
+                    <SolidColorBrush x:Key="CerithTextBrush" Color="#EFE9DD" />
+                    <SolidColorBrush x:Key="CerithMutedTextBrush" Color="#8E94A0" />
+                    <SolidColorBrush x:Key="CerithSeparatorBrush" Color="#232833" />
+                    <SolidColorBrush x:Key="CerithAccentBrush" Color="#D9C8A9" />
+                    <SolidColorBrush x:Key="CerithStaleBrush" Color="#D9A441" />
+                    <SolidColorBrush x:Key="CerithErrorBrush" Color="#E0705F" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+            <FontFamily x:Key="CerithBrandFont">Sitka Display, Georgia</FontFamily>
+            <FontFamily x:Key="CerithValueFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+
+            <Style x:Key="CerithLabelTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource CerithTextBrush}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+            <Style x:Key="CerithCaptionTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource CerithMutedTextBrush}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+            <Style x:Key="CerithValueTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource CerithTextBrush}" />
+                <Setter Property="FontFamily" Value="{StaticResource CerithValueFont}" />
+                <Setter Property="FontSize" Value="26" />
+                <Setter Property="FontWeight" Value="SemiLight" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+            <Style x:Key="CerithIconButtonStyle" TargetType="ButtonBase">
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{ThemeResource CerithMutedTextBrush}" />
+                <Setter Property="FontFamily" Value="{ThemeResource SymbolThemeFontFamily}" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

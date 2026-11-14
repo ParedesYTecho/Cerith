@@ -5,16 +5,15 @@
     IsTabStop="False">
     <StackPanel>
         <ContentControl x:Name="ReadoutHost" IsTabStop="False" HorizontalContentAlignment="Stretch" />
-        <StackPanel Margin="17,0,2,10" Spacing="4">
-            <Grid x:Name="Track" Height="4" Background="{ThemeResource CerithSeparatorBrush}">
+        <StackPanel Margin="0,8,0,12" Spacing="4">
+            <Grid x:Name="Track" Height="3" Background="{ThemeResource CerithSeparatorBrush}">
                 <Border x:Name="Fill" Background="{ThemeResource CerithAccentBrush}">
                     <Border.RenderTransform>
                         <ScaleTransform x:Name="FillScale" ScaleX="0" />
                     </Border.RenderTransform>
                 </Border>
             </Grid>
-            <TextBlock x:Name="RangeText" FontSize="10"
-                       Foreground="{ThemeResource CerithMutedTextBrush}" TextWrapping="Wrap" />
+            <TextBlock x:Name="RangeText" Style="{StaticResource CerithCaptionTextStyle}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

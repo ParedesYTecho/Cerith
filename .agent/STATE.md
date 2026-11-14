@@ -6,7 +6,7 @@ Last rewritten: 2026-11-14.
 
 - M0 foundation, M1 hardware, M2 gaming and M3 AI telemetry/quotas are done (see `docs/ROADMAP.md`).
 - **M4 — Widget Engine & Compact Surfaces is active.** On `main`: native WinUI WidgetHost with `MetricReadout`, `MetricBar`, `MetricRing`, shared exact-`MetricId` subscriptions, `MetricSparkline`, an overview page with a separate composition-details view, a compact floating mode with pin-on-top, a configuration dialog, persisted ordered composition (SQLite, non-secret layout only) and a `--theme=system|light|dark` startup option.
-- The surfaces work but still look like a technical demo: default WinUI styling, repeated readouts, no visual identity. Not started: design tokens, taskbar surface, tray indicators, simple graph, Home.
+- The surfaces share Cerith design tokens (midnight/ivory palette, serif wordmark, state colours) and a custom title bar; see `docs/UI_UX.md`. Not started: motion, taskbar surface, tray indicators, simple graph, Home.
 - The repository is public. CI runs Build and Test, Repository Quality and CodeQL on every PR. `main` has no branch protection.
 
 ## How we work now
