@@ -33,4 +33,4 @@ Day-to-day work is led by the Standard tier, autonomously, milestone by mileston
 
 ## Next
 
-M5 history store is on `main` (D-030): TelemetryService records every published snapshot (see `docs/ARCHITECTURE.md`, History store). Next: `CER-M5-002` gaming sessions, then `CER-M5-003`, `CER-M6-001` in `.agent/TASKS.md`.
+M5 history store is on `main` (D-030): TelemetryService records every published snapshot (see `docs/ARCHITECTURE.md`, History store). Gaming sessions are recorded too (D-031). Next: `CER-M5-003` AI usage events, then `CER-M6-001` in `.agent/TASKS.md`.
