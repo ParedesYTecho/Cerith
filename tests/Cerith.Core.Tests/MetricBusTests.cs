@@ -249,6 +249,20 @@ public sealed class MetricBusTests
         await Assert.ThrowsExactlyAsync<ObjectDisposedException>(async () => await reader.MoveNextAsync());
     }
 
+    [TestMethod]
+    public async Task TapSeesEverySnapshotWithoutSubscribersUntilDisposed()
+    {
+        using var bus = new MetricBus(1);
+        var seen = new System.Collections.Generic.List<MetricSnapshot>();
+        var tap = bus.Tap(seen.Add);
+
+        await bus.PublishAsync(Snapshot(1));
+        tap.Dispose();
+        await bus.PublishAsync(Snapshot(2));
+
+        Assert.AreEqual(1, seen.Count);
+    }
+
     private static MetricSnapshot Snapshot(long value, string? id = null) => new(
         id is null ? Id : new MetricId(id),
         MetricValue.From(value),

@@ -247,6 +247,10 @@ SQLite is the default future local persistence layer for:
 
 Secrets use Windows credential facilities.
 
+### History store
+
+Design in D-030. `Cerith.Core.History.HistoryStore` (winsqlite3, `%LOCALAPPDATA%\Cerith\history.db`) is written only by TelemetryService: `HistoryRecorder` taps `MetricBus` (`MetricBus.Tap`), enqueues into a bounded queue (drop-and-count, never blocks publishers) and flushes a batch transaction every 2 s. Raw samples, one-minute and one-hour rollups; retention 12 h / 90 d / 730 d. Readers open the file read-only (`HistoryStore.OpenReader`, `ReadRaw`, `ReadRollup`). An existing file that is not a Cerith history store, or is newer than the build, is preserved and history is disabled instead of overwritten.
+
 ## Dependency direction
 
 ```text

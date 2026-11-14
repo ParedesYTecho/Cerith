@@ -160,6 +160,10 @@ Bounded follow-up controls removed the bars, then RAM, while holding the candida
 
 Track C independently reviewed 34 applicable raw runs and returned **characterization complete; no blocking implementation-specific performance defect established for the bounded CER-M4-006 scope**. The larger full surface's repeated visible cost and additional memory remain measured facts. Actual four-stream/six-consumer ownership, matched callback counts, preserved recovery/quiet-stream/close behavior and guarded updates without tree reconstruction support that limited disposition. CPU nonregression, statistical equivalence, zero overhead and budget achievement are not proven. No numerical allowance or optimization is invented. **KEEP_CURRENT_BUS; F7 remains OPEN and M4 closure is not established.**
 
+## History store (CER-M5-001)
+
+One 4-minute run of the real TelemetryService on the development PC (155 metrics registered, hardware plus quota providers, no game target): 11,987 rows in 268 s, about 45 rows per second (about 160,000 per hour). Raw rows cost about 32 bytes each in the checkpointed file including indexes, so about 5 MB per hour and about 62 MB for the 12-hour raw window; rollups add a few MB per day. Service CPU over 240 s after a 30 s warm-up: 4.47 s with history, 5.58 s for the previous build, one run each, so the recorder cost is not distinguishable from noise (provider polling dominates, about 2% of one core). Memory about 86 MiB working set. Raw retention is the lever if the store must be smaller. This is one short observation, not a long-run figure: size growth and CPU over a full day are still to be observed.
+
 ## Cadence
 
 Different sources require different refresh rates.

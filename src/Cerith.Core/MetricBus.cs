@@ -15,6 +15,7 @@ public sealed class MetricBus : IDisposable
     private readonly object _gate = new();
     private readonly HashSet<Subscription> _subscriptions = new();
     private readonly int _subscriberCapacity;
+    private Action<MetricSnapshot>[] _taps = [];
     private bool _disposed;
 
     public MetricBus(int subscriberCapacity)
@@ -54,6 +55,22 @@ public sealed class MetricBus : IDisposable
         }
     }
 
+    /// <summary>
+    /// Observes every published snapshot, whether or not anyone subscribes to its ID. The observer runs synchronously on the
+    /// publisher's thread: it must return immediately and must not throw (hand off to a bounded queue).
+    /// </summary>
+    public IDisposable Tap(Action<MetricSnapshot> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _taps = [.. _taps, observer];
+        }
+
+        return new TapRegistration(this, observer);
+    }
+
     public async ValueTask PublishAsync(
         MetricSnapshot snapshot,
         CancellationToken cancellationToken = default)
@@ -61,12 +78,16 @@ public sealed class MetricBus : IDisposable
         ArgumentNullException.ThrowIfNull(snapshot);
 
         Subscription[] targets;
+        Action<MetricSnapshot>[] taps;
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            taps = _taps;
             // ponytail: linear scan of active subscribers; index by MetricId if fan-out scale warrants it.
             targets = _subscriptions.Where(subscription => subscription.MetricId == snapshot.MetricId).ToArray();
         }
+
+        foreach (var tap in taps) tap(snapshot);
 
         foreach (var subscription in targets)
         {
@@ -100,6 +121,19 @@ public sealed class MetricBus : IDisposable
         {
             subscription.Channel.Writer.TryComplete();
         }
+    }
+
+    private void RemoveTap(Action<MetricSnapshot> observer)
+    {
+        lock (_gate)
+        {
+            _taps = _taps.Where(tap => tap != observer).ToArray();
+        }
+    }
+
+    private sealed class TapRegistration(MetricBus bus, Action<MetricSnapshot> observer) : IDisposable
+    {
+        public void Dispose() => bus.RemoveTap(observer);
     }
 
     private void Unsubscribe(Subscription subscription)

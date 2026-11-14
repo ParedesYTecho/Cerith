@@ -2,9 +2,11 @@
 
 using System;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Cerith.Core.History;
 using Cerith.TelemetryService.Providers.AI.Antigravity;
 using Cerith.TelemetryService.Providers.AI.ArkAgentPlan;
 using Cerith.TelemetryService.Providers.AI.CommandCode;
@@ -38,6 +40,7 @@ internal static class Program
         using var stop = new CancellationTokenSource();
         using var bus = new MetricBus(1);
         var registry = new MetricRegistry();
+        using var history = OpenHistory(bus);
         using var provider = new HardwareTelemetryProvider(registry, bus);
         using var gamingProvider = new PresentMonTelemetryProvider(registry, bus, processId);
 
@@ -112,6 +115,8 @@ internal static class Program
             var openCodeActivityProvider = new OpenCodeActivityProvider(registry, bus);
             await openCodeActivityProvider.RunAsync(stop.Token).ConfigureAwait(false);
         }, "opencode-activity", stop.Token);
+        var historyRunner = history is null ? Task.Delay(Timeout.InfiniteTimeSpan, stop.Token) :
+            KeepServiceAliveAfterProviderExitAsync(() => history.RunAsync(stop.Token), "history", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
             (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
             "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
@@ -120,14 +125,28 @@ internal static class Program
 
         try { await Task.WhenAny(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
             antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
-            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner, openCodeActivityRunner); }
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner, openCodeActivityRunner, historyRunner); }
         finally { await stop.CancelAsync(); }
 
         try { await Task.WhenAll(server, publisher, gamingPublisher, codexQuotaRunner, cursorQuotaRunner,
             antigravityQuotaRunner, arkCodingPlanQuotaRunner, arkAgentPlanQuotaRunner, zcodeQuotaRunner, copilotQuotaRunner, openCodeGoQuotaRunner,
-            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner, openCodeActivityRunner); }
+            kiroQuotaRunner, commandCodeQuotaRunner, qoderCnQuotaRunner, openCodeActivityRunner, historyRunner); }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         Console.WriteLine("TelemetryService stopped.");
+    }
+
+    private static HistoryRecorder? OpenHistory(MetricBus bus)
+    {
+        try
+        {
+            var store = HistoryStore.OpenWriter(HistoryStore.DefaultPath);
+            return new HistoryRecorder(bus, store, HistoryRetention.Default, TimeSpan.FromSeconds(2), 16384);
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or NotSupportedException)
+        {
+            Console.Error.WriteLine("History disabled: store could not be opened; existing file preserved.");
+            return null;
+        }
     }
 
     internal static async Task KeepServiceAliveAfterProviderExitAsync(Func<Task> startProvider, string providerId,
