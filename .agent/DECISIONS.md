@@ -218,3 +218,14 @@ A strategic pass checked what the original brief asked for. Result, without repe
 - **Routing and continuity.** Standard tier leads day-to-day work; the strategic tier plans and is never substituted silently (`MODEL_ROUTING.md`).
 - **Harness.** No skill, hook, plugin or MCP server is required (`MODEL_ROUTING.md`, Harness).
 
+
+## D-030 — History store design (2026-11-14)
+
+Confirms the direction of D-028. Reason: the store must stay small and cheap, survive crashes, and never slow the bus.
+
+- **Engine and location.** SQLite through the system `winsqlite3.dll` (no dependency), file `%LOCALAPPDATA%\Cerith\history.db`, WAL, `synchronous=NORMAL`. TelemetryService is the only writer. Readers (ControlCenter) open the file read-only directly; no pipe query protocol until a reader needs something a file cannot give. Its own file, not `layout.db`, so retention and corruption handling never touch user settings.
+- **Schema** (`application_id` 0x43455248, `user_version` 1): `metric(id, name, kind)` dictionary; `sample(metric, at, state, confidence, num, txt)` keyed by `(metric, at)` without rowid, `at` in Unix milliseconds UTC, `num` untyped so integers stay exact; `rollup(bucket, metric, start, n, min, max, sum)`; `meta`.
+- **Values.** Double/Int64/Boolean/TimeSpan(ticks)/DateTimeOffset(Unix ms) go in `num`; Decimal and String (≤1024 bytes) in `txt`, so decimals stay exact. A non-finite double, an oversized string or a value whose kind differs from the metric's first kind is rejected and counted, never coerced. Snapshots without a value are stored as their state with a null value (never zero), and only when the state changes.
+- **Write path.** `MetricBus.Tap` calls an observer synchronously for every published snapshot; `HistoryRecorder` only enqueues into a bounded queue (16384), counts drops on overflow and logs them, and a writer flushes one transaction every 2 s. A process crash loses at most the unflushed 2 s; committed data survives a crash (WAL), and only an OS crash or power loss can lose the last few commits. A failed batch is dropped and counted; the service keeps running.
+- **Tiers and retention.** Raw samples 12 h, one-minute rollups 90 days, one-hour rollups 730 days. Rollups hold count/min/max/sum of Fresh numeric values only (Stale is never averaged in). Maintenance runs at start and hourly: it rolls completed buckets up after a 5-minute delay, then prunes, and never deletes raw rows beyond the rollup watermark. The file does not shrink after pruning; space is reused.
+- **Not in this slice.** Gaming sessions and AI usage events (CER-M5-002/003), a settings UI for retention, `VACUUM`.
