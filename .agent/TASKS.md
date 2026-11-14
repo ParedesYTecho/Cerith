@@ -8,7 +8,7 @@ Status: open, small. Let the service run for a day on the owner's machine (do no
 
 ## CER-M6-001 — ControlCenter history view
 
-Status: open, ready. Read the history store through `HistoryStore.OpenReader` (D-030). ControlCenter is an empty project today. First screen: pick a metric and a time range, see a chart from the history store. Functional before pretty; reuse the design tokens.
+Status: in progress. Done on `main`: the query API a screen needs (`HistoryStore.ReadMetrics`, `ReadSeries` with automatic raw/minute/hour resolution, `ReadSessions`, `ReadAiEvents`). Left: the ControlCenter WinUI app itself (it is still an empty project: no `UseWinUI`, no window). First screen: pick a metric and a range (1 h, 6 h, 24 h, 7 d, 30 d), draw `ReadSeries` as a polyline with a min/max band and gaps where there are no Fresh points, show min/max/average, and list recent gaming sessions. Open the store with `HistoryStore.OpenReader` and show a clear message when the file does not exist yet. Functional before pretty; reuse the design tokens in `docs/UI_UX.md`. Per `AGENTS.md`, a UI change needs a run with light and dark screenshots; launch only with a secondary monitor or without stealing focus.
 
 ## M4 finishing checks
 
