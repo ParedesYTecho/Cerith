@@ -44,6 +44,11 @@ appsettings.*.local.json
 **/credentials.json
 **/*cookie*
 **/*token*
+# Source and docs may legitimately have these words in their names.
+!**/*.cs
+!**/*.xaml
+!**/*.csproj
+!**/*.md
 browser-profile/
 profiles/
 

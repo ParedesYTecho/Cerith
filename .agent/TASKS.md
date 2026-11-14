@@ -4,7 +4,7 @@ Only open work is listed. Finished tasks live in git history and merged PRs. Tas
 
 ## CER-M5-001 — History store: design and first vertical slice
 
-Status: open, no owner. **Next task.** Tier: Strong for the design, Standard for the implementation.
+Status: open, no owner. **Next task.** Led by the Standard tier; escalate the schema and durability design to Strong if it is not clearly settled after the research.
 
 Read `docs/ARCHITECTURE.md`, `docs/METRICS.md`, `docs/PERFORMANCE.md`, D-028, and `src/Cerith.Core` plus `src/Cerith.TelemetryService/Program.cs` first. Look at how comparable local tools store time series before choosing a schema (for example the SQLite layouts used by Home Assistant's recorder and by TokenTracker; see `docs/REFERENCE_PROJECTS.md`).
 
@@ -54,3 +54,15 @@ Status: open, not started. Exit criteria 4 and 5: tokens in the configuration di
 - `docs/TESTING_QA.md` and `docs/PERFORMANCE.md` still contain dense per-run receipts; condense them to durable facts when next touched.
 - `docs/ARCHITECTURE.md` and `docs/TESTING_QA.md` still name specific models and reviewers from October; remove those names when condensing.
 - Eleven local-only `codex/CER-M3-004-*` research branches exist on the owner's machine; they are not on GitHub.
+
+## Owner decisions pending
+
+These need the owner; do not act on them. Continue with other work meanwhile.
+
+- Enable GitHub secret scanning, push protection and Dependabot alerts on the repository (free for public repositories; currently disabled).
+- Clear the product name and brand mark (provisional).
+- Click through the tray menu once (CER-M4-020) and run the widget at 150% display scale (CER-M4-021); both need the owner's desktop.
+
+## Strategic (reserved, see `MODEL_ROUTING.md`)
+
+Nothing pending. Add an item here when a milestone needs replanning or a cross-cutting architecture decision.
