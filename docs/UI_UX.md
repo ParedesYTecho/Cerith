@@ -321,42 +321,49 @@ Measured, estimated, stale, unavailable, error and loading states must be visual
 
 A beautiful wrong number is worse than `--`.
 
-## Earlier composable demonstration (CER-M4-006)
+## Implemented native surface (WidgetHost)
 
-The bounded native demonstration uses CPU total usage and RAM usage (Hardware), displayed FPS (Gaming), and Codex primary quota remaining (AI). CPU and quota each appear as both `MetricReadout` and `MetricBar`, sharing their exact MetricId stream. FPS remains textual. Native layout and the existing themed edge/state rail are retained; a ScrollViewer accommodates the larger content at the existing minimum size. The intended default is 420×620 logical pixels. This is not the Hardware page, a layout editor or a final container framework.
+This describes what is on `main`. Per-run evidence lives in the PRs that landed each piece.
 
-`MetricRangeSpec` supplies a presentation spec plus an explicit finite increasing Minimum/Maximum. Range belongs to the component, not the descriptor; no MetricId, provider, source or unit inference chooses it. The current two percentage bars configure 0–100. A bar embeds the existing readout for descriptor label/unit, actual value, state and confidence, and adds a themed native fill plus range text. Fresh/Stale retain their finite value and confidence, with stale text/opacity; real zero shows an empty valid track. Unavailable/Stopped/Error/Unlimited have no numeric track; Unlimited remains textual. Values above/below range suppress fill and explicitly say Above range/Below range while preserving the actual numeric text. Non-finite or nonnumeric values likewise have no numeric fill. Connecting/Waiting and transport loss show no snapshot/value. Missing metadata uses the exact MetricId without an invented unit.
+![WidgetHost composition details, dark theme, live CPU and RAM](assets/widgethost-dark.png)
 
-No component tree is rebuilt for numeric changes. Readout presentation/label equality and bar fill/range/Automation-name guards avoid unnecessary mutation. Native visual, theme, DPI and paired process-performance acceptance must be recorded separately from headless transport/presentation tests.
+### Identity and tokens
 
-At 96 DPI, default and minimum sizes passed dark/light inspection and native scrolling. Minimum dimensions belong to the outer AppWindow presenter; do not duplicate them as client Grid minima, because the caption/frame reduce the visible client area and can clip the final component. The bottom range must be fully inside both the native client rectangle and scroll viewport. CER-M4-008 additionally verifies the current surface at actual 144 DPI in both themes and live 96→144→96 transitions on one monitor. Explicit PerMonitorV2 belongs to the build-consumed application manifest; live XamlRoot scale changes update only presenter minima, preserving user sizing. Mixed-monitor hardware transitions remain unverified; detailed native evidence and failed attempts are recorded in TESTING_QA.
+Tokens are theme resources in `App.xaml`; components never hard-code colours.
 
-## Earlier native readout overflow conformance
+| Token | Dark | Light | Use |
+| --- | --- | --- | --- |
+| `CerithSurfaceBrush` | `#0C0E13` midnight | `#F6F3EC` ivory | window surface |
+| `CerithTextBrush` | `#EFE9DD` | `#14171E` | labels and values |
+| `CerithMutedTextBrush` | `#8E94A0` | `#666B75` | captions, icons, valueless states |
+| `CerithSeparatorBrush` | `#232833` | `#DDD8CC` | hairlines, empty tracks |
+| `CerithAccentBrush` | `#D9C8A9` champagne | `#7A6238` bronze | live state, fills, brand mark |
+| `CerithStaleBrush` | `#D9A441` | `#9A6B00` | stale state, warnings |
+| `CerithErrorBrush` | `#E0705F` | `#B3402E` | error state |
 
-This records the earlier accepted readout layout. The CER-M4-014 candidate below changes wrapping and state/confidence placement; the earlier native evidence does not validate that candidate.
+Typography: the wordmark uses a serif (`CerithBrandFont`: Sitka Display, Georgia); values use Segoe UI Variable Display, semi-light, with tabular numerals so digits do not shift; labels are 13 px and captions 11 px. Text styles are `CerithLabelTextStyle`, `CerithCaptionTextStyle` and `CerithValueTextStyle`.
 
-State and confidence share finite Grid columns: state uses the remaining width and confidence reserves its native desired width. A long safe error code wraps without pushing confidence out of the row. The decorative separator is omitted to keep short states readable beside a long value at the minimum width. Values wrap within the existing width cap instead of ellipsis so a large out-of-range number retains its actual text. Labels retain intentional trimming and their full accessible name. Taller exceptional rows remain inspectable through the existing ScrollViewer; range inspection is separate from bringing the full readout into view. This is the same readout for standalone and bar consumers, with unchanged state/confidence and Automation-name semantics.
+The window draws its own title bar: crescent-and-star mark, wordmark, then icon buttons (`CerithIconButtonStyle`, Segoe Fluent Icons) with tooltips and accessible names. There is no motion yet.
 
-## Native ranged ring (CER-M4-010)
+### Components
 
-MetricRing embeds the same MetricReadout and uses the same internal MetricRangeSpec/Result/Presentation as MetricBar. The current CPU ring explicitly configures 0–100 and shares CPU's existing subscription with its readout and bar: seven components over four exact MetricIds. No provider/unit/MetricId inference selects a range. An in-range zero keeps an empty themed circular track; values between zero and full range use one clockwise static WinUI ArcSegment, and the upper endpoint uses a full Ellipse. Stale retains value and confidence with subdued fill. Valueless, Unlimited, nonnumeric/nonfinite and out-of-range states have no numeric visual; actual text and range explanations remain. Existing range validation/text owns the shared semantics; the ring owns only its fixed native geometry and presentation.
+All components bind by exact `MetricId` and share one subscription per id.
 
-The installed native determinate ProgressRing was tested before choosing geometry. At 96 DPI its accessible Value tracked the input, but the painted result depended on the previous value: 10→11 retained the exact 10% raster, whereas zero→11 produced another raster; 11→12 likewise retained 11%. Captures were taken after 1.2 s settling, with source-qualified synthetic protocol values. The static candidate produces distinct 10/11/12 rasters and identical repeated 11/12 rasters irrespective of the preceding value. This observed defect is the reason for the original minimal geometry; no upstream code/template is copied. There is no player, repeating animation, animation callback or second component framework. Native theme/DPI, minimum-size glyph conformance, real lifecycle and paired process-performance gates remain separate from this rendering check; bounded native/lifecycle/performance evidence is recorded in TESTING_QA and PERFORMANCE; exact-head review/CI/integration remain required.
+- **MetricReadout** — label, value, state and confidence. A state dot carries the colour: accent for Fresh and Unlimited, amber for Stale (value dimmed), red for Error, neutral for Unavailable/Stopped/Waiting. Valueless states show `—` in muted text, never zero. Long error codes wrap without pushing confidence off the row.
+- **MetricBar / MetricRing** — a readout plus a fill over an explicit finite range chosen by the component, never inferred from the metric. Out-of-range, non-numeric and valueless states show no fill and say why. The ring is static geometry because the stock determinate `ProgressRing` painted values that depended on the previous value.
+- **MetricSparkline** — a readout plus a line over at most 60 observed Fresh samples held in memory, positioned by their real timestamps. Stale freezes the line; valueless states clear it. Nothing is persisted or interpolated.
 
-## Basic composition configuration (CER-M4-013)
+### Views
 
-WidgetHost provides one native configuration dialog for the ordered Text/Bar/Ring composition. Select a row and edit component kind, exact MetricId, numeric format and explicit range where required; Add/Remove and Up/Down change the draft order. Save and apply validates and persists the draft before replacing active subscriptions; Cancel leaves the active and saved composition untouched. This is bounded M4 configuration, not the M5 visual editor. Standard WinUI resources, keyboard access, named fields and scrolling support the compact window and available DPI.
+- **Overview** — the distinct configured metrics as readouts. Paging controls appear only when they do not fit.
+- **Composition details** — every configured component in order, scrollable.
+- **Compact** — the first two metrics in a small window with keep-on-top; Expand restores the previous bounds.
+- **Configure metrics** — a dialog to add, remove, reorder and edit components (kind, `MetricId`, number format, range). Save validates and persists before replacing live subscriptions; Cancel changes nothing. Corrupt or unsupported stored layouts are preserved and never overwritten.
 
-Missing storage uses the existing unsaved seven-component default. Corrupt, unsupported or unreadable existing storage remains preserved; defaults display with a persistent warning and saving over that file is blocked. Sanitized errors distinguish failed saving from a successfully saved composition whose live application failed. Metric labels, units, values and states continue to come from exact-ID descriptor/snapshot streams; none are persisted as configuration.
+Startup options: `--theme=system|light|dark` and `--secondary-display`.
 
-CER-M4-013 native acceptance verifies ordered Text/Bar/Ring configuration, exact bindings/formats/ranges, Save/restart restoration and truthful storage/application warnings on a secondary96DPI monitor. Existing WinUI controls scroll at360x340; separately qualified theme probes verify Light/Dark action bounds and reachable fields. --secondary-display provides opt-in placement before visibility without monitor changes or an ordinary-launch change. Higher physical/cross-DPI013 validation remains unverified; this is not M4 visual exit.
+### Layout rules learned
 
-## Overview and composition details candidate (CER-M4-014)
-
-The normal native Overview uses one existing MetricReadout per distinct exact-case MetricId, in saved first-occurrence order and with that row's configured numeric format. Composition details explicitly opens the full ordered Text/Bar/Ring composition. Both views consume the same prepared subscriptions; switching views adds no read loops and changes neither the saved definition nor the seven-component default.
-
-Overview has no horizontal or vertical scrolling. Pages contain at most four complete readouts, using native measurements at the available width and the viewport height after navigation is arranged. Page/count navigation retains every selected ID; smaller viewports or taller presentations may require more pages. The current metric anchor survives repagination, while applying a new composition resets selection. An oversized single readout has an explicit page and a resize/details warning rather than cropped telemetry. This fallback does not establish that every payload fits the normal viewport.
-
-Labels and values wrap; state and confidence occupy a full-width row with 12-DIP text and unchanged semantic/accessible-name behavior. Details and configuration may scroll. This is a source-reviewed candidate, not native acceptance: default-four-on-one-page, bounded state/confidence width, actual navigation/viewport geometry and native lifecycle evidence remain open in TESTING_QA.
-
-The CER-M4-012 candidate extends this same dialog with Sparkline and an explicit finite range. Its component retains at most60 Fresh observations privately, uses actual observation instants on the horizontal axis, freezes Stale and starts anew on the next Fresh observation, and clears valueless/invalid/Unlimited/out-of-range sequences. Existing readout states/range text remain visible; fewer than two points show no curve. Configuration stores only kind, exact MetricId, format and range. This candidate remains unmerged pending native144DPI conformance and other acceptance gates; it introduces no history subsystem or editor model.
+- Minimum window size belongs to the window presenter, not to client grids; duplicating it clips the last component.
+- The app manifest declares PerMonitorV2; scale changes update only the presenter minimums.
+- Verified at 96 and 144 DPI on one monitor. Mixed-monitor moves and one sparkline range-text case at 144 DPI are not verified.

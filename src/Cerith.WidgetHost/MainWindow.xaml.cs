@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Cerith.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
 using Windows.Graphics;
@@ -50,6 +51,8 @@ public sealed partial class MainWindow : Window
         OverviewViewport.SizeChanged += (_, _) => ScheduleOverviewPage();
         OverviewNavigation.SizeChanged += (_, _) => ScheduleOverviewPage();
         Title = "Cerith";
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(TitleDrag);
         Install(Prepare(_active));
         Root.Loaded += OnLoaded;
         AppWindow.Closing += OnClosing;
@@ -180,6 +183,7 @@ public sealed partial class MainWindow : Window
         OverviewSizeWarning.Visibility = fits ? Visibility.Collapsed : Visibility.Visible;
         string page = $"Page {_page + 1}/{_pages.Length} · Metrics {start + 1}–{start + count}/{_overview.Count}";
         if (PageText.Text != page) PageText.Text = page;
+        OverviewNavigation.Visibility = _pages.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
         PreviousButton.IsEnabled = _page > 0;
         NextButton.IsEnabled = _page + 1 < _pages.Length;
     }
@@ -202,7 +206,10 @@ public sealed partial class MainWindow : Window
         _details = !_details;
         OverviewView.Visibility = _details ? Visibility.Collapsed : Visibility.Visible;
         DetailsView.Visibility = _details ? Visibility.Visible : Visibility.Collapsed;
-        DetailsButtonText.Text = _details ? "Back to overview" : "Composition details";
+        var detailsName = _details ? "Back to overview" : "Composition details";
+        AutomationProperties.SetName(DetailsButton, detailsName);
+        ToolTipService.SetToolTip(DetailsButton, detailsName);
+        DetailsButton.Content = _details ? "" : "";
         if (!_details) ScheduleOverviewPage();
     }
 
@@ -218,6 +225,9 @@ public sealed partial class MainWindow : Window
         _compact = !_compact;
         NormalShell.Visibility = _compact ? Visibility.Collapsed : Visibility.Visible;
         CompactShell.Visibility = _compact ? Visibility.Visible : Visibility.Collapsed;
+        NormalActions.Visibility = NormalShell.Visibility;
+        CompactActions.Visibility = CompactShell.Visibility;
+        Wordmark.Visibility = NormalShell.Visibility;
         if (!_compact)
         {
             CompactPinButton.IsChecked = false;

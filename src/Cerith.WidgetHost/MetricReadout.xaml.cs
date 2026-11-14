@@ -2,6 +2,7 @@
 
 using System;
 using Cerith.Core;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 
@@ -29,14 +30,13 @@ public sealed partial class MetricReadout : UserControl
         ValueText.Text = presentation.ValueText;
         StateText.Text = presentation.StateText;
         ConfidenceText.Text = presentation.ConfidenceText;
-        StateRail.Opacity = presentation.State switch
+        VisualStateManager.GoToState(this, presentation.State switch
         {
-            MetricState.Fresh => 1,
-            MetricState.Stale => 0.78,
-            MetricState.Error => 1,
-            MetricState.Unlimited => 0.7,
-            _ => 0.35
-        };
+            MetricState.Fresh or MetricState.Unlimited => "Live",
+            MetricState.Stale => "Stale",
+            MetricState.Error => "Error",
+            _ => "Off"
+        }, false);
         AutomationProperties.SetName(this,
             $"{label}, {presentation.ValueText}, {presentation.StateText}, {presentation.ConfidenceText}");
         PresentationChanged?.Invoke();
