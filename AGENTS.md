@@ -9,7 +9,7 @@ These instructions apply to every agent and model. Project memory lives in this 
 
 1. Read `.agent/STATE.md` and `.agent/TASKS.md` (both are short by design).
 2. `git status --short` and `git fetch`.
-3. Read only the canonical docs your task touches.
+3. Read only the canonical docs your task touches. For UI work that is the "Implemented native surface" section of `docs/UI_UX.md`.
 
 Do not read the whole repository or old history to "get context". Git log and merged PRs are the history.
 
@@ -41,7 +41,7 @@ dotnet build Cerith.sln -c Release
 dotnet test Cerith.sln -c Release --no-build
 ```
 
-Both must pass with zero warnings and zero failures before any push. CI runs the same on every PR.
+Both must pass with zero warnings and zero failures before any push. Judge by exit code and counts: tool output follows the machine's language. CI runs the same on every PR.
 
 ## Workflow
 
@@ -49,7 +49,9 @@ Both must pass with zero warnings and zero failures before any push. CI runs the
 - One writer per task. Parallel writers need separate git worktrees and disjoint files. Reviewers are read-only.
 - Keep PRs small and based on `main`. Do not stack draft PRs on other draft PRs.
 - Squash-merge when CI is green and the definition of done is met. Delete the branch and any worktree afterwards.
-- Never commit directly to `main`, force-push, or rewrite shared history.
+- `main` is protected by the **Protect Main** ruleset: changes arrive only by pull request, squash only, linear history, branch up to date with `main`, review threads resolved, and the `build` and `hygiene` checks green. Do not add other protection or try to bypass it.
+- Never force-push or rewrite shared history.
+- When a task offers several options, take the first, ship it as one small PR and continue. Ask the owner only for destructive or irreversible actions, spending, secrets, or a product decision that needs their judgement.
 
 ## Definition of done
 

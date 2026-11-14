@@ -185,3 +185,15 @@ The descriptor carries semantic `MetricId`, `DisplayName`, `SemanticType`, `Unit
 Keep protocol version 1: descriptor fields are optional additions, do not change subscription acceptance, replay, or snapshot semantics, and default readers tolerate unknown fields. New readers tolerate an older descriptor-free peer. Do not create a catalog, new message kind, registry feed, or multiplexed pipe.
 
 After `accepted`, silence is not a transport failure. WidgetHost waits for a metric publication or actual pipe closure/cancellation; it shows `Waiting` before the first snapshot and preserves the last provider-reported snapshot while the pipe remains open. A closed pipe marks the subscription unavailable and reconnects. Providers own Fresh/Stale/Unavailable/Stopped/Error transitions. This accommodates slow publishers such as OpenCode activity and Codex quota without cadence inference or reconnect churn, while retaining CER-M4-004 single-flight connection establishment.
+
+## D-026 — M4 exit criteria and scope (2026-11-14)
+
+M4 listed fourteen items and no exit test, so it could not end. It now has five explicit exit criteria in `docs/ROADMAP.md`.
+
+Three items leave M4. The taskbar surface: Windows 11 has no supported API for embedding content in the taskbar, and the known techniques depend on Explorer internals; it needs its own evaluation before any commitment. The simple graph: the sparkline covers bounded in-memory trends, and anything richer needs stored history, which is M7. The container component: the ordered composition is the container until the M5 editor needs more.
+
+A tray indicator stays in M4 because the shell supports it and a monitoring widget must be able to run in the background.
+
+## D-027 — Agent workflow (2026-11-14)
+
+Process lives in `AGENTS.md`; `.agent/STATE.md` and `.agent/TASKS.md` are short and rewritten, not appended; routing is by capability tier. Verification is proportional to risk, evidence goes in PR descriptions, and a check that cannot be run is recorded as a limit instead of blocking a merge. This replaces the checkpoint-log workflow (HANDOFF/WORKLOG) and supersedes the process parts of D-006. Reason: the mandatory reading had grown past 130 KB and five finished PRs sat unmerged for a month behind gates that could not be run.
