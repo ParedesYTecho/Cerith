@@ -322,6 +322,9 @@ public sealed partial class MainWindow : Window
 
     private void SaveWindowState()
     {
+        // A forced-display launch, or a minimized or maximized window, must not replace the last normal bounds.
+        if (_startupDisplay is not null
+            || AppWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored }) return;
         var bounds = _compact && _normalBounds is { } normal
             ? normal
             : new RectInt32(AppWindow.Position.X, AppWindow.Position.Y, AppWindow.Size.Width, AppWindow.Size.Height);
