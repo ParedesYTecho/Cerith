@@ -8,13 +8,21 @@ Status: open, no owner.
 
 Tokens, custom title bar and state colours are on `main` (see `docs/UI_UX.md`). Remaining ideas, in order of value: split value and unit typographically; let a bar, ring or sparkline replace the readout's hairline instead of sitting under it; restyle the configuration dialog with the same tokens; a first motion token for value and state changes that respects reduced motion; high-contrast check.
 
-## CER-M4-020 — Remaining M4 surfaces
+## CER-M4-020 — Tray indicator and window state
 
-Status: open, not started. Taskbar surface, tray indicators, simple graph, detail popup. Split into one task per surface when started. Reassess against the M4 exit list in `docs/ROADMAP.md` first; drop or defer anything that does not earn its place.
+Status: open, no owner. M4 exit criteria 2 and 3: a tray icon with show/hide, compact/normal and quit; persist window position, size and compact state next to the saved composition.
+
+## CER-M4-021 — Sparkline range text at 144 DPI
+
+Status: open. M4 exit criterion 1. At physical 144 DPI, minimum window size and a large value, the sparkline's wrapped range text was partially clipped. First reproduce it (Windows display scale 150% on one monitor is enough); then fix the cause or record why it is not a product defect. Do not close this without a 144 DPI run.
+
+## CER-M4-022 — M4 exit checks
+
+Status: open, not started. Exit criteria 4 and 5: tokens in the configuration dialog, high-contrast check, idle CPU/memory measured against `docs/PERFORMANCE.md`.
 
 ## Housekeeping
 
 - Dependabot PR #72 (Windows App SDK 2.5.1 → 2.6.5): review and merge if CI is green.
 - `docs/TESTING_QA.md` and `docs/PERFORMANCE.md` still contain dense per-run receipts; condense them to durable facts when next touched.
-- Stale local worktrees and merged branches from M3/M4: remove once confirmed clean and pushed.
-- Decide whether to enable branch protection on `main` (owner decision).
+- `docs/ARCHITECTURE.md` and `docs/TESTING_QA.md` still name specific models and reviewers from October; remove those names when condensing.
+- Eleven local-only `codex/CER-M3-004-*` research branches exist on the owner's machine; they are not on GitHub.

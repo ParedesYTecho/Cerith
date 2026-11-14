@@ -155,7 +155,7 @@ DONE. PR #47 was squash-merged as `55a43fb02055e25ab60e18e0406aafd508ffd502` aft
 
 ### CER-M3-005 — first passive/local activity slice
 
-PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. PR #50 was squash-merged as 8dfd5f56aa63355bd0d952d774a5d84af750afa2, closing CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in `.agent/TASKS.md`; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. CER-M3-006 records evidence-backed dispositions for all 42 M3.B targets and the literal M3 exit audit below. At the time of CER-M3-005, M4 and M7 had not started. M4 is now ACTIVE / INCOMPLETE as recorded below; M7 remains NOT STARTED.
+PR #50 carries the first passive/local M3.B OpenCode activity implementation through the existing MetricSnapshot → MetricBus → Named Pipe → MetricId subscription path. PR #50 was squash-merged as 8dfd5f56aa63355bd0d952d774a5d84af750afa2, closing CER-M3-005 as DONE. The source contract is qualified to OpenCode 1.17.9 through the selected message's parent `session.version`; no session identity or content is exposed. Owner build/test receipts, coexistence proof and the host limitation are recorded in PR #50; PR #50 and Git history are authoritative for independent review, exact-head hosted checks and the merge result. Real host activity remains `LIVE_NOT_AVAILABLE_ON_THIS_HOST / activity_absent`; synthetic tests are not live evidence. CER-M3-006 records evidence-backed dispositions for all 42 M3.B targets and the literal M3 exit audit below. At the time of CER-M3-005, M4 and M7 had not started. M4 is now ACTIVE / INCOMPLETE as recorded below; M7 remains NOT STARTED.
 
 The minimum pre-wave foundation is ownership, not a new framework: provider-specific source/test/fixture paths are exclusive to one write owner, while shared registration/lifecycle/dependencies/docs belong to one integration owner. No ProviderManager, Factory, universal auth layer or other shared runtime abstraction is justified before multiple accepted providers demonstrate the same concrete need.
 
@@ -186,24 +186,21 @@ The target-accounting gate is satisfied by the individual evidence-backed dispos
 
 ## M4 — Widget Engine & Compact Surfaces
 
-Current status: ACTIVE / INCOMPLETE. CER-M4-001 through CER-M4-009 are complete bounded slices, including the first native surface, performance attribution/isolation, reconnect coordination, MetricId binding contract and mixed-domain composition with a reusable MetricBar, bounded native readout-state conformance at 96 DPI, and polling-test synchronization. CER-M4-010 is complete at bounded native ranged-ring scope with shared semantics, independent review, characterized performance and protected PR #62 integration; general performance nonregression remains inconclusive. Single-monitor native 96/144 DPI and scale-transition conformance are verified; mixed-monitor coverage remains unverified and the existing performance-budget gap remains open. This does not complete M4.
+Current status: ACTIVE.
 
-- text;
-- metric;
-- bar;
-- ring;
-- sparkline;
-- simple graph;
-- container;
-- binding;
-- persistence;
-- themes;
-- compact floating surface;
-- taskbar surface;
-- tray indicators;
-- detail popup / expanded inspection surface.
+Delivered on `main`: text/metric readout, bar, ring and sparkline components; exact-`MetricId` binding with one shared subscription per id; a configuration dialog; persisted ordered composition; light/dark themes with Cerith design tokens; overview and composition-details views; a compact floating mode with keep-on-top. `docs/UI_UX.md` describes the implemented surface.
 
-The same MetricId-driven component semantics must feed every surface. Gengchou and AI Limits are interaction/compactness references, not architecture bases. Adaptive density, truthful stale/error states, DPI/theme correctness and measured idle overhead are acceptance concerns. Provider-specific drawing logic is not.
+Exit criteria (see D-026):
+
+1. The sparkline range-text clipping seen at physical 144 DPI is fixed or shown not to be a product defect.
+2. A tray indicator lets the widget run in the background: show/hide, compact/normal, quit.
+3. Window position, size and compact state survive a restart.
+4. The configuration dialog uses the design tokens, and the surfaces are checked in high contrast.
+5. Idle CPU and memory are measured against `docs/PERFORMANCE.md` and the budget is either met or revised with a recorded reason.
+
+Moved out of M4 by D-026: the taskbar surface (no supported Windows 11 API; revisit as its own decision), the multi-series graph (needs history, M7) and a separate container component (the ordered composition already fills that role until the M5 editor).
+
+The same MetricId-driven component semantics must feed every surface. Gengchou and AI Limits are interaction/compactness references, not architecture bases. Provider-specific drawing logic is not allowed.
 
 ## M5 — Visual Editor
 
