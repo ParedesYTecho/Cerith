@@ -3,6 +3,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Windowing;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using Windows.Graphics;
 
@@ -12,7 +13,19 @@ public partial class App : Application
 {
     private Window? _window;
 
-    public App() => InitializeComponent();
+    public App()
+    {
+        InitializeComponent();
+        if (!WidgetThemeArguments.TryParse(Environment.GetCommandLineArgs().Skip(1), out var theme))
+        {
+            Debug.WriteLine("Invalid or repeated --theme option; using the system theme.");
+            return;
+        }
+        if (theme == WidgetThemePreference.Light)
+            RequestedTheme = ApplicationTheme.Light;
+        else if (theme == WidgetThemePreference.Dark)
+            RequestedTheme = ApplicationTheme.Dark;
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
