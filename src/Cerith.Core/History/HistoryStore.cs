@@ -23,9 +23,9 @@ public readonly record struct HistoryAppendResult(int Written, int Rejected);
 /// Local time-series store over winsqlite3. One writer (<see cref="OpenWriter"/>), any number of read-only readers.
 /// Tiers: raw samples, one-minute rollups, one-hour rollups (numeric Fresh values only).
 /// </summary>
-public sealed class HistoryStore : IDisposable
+public sealed partial class HistoryStore : IDisposable
 {
-    private const int SchemaVersion = 1, ApplicationId = 0x43455248;
+    private const int SchemaVersion = 2, ApplicationId = 0x43455248;
     private const long MinuteMs = 60_000, HourMs = 3_600_000, RollupDelayMs = 5 * MinuteMs;
     private const int MaxTextBytes = 1024;
     private const string NumericKinds = "1,2"; // MetricValueKind.Double, Int64
@@ -66,12 +66,16 @@ public sealed class HistoryStore : IDisposable
             db.Execute("CREATE TABLE IF NOT EXISTS rollup(bucket INTEGER NOT NULL, metric INTEGER NOT NULL, start INTEGER NOT NULL, " +
                        "n INTEGER NOT NULL, min REAL NOT NULL, max REAL NOT NULL, sum REAL NOT NULL, PRIMARY KEY(bucket, metric, start)) WITHOUT ROWID");
             db.Execute("CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value INTEGER NOT NULL) WITHOUT ROWID");
+            db.Execute("CREATE TABLE IF NOT EXISTS session(id INTEGER PRIMARY KEY, label TEXT NOT NULL, start INTEGER NOT NULL, \"end\" INTEGER)");
+            db.Execute("CREATE TABLE IF NOT EXISTS session_stat(session INTEGER NOT NULL, metric INTEGER NOT NULL, " +
+                       "n INTEGER NOT NULL, min REAL NOT NULL, max REAL NOT NULL, sum REAL NOT NULL, PRIMARY KEY(session, metric)) WITHOUT ROWID");
             db.Execute($"PRAGMA application_id={ApplicationId}");
             db.Execute($"PRAGMA user_version={SchemaVersion}");
             db.Execute("COMMIT");
 
             var store = new HistoryStore(db, writer: true);
             store.LoadMetrics();
+            store.CloseOpenSessions();
             return store;
         }
         catch
@@ -113,12 +117,23 @@ public sealed class HistoryStore : IDisposable
         {
             var watermark = Meta("minute_until");
             var late = long.MaxValue;
+            var latest = long.MinValue;
             foreach (var snapshot in batch)
             {
-                if (TryWrite(snapshot)) written++; else rejected++;
+                if (TryWrite(snapshot))
+                {
+                    written++;
+                    TrackSession(snapshot);
+                }
+                else rejected++;
+
                 var at = snapshot.ObservedAt.ToUnixTimeMilliseconds();
+                latest = Math.Max(latest, at);
                 if (watermark is not null && at < watermark) late = Math.Min(late, at);
             }
+
+            PersistSessionStats();
+            SetMeta("last_seen", latest);
 
             if (late != long.MaxValue)
             {
@@ -136,6 +151,7 @@ public sealed class HistoryStore : IDisposable
             _lastState.Clear();
             _metrics.Clear();
             LoadMetrics();
+            RestoreSession();
             throw;
         }
 
@@ -203,6 +219,7 @@ public sealed class HistoryStore : IDisposable
             Prune("sample", "at", nowMs - (long)retention.Raw.TotalMilliseconds, "minute_until", "");
             Prune("rollup", "start", nowMs - (long)retention.Minute.TotalMilliseconds, "hour_until", $"bucket={MinuteMs} AND ");
             Prune("rollup", "start", nowMs - (long)retention.Hour.TotalMilliseconds, null, $"bucket={HourMs} AND ");
+            PruneSessions(nowMs - (long)retention.Hour.TotalMilliseconds);
             _db.Execute("COMMIT");
             _lastState.Clear(); // a state row may just have been pruned; the next snapshot must store its state again
         }
@@ -215,6 +232,7 @@ public sealed class HistoryStore : IDisposable
 
     public void Dispose()
     {
+        if (_writer) TryCloseOpenSessions();
         _insert?.Dispose();
         _insert = null;
         _db.Dispose();
