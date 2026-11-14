@@ -208,3 +208,13 @@ M4's remaining exit criteria (144 DPI sparkline case, dialog tokens and high con
 
 Initial direction for the history store, to be confirmed by the M5 design task: TelemetryService is the only writer; storage is SQLite through the Windows-provided `winsqlite3.dll` already used for layouts, so no new dependency; other processes open the file read-only.
 
+## D-029 — Closing review of the project's foundations (2026-11-14)
+
+A strategic pass checked what the original brief asked for. Result, without repeating earlier audits:
+
+- **Foundations.** The `MetricId` contract, truthful states, process split and native UI stand. The agent workflow was replaced (D-027) and passed a clean-session run on a Standard-tier model. M4 got exit criteria (D-026) and the roadmap was resequenced to function first (D-028).
+- **References.** `docs/REFERENCE_PROJECTS.md` already records role, pinned revision, licence and lessons for Gengchou (MIT; Windows shell and compact surfaces), AI Limits (GPL-3.0-or-later; ideas only, no code) and TokenTracker (MIT; acquisition breadth, local analytics, dashboard). Nothing to add. How these tools store history was not studied; that research belongs to CER-M5-001.
+- **Public-repository security.** Tracked files contain no secret patterns, e-mail addresses or personal paths; commit authors use GitHub no-reply addresses; code scanning has no open alerts; CI workflows have read-only permissions. Gaps: GitHub secret scanning, push protection and Dependabot alerts are disabled (owner decision, see `TASKS.md`). The `.gitignore` patterns `**/*token*` and `**/*cookie*` would have silently ignored source files with those words in the name; source and docs are now exempt.
+- **Routing and continuity.** Standard tier leads day-to-day work; the strategic tier plans and is never substituted silently (`MODEL_ROUTING.md`).
+- **Harness.** No skill, hook, plugin or MCP server is required (`MODEL_ROUTING.md`, Harness).
+

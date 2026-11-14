@@ -29,6 +29,8 @@ Finish Cerith as a complete, reliable, distributable app. Function matters more 
 
 Do not disturb the owner's use of the machine: never steal focus, change system settings or close running apps. Launch the widget only with `--secondary-display`.
 
+Day-to-day work is led by the Standard tier, autonomously, milestone by milestone. The strategic tier is used only for planning and architecture (`MODEL_ROUTING.md`). The strategic review of the project's foundations is closed (D-029).
+
 ## Next
 
 `CER-M5-001` in `.agent/TASKS.md`.
