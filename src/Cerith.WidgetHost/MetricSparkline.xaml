@@ -5,12 +5,13 @@
     IsTabStop="False">
     <StackPanel>
         <ContentControl x:Name="ReadoutHost" IsTabStop="False" HorizontalContentAlignment="Stretch" />
-        <StackPanel Margin="0,8,0,12" Spacing="4">
+        <StackPanel Margin="0,0,0,12" Spacing="4">
             <Grid x:Name="Plot" Height="42" MinWidth="32" Visibility="Collapsed" SizeChanged="OnPlotSizeChanged">
                 <Polyline x:Name="Line" Stroke="{ThemeResource CerithAccentBrush}"
                           StrokeThickness="1.5" Stretch="None" Visibility="Collapsed" />
             </Grid>
             <TextBlock x:Name="RangeText" Style="{StaticResource CerithCaptionTextStyle}" />
         </StackPanel>
+        <Border Height="1" Background="{ThemeResource CerithSeparatorBrush}" />
     </StackPanel>
 </UserControl>

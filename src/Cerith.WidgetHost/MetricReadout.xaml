@@ -46,7 +46,10 @@
                        MaxWidth="176"
                        VerticalAlignment="Center"
                        Typography.NumeralAlignment="Tabular"
-                       Style="{StaticResource CerithValueTextStyle}" />
+                       Style="{StaticResource CerithValueTextStyle}">
+                <Run x:Name="ValueRun" /><Run x:Name="UnitRun" FontSize="13" FontWeight="Normal"
+                                              Foreground="{ThemeResource CerithMutedTextBrush}" />
+            </TextBlock>
 
             <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="7">
                 <Grid.ColumnDefinitions>
@@ -65,6 +68,6 @@
             </Grid>
         </Grid>
 
-        <Border Height="1" VerticalAlignment="Bottom" Background="{ThemeResource CerithSeparatorBrush}" />
+        <Border x:Name="Separator" Height="1" VerticalAlignment="Bottom" Background="{ThemeResource CerithSeparatorBrush}" />
     </Grid>
 </UserControl>

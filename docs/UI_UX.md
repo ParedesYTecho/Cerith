@@ -349,7 +349,7 @@ The window draws its own title bar: crescent-and-star mark, wordmark, then icon 
 
 All components bind by exact `MetricId` and share one subscription per id.
 
-- **MetricReadout** — label, value, state and confidence. A state dot carries the colour: accent for Fresh and Unlimited, amber for Stale (value dimmed), red for Error, neutral for Unavailable/Stopped/Waiting. Valueless states show `—` in muted text, never zero. Long error codes wrap without pushing confidence off the row.
+- **MetricReadout** — label, value with its unit set smaller beside it, state and confidence. A state dot carries the colour: accent for Fresh and Unlimited, amber for Stale (value dimmed), red for Error, neutral for Unavailable/Stopped/Waiting. Valueless states show `—` in muted text, never zero. Long error codes wrap without pushing confidence off the row.
 - **MetricBar / MetricRing** — a readout plus a fill over an explicit finite range chosen by the component, never inferred from the metric. Out-of-range, non-numeric and valueless states show no fill and say why. The ring is static geometry because the stock determinate `ProgressRing` painted values that depended on the previous value.
 - **MetricSparkline** — a readout plus a line over at most 60 observed Fresh samples held in memory, positioned by their real timestamps. Stale freezes the line; valueless states clear it. Nothing is persisted or interpolated.
 

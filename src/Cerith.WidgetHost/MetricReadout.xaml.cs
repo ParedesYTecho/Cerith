@@ -14,10 +14,11 @@ public sealed partial class MetricReadout : UserControl
     private MetricPresentationResult? _lastPresentation;
     internal event Action? PresentationChanged;
 
-    internal MetricReadout(MetricPresentationSpec spec)
+    internal MetricReadout(MetricPresentationSpec spec, bool separator = true)
     {
         _spec = spec;
         InitializeComponent();
+        if (!separator) Separator.Visibility = Visibility.Collapsed;
     }
 
     internal void Apply(MetricSubscription subscription)
@@ -27,7 +28,11 @@ public sealed partial class MetricReadout : UserControl
         if (_lastPresentation == presentation && LabelText.Text == label) return;
         _lastPresentation = presentation;
         LabelText.Text = label;
-        ValueText.Text = presentation.ValueText;
+        // The unit is shown smaller beside the number; the accessible name keeps the full text.
+        var unit = subscription.Descriptor?.Unit;
+        var hasUnit = !string.IsNullOrEmpty(unit) && presentation.ValueText.EndsWith(" " + unit, StringComparison.Ordinal);
+        ValueRun.Text = hasUnit ? presentation.ValueText[..^(unit!.Length + 1)] : presentation.ValueText;
+        UnitRun.Text = hasUnit ? " " + unit : "";
         StateText.Text = presentation.StateText;
         ConfidenceText.Text = presentation.ConfidenceText;
         VisualStateManager.GoToState(this, presentation.State switch
