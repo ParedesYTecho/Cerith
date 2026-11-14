@@ -8,9 +8,9 @@ Status: open, no owner.
 
 Tokens, custom title bar and state colours are on `main` (see `docs/UI_UX.md`). Remaining ideas, in order of value: restyle the configuration dialog with the same tokens; a first motion token for value and state changes that respects reduced motion; high-contrast check.
 
-## CER-M4-020 — Tray indicator and window state
+## CER-M4-020 — Tray menu check and app icon
 
-Status: open, no owner. M4 exit criteria 2 and 3: a tray icon with show/hide, compact/normal and quit; persist window position, size and compact state next to the saved composition.
+Status: open, small. The tray icon and window-state persistence are on `main`. Still to do: click through the tray menu by hand once (Show/Hide, Compact/Expand, Quit) and after an Explorer restart; give the executable a Cerith icon so the tray does not show the generic application icon.
 
 ## CER-M4-021 — Sparkline range text at 144 DPI
 

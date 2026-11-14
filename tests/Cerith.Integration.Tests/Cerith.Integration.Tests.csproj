@@ -13,5 +13,6 @@
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricSparklineSequence.cs" Link="MetricSparklineSequence.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\MetricCompositionStore.cs" Link="MetricCompositionStore.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\WidgetThemeArguments.cs" Link="WidgetThemeArguments.cs" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\WindowStateStore.cs" Link="WindowStateStore.cs" />
   </ItemGroup>
 </Project>

@@ -193,8 +193,8 @@ Delivered on `main`: text/metric readout, bar, ring and sparkline components; ex
 Exit criteria (see D-026):
 
 1. The sparkline range-text clipping seen at physical 144 DPI is fixed or shown not to be a product defect.
-2. A tray indicator lets the widget run in the background: show/hide, compact/normal, quit.
-3. Window position, size and compact state survive a restart.
+2. A tray indicator lets the widget run in the background: show/hide, compact/normal, quit. *(Delivered; menu interaction still needs one manual pass.)*
+3. Window position, size and compact state survive a restart. *(Delivered.)*
 4. The configuration dialog uses the design tokens, and the surfaces are checked in high contrast.
 5. Idle CPU and memory are measured against `docs/PERFORMANCE.md` and the budget is either met or revised with a recorded reason.
 

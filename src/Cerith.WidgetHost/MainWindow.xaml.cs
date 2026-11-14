@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private bool _busy;
     private CompositionDialog? _dialog;
     private bool _closing;
+    private TrayIcon? _tray;
     private double _scale;
     private readonly DisplayArea? _startupDisplay;
     private readonly List<MetricReadout> _overview = [];
@@ -56,6 +57,7 @@ public sealed partial class MainWindow : Window
         Install(Prepare(_active));
         Root.Loaded += OnLoaded;
         AppWindow.Closing += OnClosing;
+        _tray = new TrayIcon(this, () => _compact, ToggleCompact);
     }
 
     private static PreparedComposition Prepare(MetricComposition composition)
@@ -213,7 +215,9 @@ public sealed partial class MainWindow : Window
         if (!_details) ScheduleOverviewPage();
     }
 
-    private void OnToggleCompact(object sender, RoutedEventArgs args)
+    private void OnToggleCompact(object sender, RoutedEventArgs args) => ToggleCompact();
+
+    private void ToggleCompact()
     {
         if (_closing) return;
         if (!_compact)
@@ -293,10 +297,40 @@ public sealed partial class MainWindow : Window
         UpdateMinimumForScale();
         if (Root.XamlRoot is { } xamlRoot)
             xamlRoot.Changed += OnXamlRootChanged;
-        AppWindow.Resize(new SizeInt32(
-            Math.Min((int)Math.Ceiling(420d * _scale), _startupDisplay?.WorkArea.Width ?? int.MaxValue),
-            Math.Min((int)Math.Ceiling(620d * _scale), _startupDisplay?.WorkArea.Height ?? int.MaxValue)));
+        var saved = _startupDisplay is null ? RestorableState() : null;
+        if (saved is not null)
+            AppWindow.MoveAndResize(new RectInt32(saved.X, saved.Y, saved.Width, saved.Height));
+        else
+            AppWindow.Resize(new SizeInt32(
+                Math.Min((int)Math.Ceiling(420d * _scale), _startupDisplay?.WorkArea.Width ?? int.MaxValue),
+                Math.Min((int)Math.Ceiling(620d * _scale), _startupDisplay?.WorkArea.Height ?? int.MaxValue)));
+        if (saved?.Compact == true) ToggleCompact();
         _operation = InitializeAsync();
+    }
+
+    private WindowState? RestorableState()
+    {
+        if (WindowStateStore.Load(WindowStateStore.DefaultPath) is not { } state
+            || AppWindow.Presenter is not OverlappedPresenter presenter)
+            return null;
+        var bounds = new RectInt32(state.X, state.Y, state.Width, state.Height);
+        if (DisplayArea.GetFromRect(bounds, DisplayAreaFallback.None) is not { } display)
+            return null;
+        return WindowStateStore.FitsWithin(state, presenter.PreferredMinimumWidth ?? 0, presenter.PreferredMinimumHeight ?? 0,
+            display.WorkArea.Width, display.WorkArea.Height) ? state : null;
+    }
+
+    private void SaveWindowState()
+    {
+        // A forced-display launch, or a minimized or maximized window, must not replace the last normal bounds.
+        if (_startupDisplay is not null
+            || AppWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored }) return;
+        var bounds = _compact && _normalBounds is { } normal
+            ? normal
+            : new RectInt32(AppWindow.Position.X, AppWindow.Position.Y, AppWindow.Size.Width, AppWindow.Size.Height);
+        try { WindowStateStore.Save(WindowStateStore.DefaultPath, new WindowState(bounds.X, bounds.Y, bounds.Width, bounds.Height, _compact)); }
+        // Window state is a convenience: a failed write must never block closing.
+        catch (Exception error) { Debug.WriteLine(error); }
     }
 
     private async Task InitializeAsync()
@@ -425,6 +459,8 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { Debug.WriteLine(error); }
         finally
         {
+            SaveWindowState();
+            _tray?.Dispose();
             await StopSubscriptions();
             _lifetime.Dispose();
             AppWindow.Closing -= OnClosing;
