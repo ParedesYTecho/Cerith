@@ -36,3 +36,11 @@ Subagents exist to reduce total cost and protect the lead's context, never just 
 - A delegated brief names the files, the exact question or change, and what done looks like. Ask for a short answer.
 - One writer per task. Reviewers and researchers are read-only.
 - Verify a subagent's result before relying on it.
+
+## Sessions
+
+- Keep a session while its context is still useful and cheap. Start a new one when the context has grown large or a block of work has merged.
+- The checkpoint is the repository: `STATE.md`, `TASKS.md`, `DECISIONS.md` and the merged PRs. Update them before ending. Do not write a separate handoff file.
+- Pick the lead tier for the new session from the next task: Standard for implementation and routine work, Strong or the best available model only when the task is design or a hard decision.
+- If a model's quota runs out, leave the branch pushed and the task status accurate, then continue with another suitable model. Never redo merged work.
+

@@ -2,6 +2,34 @@
 
 Only open work is listed. Finished tasks live in git history and merged PRs. Task IDs continue the `CER-M<milestone>-<n>` series.
 
+## CER-M5-001 — History store: design and first vertical slice
+
+Status: open, no owner. **Next task.** Tier: Strong for the design, Standard for the implementation.
+
+Read `docs/ARCHITECTURE.md`, `docs/METRICS.md`, `docs/PERFORMANCE.md`, D-028, and `src/Cerith.Core` plus `src/Cerith.TelemetryService/Program.cs` first. Look at how comparable local tools store time series before choosing a schema (for example the SQLite layouts used by Home Assistant's recorder and by TokenTracker; see `docs/REFERENCE_PROJECTS.md`).
+
+Decide and record in `DECISIONS.md` and `ARCHITECTURE.md`: the schema (metric dictionary, numeric samples with state and confidence, how non-numeric values are handled), write batching and durability (WAL, flush interval, what a crash can lose), retention and downsampling tiers, the file location, and how readers query (direct read-only file access versus a pipe request).
+
+Then ship the smallest slice that proves it: TelemetryService records every valued snapshot from `MetricBus` into the store with batched writes, retention runs, and a test reads a range back. No UI. Measure store growth per hour and added service CPU, and record both in `docs/PERFORMANCE.md`.
+
+Constraints: no new dependency unless the design shows `winsqlite3.dll` cannot do it; never record a value that was not published; do not block or slow the bus (bounded queue, drop-and-count on overflow, never silently).
+
+## CER-M5-002 — Gaming sessions
+
+Status: open, after CER-M5-001. Record a session per PresentMon target: start, end, target label, and summary statistics computed from recorded samples. Follow D-022 for identity and privacy.
+
+## CER-M5-003 — AI usage events and quota history
+
+Status: open, after CER-M5-001. Quota snapshots are already metrics and will be recorded by M5-001. Add what a time series cannot express: per-activity token events from the OpenCode collector, de-duplicated across polls.
+
+## CER-M6-001 — ControlCenter history view
+
+Status: open, after CER-M5-001. ControlCenter is an empty project today. First screen: pick a metric and a time range, see a chart from the history store. Functional before pretty; reuse the design tokens.
+
+## M4 finishing checks
+
+These do not block M5.
+
 ## CER-M4-019 — Refine the native surfaces
 
 Status: open, no owner.

@@ -23,6 +23,12 @@ The agent workflow was simplified on 2026-11-14 (D-027) and checked with a clean
 - Several AI quota providers remain evidence-blocked or deferred; dispositions are in `docs/PROVIDERS_AI_QUOTAS.md` and `docs/AI_TELEMETRY.md`.
 - The product name and brand mark are provisional pending clearance.
 
+## Direction (owner, 2026-11-14)
+
+Finish Cerith as a complete, reliable, distributable app. Function matters more than looks for now: collect verifiable telemetry, record it locally, query and analyse it. The current visual design is provisional; do not spend effort on redesign. The roadmap was resequenced accordingly (D-028): history and recording come next.
+
+Do not disturb the owner's use of the machine: never steal focus, change system settings or close running apps. Launch the widget only with `--secondary-display`.
+
 ## Next
 
-See `.agent/TASKS.md`.
+`CER-M5-001` in `.agent/TASKS.md`.
