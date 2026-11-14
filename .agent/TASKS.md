@@ -1,5 +1,13 @@
 # Tasks
 
+## CER-M4-016 — Compact floating MetricId widget
+
+Status: LOCAL IMPLEMENTATION / NATIVE ACCEPTANCE OPEN. Sole writer: GPT-6 Sol Web coordinator (2026-10-09) on isolated branch `codex/CER-M4-016-compact-floating`, based on integration draft PR #67 at `7492c0f`; previous 012/014 owners are released, and PR #67 is awaiting its own checks and final acceptance. No other owner writes this branch. Native GUI must remain on the actual nonprimary monitor only. Existing local XAML/C# changes preserve two distinct MetricId-bound compact readouts and normal-mode layout; compact-to-normal now clears topmost pin and restores keyboard focus. WidgetHost Release build PASS (0 warnings/errors), filtered composition integration tests 27/27 PASS (0 skipped), `git diff --check` PASS. Actual native visual/lifecycle, connected performance, review and hosted CI remain OPEN; no commit, push or merge.
+
+Scope: first-class compact view in the existing native WidgetHost process, showing the first two configured overview MetricIds through shared subscriptions with truthful states; native titlebar drag, resize, minimize, restore, and reversible topmost pinning. Preserve normal overview/detail/configuration, real reconnection, secondary placement and layout storage. Minimum viable changes in MainWindow/XAML and focused acceptance; taskbar/tray/graph/container are separate M4 gaps. No telemetry/provider/IPC schema, new process, system settings, M5/M6/M7 or dependency changes.
+
+Gates: Release build and regressions, actual nonprimary UI and service lifecycle, no offscreen window, measured overhead when meaningful, source review, integration/CI. Do not merge or claim M4 done while draft PR #67 gates or remaining features are open.
+
 ## CER-M4-014 — Native overview and composition details
 
 Status: CANDIDATE_READY_FOR_ROOT_PUBLICATION — final solution Release 0 warnings/errors (9.43s); Integration 97/97 PASS, zero skipped (16.571s), four pure regressions. One independent integrated Sol Web review (Banach) CONDITIONAL SOURCE PASS, closed; no demonstrated P0/P1 or required source correction. Canonical UI/QA documentation reconciled. Three native-evidence checks OPEN; native/performance NOT RUN, CI/publication pending. Not native accepted; M4 INCOMPLETE.
