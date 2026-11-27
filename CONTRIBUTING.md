@@ -74,3 +74,7 @@ Do not copy external component/provider code without:
 Never submit fabricated or inferred provider values as authoritative measurements.
 
 If a provider does not expose a value, represent the missing state honestly.
+
+## Licence of contributions
+
+By contributing you agree that your contribution is licensed under GPL-3.0-or-later with the permission in `LICENSE-EXCEPTION.md`.

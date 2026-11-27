@@ -29,7 +29,7 @@ Run before changing the repository from private to public.
 
 ## Licensing
 
-- [ ] final application license chosen
+- [x] final application license chosen
 - [ ] plugin SDK license chosen
 - [ ] dependency licenses compatible
 - [ ] third-party notices present

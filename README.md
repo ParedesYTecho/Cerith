@@ -103,7 +103,7 @@ Cerith aims to be open to collaboration without compromising telemetry integrity
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_QUALITY.md](CODE_QUALITY.md) and [SECURITY.md](SECURITY.md); agents follow [AGENTS.md](AGENTS.md).
 
-**Source availability is not a license grant.** The code, documentation and brand policies are still being finalized; see [Open Source Strategy](docs/OPEN_SOURCE_STRATEGY.md). The Cerith name and artwork are provisional pending clearance.
+Cerith is free software under [GPL-3.0-or-later](LICENSE), with [an additional permission](LICENSE-EXCEPTION.md) to combine it with Microsoft's Windows components. [Third-party components](THIRD-PARTY-NOTICES.md) keep their own licences. The Cerith name and artwork are provisional and not covered by the licence.
 
 <div align="center">
   <img src="docs/assets/cerith-logo.webp" alt="Cerith orbital logo and typographic lockup, brand exploration" width="300" />

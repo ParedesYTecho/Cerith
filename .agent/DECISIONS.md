@@ -260,3 +260,11 @@ Reviewed with the Strong tier at the owner's explicit request while the strategi
 Rule and constants are in `docs/METRICS.md` ("Automatic target selection"). Windows offers no documented "this is a game" signal for another process: `SHQueryUserNotificationState` names no process and also reports full-screen video, and `GameConfigStore` is undocumented, keyed by full paths (which Cerith does not read) and misses titles Game Bar never saw. So, like PresentMon's own overlay, Cerith follows the foreground process, filtered by "covers its monitor" and a short exclusion list, and asks PresentMon for proof before publishing anything, so a rejected process never creates a session. One capture is open at a time. Windowed games need `--pid`.
 
 The target's identity is now held with a `SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION` handle instead of `Process.Handle` (full access), which anti-cheat protected games refuse; D-022's guarantee is unchanged because the PID cannot be reused while the handle is open. Amends D-022 ("no automatic detection").
+
+## D-035 — Open source under GPL-3.0-or-later (2026-11-27, owner decision)
+
+The owner chose open source and GPL-3.0 over Apache-2.0: whoever distributes a modified Cerith must publish its source. "Or later" follows the earlier draft in `OPEN_SOURCE_STRATEGY.md`. Because the app links Microsoft's proprietary Windows App SDK components, `LICENSE-EXCEPTION.md` grants an additional permission under GPL section 7. This is the project's own reading, not legal advice; adding the permission later would need every contributor's consent, so it is there from the start. Name and artwork are excluded.
+
+`Mono.Posix.NETStandard` (D-019's open question) is no longer shipped (`ExcludeAssets="all"`): it serves LibreHardwareMonitor on Linux only, and the service reports the same hardware sample counts without it.
+
+Consequence for research references: GPL-3.0-or-later projects such as AI Limits, and MIT ones such as TokenTracker, may now be adapted with attribution and notice review, never copied blindly (supersedes the "research-only" licensing note recorded for AI Limits).

@@ -14,6 +14,14 @@ Then record in `docs/PERFORMANCE.md`: history size per day and rows per hour, se
 
 Status: open, **next task**. The query API is on `main` (`HistoryStore.ReadMetrics`, `ReadSeries` with automatic raw/minute/hour resolution, `ReadSessions`, `ReadAiEvents`). Build it as a second window in the UI app (D-033), opened from the tray and the widget; remove the empty `Cerith.ControlCenter` project in the same PR. First screen: pick a metric and a range (1 h, 6 h, 24 h, 7 d, 30 d), draw `ReadSeries` as a polyline with a min/max band and gaps where there are no Fresh points, show min/max/average, and list recent gaming sessions. Show a clear message when the history file does not exist yet. Functional before pretty; reuse the design tokens. A UI change needs a run with light and dark screenshots, launched without stealing focus.
 
+## CER-M8-001 — Claude Code and Codex CLI local activity
+
+Status: open, owner request of 2026-11-27 (more AI tools, not only OpenCode). After CER-M7-001 unless the owner reorders. Both tools write local session logs; `docs/AI_TELEMETRY.md` lists them (Claude Code evidence-blocked, Codex CLI deferred) because only one collector was needed to close M3, not because it is impossible. Read first-party formats and the MIT TokenTracker readers (adaptable with attribution, D-035); publish counters and model only, never prompts, responses, code or paths; synthetic fixtures; independent privacy review. Follow with other tools the owner uses.
+
+## CER-M12-001 — Binary release notice bundle
+
+Status: open, before any binary release. Complete `THIRD-PARTY-NOTICES.md` with the full licence texts and copyright lines of everything a publish folder contains, and check MPL files for the "Incompatible With Secondary Licenses" notice.
+
 ## M4 carried-forward limits
 
 M4 is closed (D-033). These remain open and block nothing.
