@@ -53,6 +53,7 @@ public sealed partial class MainWindow : Window
     {
         _startupDisplay = startupDisplay;
         InitializeComponent();
+        if (!PresentMonInstallation.IsInstalled()) PresentMonHint.Visibility = Visibility.Visible;
         OverviewViewport.SizeChanged += (_, _) => ScheduleOverviewPage();
         OverviewNavigation.SizeChanged += (_, _) => ScheduleOverviewPage();
         Title = "Cerith";
@@ -484,7 +485,8 @@ public sealed partial class MainWindow : Window
             try { await _supervision; }
             catch (OperationCanceledException) { }
             catch (Exception error) { Debug.WriteLine(error); }
-            try { await _supervisor.StopServiceAsync(); }
+            // With start with Windows on, recording continues after the window is gone.
+            try { if (!StartupRegistration.IsEnabled()) await _supervisor.StopServiceAsync(); }
             catch (Exception error) { Debug.WriteLine(error); }
             _lifetime.Dispose();
             AppWindow.Closing -= OnClosing;

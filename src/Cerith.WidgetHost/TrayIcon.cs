@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -13,9 +15,9 @@ internal sealed class TrayIcon : IDisposable
     private const uint NimAdd = 0, NimDelete = 2;
     private const uint NifMessage = 1, NifIcon = 2, NifTip = 4;
     private const uint WmLButtonUp = 0x202, WmRButtonUp = 0x205, WmNull = 0;
-    private const uint MfString = 0, MfSeparator = 0x800;
+    private const uint MfString = 0, MfChecked = 0x8, MfSeparator = 0x800;
     private const uint TpmRightButton = 2, TpmReturnCmd = 0x100;
-    private const uint IdToggleVisible = 1, IdToggleCompact = 2, IdQuit = 3;
+    private const uint IdToggleVisible = 1, IdToggleCompact = 2, IdQuit = 3, IdStartup = 4;
     private static readonly IntPtr IdiApplication = 32512;
     private static readonly UIntPtr SubclassId = 1;
 
@@ -103,6 +105,8 @@ internal sealed class TrayIcon : IDisposable
         {
             AppendMenuW(menu, MfString, IdToggleVisible, _window.AppWindow.IsVisible ? "Hide" : "Show");
             AppendMenuW(menu, MfString, IdToggleCompact, _isCompact() ? "Expand" : "Compact");
+            var startsWithWindows = StartupRegistration.IsEnabled();
+            AppendMenuW(menu, startsWithWindows ? MfChecked : MfString, IdStartup, "Start with Windows");
             AppendMenuW(menu, MfSeparator, 0, null);
             AppendMenuW(menu, MfString, IdQuit, "Quit");
             GetCursorPos(out var point);
@@ -111,9 +115,20 @@ internal sealed class TrayIcon : IDisposable
             PostMessageW(_hwnd, WmNull, IntPtr.Zero, IntPtr.Zero);
             if (command == IdToggleVisible) ToggleVisible();
             else if (command == IdToggleCompact) _toggleCompact();
+            else if (command == IdStartup) ToggleStartup(!startsWithWindows);
             else if (command == IdQuit) _window.Close();
         }
         finally { DestroyMenu(menu); }
+    }
+
+    private static void ToggleStartup(bool enabled)
+    {
+        // The menu shows the real registry state, so a refused write is visible the next time it opens.
+        try { StartupRegistration.Set(enabled, Environment.ProcessPath!); }
+        catch (Exception error) when (error is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            Debug.WriteLine(error);
+        }
     }
 
     private delegate IntPtr SubclassProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam, UIntPtr id, UIntPtr refData);

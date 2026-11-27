@@ -360,7 +360,8 @@ All components bind by exact `MetricId` and share one subscription per id.
 - **Compact** — the first two metrics in a small window with keep-on-top; Expand restores the previous bounds.
 - **Configure metrics** — a dialog to add, remove, reorder and edit components (kind, `MetricId`, number format, range). Save validates and persists before replacing live subscriptions; Cancel changes nothing. Corrupt or unsupported stored layouts are preserved and never overwritten.
 
-- **Tray icon** — left click shows or hides the window; right click offers Show/Hide, Compact/Expand and Quit. Closing the window still exits the app and stops the service.
+- **Tray icon** — left click shows or hides the window; right click offers Show/Hide, Compact/Expand, Start with Windows (a per-user Run entry, off by default) and Quit. Closing the window still exits the app; it stops the service unless Start with Windows is on.
+- **PresentMon hint** — when the PresentMon service is not installed, composition details start with one line linking to its official download.
 
 The normal window's position and size and the compact flag are saved to `window.json` beside the layout database when the app closes and restored on start if they still fit a connected display. A minimized, maximized or `--secondary-display` session does not overwrite them.
 
