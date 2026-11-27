@@ -4,11 +4,13 @@ Last rewritten: 2026-11-14.
 
 ## Where the project is
 
-- M0 foundation, M1 hardware, M2 gaming and M3 AI telemetry/quotas are done (see `docs/ROADMAP.md`).
-- **M4 — Widget Engine & Compact Surfaces is active.** On `main`: native WinUI WidgetHost with `MetricReadout`, `MetricBar`, `MetricRing`, shared exact-`MetricId` subscriptions, `MetricSparkline`, an overview page with a separate composition-details view, a compact floating mode with pin-on-top, a configuration dialog, persisted ordered composition (SQLite, non-secret layout only) and a `--theme=system|light|dark` startup option.
-- The surfaces share Cerith design tokens (midnight/ivory palette, serif wordmark, state colours) and a custom title bar; see `docs/UI_UX.md`. A tray icon (show/hide, compact/expand, quit) keeps it reachable in the background, and window position, size and compact state are restored on start. Not started: motion, Home.
+Last strategic review: 2026-11-27 (D-033).
+
+- Done: M0 foundation, M1 hardware, M2 gaming, M3 AI telemetry and quotas, M4 widget engine (closed with known limits), M5 history implementation (store, gaming sessions, AI events, read API).
+- **Active: M6 — Always-on app.** Today the owner must start a console TelemetryService and the widget by hand, and gaming only works with a `--pid` given at start-up, so history records little in daily use. M6 makes Cerith start and run by itself and detect games automatically. Its exit includes the day-long measurement that also closes M5.
+- Then M7 dashboard (a window in the UI app; the empty ControlCenter project goes away), M8 telemetry breadth, M9 overlay, M10 rules, M11 visual identity, M12 distribution (`docs/ROADMAP.md`).
+- Architecture: two user-level processes, TelemetryService (headless, records history) and the WinUI app (tray, widget, future dashboard). Not elevated, no Windows service, no driver (`docs/ARCHITECTURE.md`, Processes).
 - The repository is public. CI runs Build and Test, Repository Quality and CodeQL on every PR. `main` is protected by the Protect Main ruleset (PR only, squash, `build` and `hygiene` required).
-- M4 has explicit exit criteria in `docs/ROADMAP.md` (D-026).
 
 ## How we work now
 
@@ -16,7 +18,7 @@ The agent workflow was simplified on 2026-11-14 (D-027) and checked with a clean
 
 ## Known limits (do not block on these)
 
-- **Open defect candidate:** sparkline range text was clipped at physical 144 DPI, minimum size, with a large value. No 144 DPI display has been available since. It is an M4 exit criterion (CER-M4-021).
+- **Open defect candidate:** sparkline range text was clipped at physical 144 DPI, minimum size, with a large value. No 144 DPI display has been available since. Carried forward from M4 (CER-M4-021).
 - Mixed-monitor transitions are unverified. Known low-severity case: leaving compact mode after dragging the window to a monitor with a different scale restores the old pixel size.
 - A layout that contains a sparkline cannot be read by builds older than November 2026; the file is preserved, not lost.
 - WidgetHost idle cost is above the aspirational targets in `docs/PERFORMANCE.md`; most memory is the WinUI framework floor. General CPU non-regression is not established.
@@ -25,12 +27,12 @@ The agent workflow was simplified on 2026-11-14 (D-027) and checked with a clean
 
 ## Direction (owner, 2026-11-14)
 
-Finish Cerith as a complete, reliable, distributable app. Function matters more than looks for now: collect verifiable telemetry, record it locally, query and analyse it. The current visual design is provisional; do not spend effort on redesign. The roadmap was resequenced accordingly (D-028): history and recording come next.
+Finish Cerith as a complete, reliable, distributable app. Function matters more than looks for now: collect verifiable telemetry, record it locally, query and analyse it. The current visual design is provisional; do not spend effort on redesign. The roadmap was resequenced for this (D-028, revised by D-033): make Cerith run by itself, then the dashboard.
 
-Do not disturb the owner's use of the machine: never steal focus, change system settings or close running apps. Launch the widget only with `--secondary-display`.
+Do not disturb the owner's use of the machine: never steal focus, change system settings or close running apps. Launch the widget only with `--secondary-display`. Never turn on start-with-Windows on the owner's machine during testing; only the owner switches it on.
 
-Day-to-day work is led by the Standard tier, autonomously, milestone by milestone. The strategic tier is used only for planning and architecture (`MODEL_ROUTING.md`). The strategic review of the project's foundations is closed (D-029).
+Day-to-day work is led by the Standard tier, autonomously, milestone by milestone. The strategic tier is used only for planning and architecture (`MODEL_ROUTING.md`). Strategic reviews: foundations (D-029), always-on app before dashboard (D-033).
 
 ## Next
 
-M5 history store is on `main` (D-030): TelemetryService records every published snapshot (see `docs/ARCHITECTURE.md`, History store). Gaming sessions are recorded too (D-031). AI activity events too (D-032). Next: `CER-M5-004` (observe a full day), then `CER-M6-001` in `.agent/TASKS.md`.
+`CER-M6-001` in `.agent/TASKS.md`, then the rest of M6 in order.

@@ -124,38 +124,18 @@ All surfaces consume normalized MetricId state. Compact views may choose density
 
 It should not host the heavy visual editor.
 
-## Cerith.ControlCenter
-
-Configuration/editor application.
-
-Future responsibilities:
-
-- visual editor;
-- ComponentLab;
-- providers/settings;
-- history;
-- themes;
-- profiles;
-- plugin management;
-- diagnostics.
-
-## Process separation
-
-Preferred long-term shape:
+## Processes (D-033)
 
 ```text
-Cerith.TelemetryService.exe
-Cerith.WidgetHost.exe
-Cerith.ControlCenter.exe
+Cerith.TelemetryService.exe   headless, user context: providers, MetricBus, Named Pipe, history writer
+Cerith.WidgetHost.exe         the UI app: tray, widget, dashboard and settings windows; starts the service
 ```
 
-Possible future:
+Two processes, not three. The service stays separate so recording continues when no window is open and a UI failure cannot stop it. Every UI surface lives in one WinUI process because each WinUI process pays a framework floor of roughly 110 MB of working set (`docs/PERFORMANCE.md`); a second UI process would double it for no user benefit. The empty `Cerith.ControlCenter` project is removed when the dashboard work starts. The UI process may be renamed `Cerith.exe` when packaging needs it.
 
-```text
-Cerith.PluginHost.exe
-```
+Both processes run as the signed-in user, not elevated and not as a Windows service: AI providers read the user's own local sessions, and no kernel driver is installed. Sensors that need elevation report Unavailable. An optional elevated hardware helper is a distribution-time decision.
 
-Do not split processes merely for conceptual purity. Benchmark first.
+The UI app starts the service when its pipe is absent, and each process enforces a single instance. Start with Windows is a per-user setting the user turns on.
 
 ## Provider model
 
