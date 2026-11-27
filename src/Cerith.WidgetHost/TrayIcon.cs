@@ -2,6 +2,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 
 namespace Cerith.WidgetHost;
@@ -83,11 +84,15 @@ internal sealed class TrayIcon : IDisposable
     private void ToggleVisible()
     {
         if (_window.AppWindow.IsVisible) _window.AppWindow.Hide();
-        else
-        {
-            _window.AppWindow.Show();
-            SetForegroundWindow(_hwnd);
-        }
+        else Show();
+    }
+
+    internal void Show()
+    {
+        if (_window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+            presenter.Restore();
+        _window.AppWindow.Show();
+        SetForegroundWindow(_hwnd);
     }
 
     private void ShowMenu()

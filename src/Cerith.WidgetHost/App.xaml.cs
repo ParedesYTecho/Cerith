@@ -5,13 +5,16 @@ using Microsoft.UI.Windowing;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using Cerith.Core;
 using Windows.Graphics;
 
 namespace Cerith.WidgetHost;
 
 public partial class App : Application
 {
-    private Window? _window;
+    private MainWindow? _window;
+    private SingleInstance? _instance;
 
     public App()
     {
@@ -29,6 +32,16 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        _instance = SingleInstance.TryAcquire(SingleInstance.AppName,
+            () => _window?.DispatcherQueue.TryEnqueue(() => _window.BringForward()));
+        if (_instance is null)
+        {
+            // The user just launched this process, so it may hand its foreground right to the running one.
+            AllowSetForegroundWindow(-1);
+            SingleInstance.Signal(SingleInstance.AppName);
+            Exit();
+            return;
+        }
         var secondaryOnly = Environment.GetCommandLineArgs().Skip(1).Contains("--secondary-display", StringComparer.Ordinal);
         DisplayArea? display = null;
         if (secondaryOnly)
@@ -53,4 +66,7 @@ public partial class App : Application
                 Math.Min(_window.AppWindow.Size.Height, display.WorkArea.Height)));
         _window.Activate();
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool AllowSetForegroundWindow(int processId);
 }

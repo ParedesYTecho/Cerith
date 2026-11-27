@@ -27,7 +27,17 @@ internal static class Program
             return;
         }
 
-        try { await RunAsync(processId); }
+        using var stop = new CancellationTokenSource();
+        using var instance = SingleInstance.TryAcquire(SingleInstance.ServiceName, stop.Cancel);
+        if (instance is null)
+        {
+            Console.Error.WriteLine("TelemetryService failed: already_running");
+            Environment.ExitCode = 3;
+            return;
+        }
+
+        try { await RunAsync(processId, stop); }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception)
         {
             Console.Error.WriteLine("TelemetryService failed: runtime_failure");
@@ -35,9 +45,8 @@ internal static class Program
         }
     }
 
-    private static async Task RunAsync(int? processId)
+    private static async Task RunAsync(int? processId, CancellationTokenSource stop)
     {
-        using var stop = new CancellationTokenSource();
         using var bus = new MetricBus(1);
         var registry = new MetricRegistry();
         using var history = OpenHistory(bus);

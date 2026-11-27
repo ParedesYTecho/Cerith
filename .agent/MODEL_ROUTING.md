@@ -38,6 +38,7 @@ Subagents exist to reduce total cost and protect the lead's context, never just 
 - A delegated brief names the files, the exact question or change, and what done looks like. Ask for a short answer.
 - One writer per task. Reviewers and researchers are read-only.
 - Verify a subagent's result before relying on it: read the diff and run it.
+- Run reviewers and other subagents whose result you need next in the foreground, or keep working on something else and collect the result before ending the turn.
 
 ## Sessions
 
