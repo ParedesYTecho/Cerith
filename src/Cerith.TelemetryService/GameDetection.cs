@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -112,8 +113,8 @@ internal sealed class ForegroundProbe
             }
             return new ForegroundSample(processId, _processName, true);
         }
-        // The process ended between the two calls.
-        catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return null; }
+        // The process ended or refused access between the calls; an escaping exception would stop the service.
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or Win32Exception) { return null; }
         finally { if (previous != IntPtr.Zero) SetThreadDpiAwarenessContext(previous); }
     }
 
