@@ -7,6 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Cerith.Core\Cerith.Core.csproj" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <!-- Linux-only dependency of LibreHardwareMonitor whose package declares no clear licence: not shipped (D-035). -->
+    <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" ExcludeAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <None Update="native\PresentMonAPI2Loader.dll" CopyToOutputDirectory="PreserveNewest"

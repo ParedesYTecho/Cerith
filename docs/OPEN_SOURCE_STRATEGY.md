@@ -17,23 +17,9 @@ Therefore:
 
 is not the project model.
 
-## Provisional licensing direction
+## Licence (D-035)
 
-```text
-main application/core
-→ GPL-3.0-or-later candidate
-
-plugin SDK / protocol contracts / examples
-→ Apache-2.0 or MIT candidate
-
-documentation
-→ separate documentation license
-
-official name/logo/artwork/store assets
-→ separate brand/copyright policy
-```
-
-No final license is committed until dependency review.
+The whole repository, documentation included, is GPL-3.0-or-later with the Microsoft-components permission in `LICENSE-EXCEPTION.md`. The name, logo and artwork are excluded. A separate permissive licence for a future plugin SDK is still to be decided when the SDK exists.
 
 ## Product moat
 
@@ -56,14 +42,9 @@ Do not create a “no competitors” or “non-commercial open-source” license
 
 If the project ever chooses source-available instead, name that decision honestly.
 
-## Before public release
+## Still open before a binary release
 
-- dependency/license inventory;
-- final code license;
-- SDK license;
-- brand policy;
+- full third-party notice bundle;
+- brand policy and name/trademark review;
 - contribution policy;
-- third-party notices;
-- clean history;
-- no private artifacts;
-- name/trademark review.
+- check that no private artifact is in the history.
