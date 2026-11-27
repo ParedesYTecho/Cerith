@@ -7,7 +7,7 @@ Last rewritten: 2026-11-14.
 Last strategic review: 2026-11-27 (D-033).
 
 - Done: M0 foundation, M1 hardware, M2 gaming, M3 AI telemetry and quotas, M4 widget engine (closed with known limits), M5 history implementation (store, gaming sessions, AI events, read API).
-- **Active: M6 — Always-on app.** The app now starts, restarts and stops the service itself and both are single-instance. Gaming still only works with a `--pid` given at start-up, so history records no sessions in daily use. M6 makes Cerith start and run by itself and detect games automatically. Its exit includes the day-long measurement that also closes M5.
+- **Active: M6 — Always-on app.** The app now starts, restarts and stops the service itself and both are single-instance. Full-screen games are detected automatically (D-034), not yet confirmed with a real game. M6 makes Cerith start and run by itself and detect games automatically. Its exit includes the day-long measurement that also closes M5.
 - Then M7 dashboard (a window in the UI app; the empty ControlCenter project goes away), M8 telemetry breadth, M9 overlay, M10 rules, M11 visual identity, M12 distribution (`docs/ROADMAP.md`).
 - Architecture: two user-level processes, TelemetryService (headless, records history) and the WinUI app (tray, widget, future dashboard). Not elevated, no Windows service, no driver (`docs/ARCHITECTURE.md`, Processes).
 - The repository is public. CI runs Build and Test, Repository Quality and CodeQL on every PR. `main` is protected by the Protect Main ruleset (PR only, squash, `build` and `hygiene` required).
@@ -35,4 +35,4 @@ Day-to-day work is led by the Standard tier, autonomously, milestone by mileston
 
 ## Next
 
-`CER-M6-002` in `.agent/TASKS.md`, then the rest of M6 in order.
+`CER-M6-003` in `.agent/TASKS.md`, then the rest of M6 in order.

@@ -127,7 +127,7 @@ internal static class Program
         var historyRunner = history is null ? Task.Delay(Timeout.InfiniteTimeSpan, stop.Token) :
             KeepServiceAliveAfterProviderExitAsync(() => history.RunAsync(stop.Token), "history", stop.Token);
         Console.WriteLine($"TelemetryService ready: pipe {MetricIpcProtocol.LocalPipeName}; hardware metrics publishing; " +
-            (processId.HasValue ? "gaming target selected" : "gaming stopped (no target PID)") +
+            (processId.HasValue ? "gaming target selected" : "gaming following full-screen games") +
             "; Codex file-auth, Cursor desktop-auth, Antigravity local-service, ZCode coding-plan, " +
             "GitHub Copilot CLI, OpenCode Go, Kiro ACP, Command Code, Qoder CN, Ark Coding Plan, and Ark Agent Plan quota providers active; " +
             "OpenCode local activity collector polling");
