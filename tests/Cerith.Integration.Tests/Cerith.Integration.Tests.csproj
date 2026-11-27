@@ -15,5 +15,6 @@
     <Compile Include="..\..\src\Cerith.WidgetHost\WidgetThemeArguments.cs" Link="WidgetThemeArguments.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\WindowStateStore.cs" Link="WindowStateStore.cs" />
     <Compile Include="..\..\src\Cerith.WidgetHost\ServiceSupervisor.cs" Link="ServiceSupervisor.cs" />
+    <Compile Include="..\..\src\Cerith.WidgetHost\WindowsIntegration.cs" Link="WindowsIntegration.cs" />
   </ItemGroup>
 </Project>

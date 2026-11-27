@@ -91,7 +91,14 @@
                 </Grid>
                 <!-- The negative margin puts the overlay scrollbar in the window gutter, clear of the values. -->
                 <ScrollViewer x:Name="DetailsView" Visibility="Collapsed" Margin="0,0,-16,0" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="MetricsPanel" Margin="0,0,16,0" VerticalAlignment="Top" />
+                    <StackPanel Margin="0,0,16,0" VerticalAlignment="Top">
+                        <HyperlinkButton x:Name="PresentMonHint" Visibility="Collapsed" Padding="0" Margin="0,0,0,8"
+                                         NavigateUri="https://github.com/GameTechDev/PresentMon/releases">
+                            <TextBlock Style="{StaticResource CerithCaptionTextStyle}" TextWrapping="Wrap" TextDecorations="Underline"
+                                       Text="Game metrics need the PresentMon service. Download it from GitHub." />
+                        </HyperlinkButton>
+                        <StackPanel x:Name="MetricsPanel" />
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </Grid>

@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <ApplicationIcon>..\cerith.ico</ApplicationIcon>
     <UseWinUI>true</UseWinUI>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <WindowsPackageType>None</WindowsPackageType>
@@ -11,4 +12,11 @@
     <ProjectReference Include="..\Cerith.Core\Cerith.Core.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
   </ItemGroup>
+  <!-- Publishing an unpackaged WinUI app otherwise leaves out the .pri and .xbf files it loads at start. -->
+  <Target Name="CopyXamlResourcesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <XamlResource Include="$(OutDir)*.xbf;$(OutDir)$(AssemblyName).pri" />
+    </ItemGroup>
+    <Copy SourceFiles="@(XamlResource)" DestinationFolder="$(PublishDir)" />
+  </Target>
 </Project>

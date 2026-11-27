@@ -35,4 +35,4 @@ Day-to-day work is led by the Standard tier, autonomously, milestone by mileston
 
 ## Next
 
-`CER-M6-003` in `.agent/TASKS.md`, then the rest of M6 in order.
+M6 code is complete; `CER-M6-004` (a day of real use) waits for the owner and blocks nothing. Next: `CER-M7-001` in `.agent/TASKS.md`.
