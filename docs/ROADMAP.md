@@ -186,87 +186,81 @@ The target-accounting gate is satisfied by the individual evidence-backed dispos
 
 ## M4 — Widget Engine & Compact Surfaces
 
-Current status: ACTIVE.
+Status: DONE with known limits (D-033).
 
-Delivered on `main`: text/metric readout, bar, ring and sparkline components; exact-`MetricId` binding with one shared subscription per id; a configuration dialog; persisted ordered composition; light/dark themes with Cerith design tokens; overview and composition-details views; a compact floating mode with keep-on-top. `docs/UI_UX.md` describes the implemented surface.
+Delivered: readout, bar, ring and sparkline components bound by exact `MetricId` with one shared subscription per id; configuration dialog and persisted ordered composition; light/dark themes with Cerith design tokens; overview and details views; compact floating mode with keep-on-top; tray icon; restored window position, size and compact state. `docs/UI_UX.md` describes the implemented surface.
 
-Exit criteria (see D-026):
+Known limits carried forward: one sparkline range-text clipping case at physical 144 DPI (needs the owner's display, CER-M4-021); tray menu not clicked through by hand (CER-M4-020); the configuration dialog keeps default styling until the visual milestone; idle cost is measured for the whole app in M6.
 
-1. The sparkline range-text clipping seen at physical 144 DPI is fixed or shown not to be a product defect.
-2. A tray indicator lets the widget run in the background: show/hide, compact/normal, quit. *(Delivered; menu interaction still needs one manual pass.)*
-3. Window position, size and compact state survive a restart. *(Delivered.)*
-4. The configuration dialog uses the design tokens, and the surfaces are checked in high contrast.
-5. Idle CPU and memory are measured against `docs/PERFORMANCE.md` and the budget is either met or revised with a recorded reason.
+## Sequence (D-028, revised by D-033)
 
-Criteria 1, 4 and 5 are finishing checks. They do not block M5 from starting (D-028).
-
-Moved out of M4 by D-026: the taskbar surface (no supported Windows 11 API; revisit as its own decision), the multi-series graph (needs history, M7) and a separate container component (the ordered composition already fills that role until the M5 editor).
-
-The same MetricId-driven component semantics must feed every surface. Gengchou and AI Limits are interaction/compactness references, not architecture bases. Provider-specific drawing logic is not allowed.
-
-## Sequence after M4 (D-028)
-
-Function before finish: record, then analyse, then widen the telemetry, then add surfaces and customisation. Each milestone ends when its exit list is true on `main`, not when every idea in it is built.
+Function before finish. A milestone ends when its exit statement is true on `main`, not when every idea in it is built.
 
 ## M5 — History & Recording
 
-Cerith remembers what it measures.
+Status: implementation DONE (D-030 to D-032). The store records every published snapshot, gaming sessions and OpenCode AI events, with retention tiers and a read API.
 
-- one local SQLite history store owned by TelemetryService (single writer), read-only for other processes;
-- every published `MetricSnapshot` that carries a value can be recorded, with its state and confidence;
-- retention and downsampling so the store stays small and writes stay cheap;
-- gaming sessions (start, end, target, summary statistics) and AI usage events as first-class records;
-- a query path for ranges, aggregates and sessions;
-- privacy: only values Cerith already publishes; no prompts, paths, command lines or credentials.
+Exit still open: a full day of real recording measured for size and cost. That needs Cerith running all day, so it is checked as part of the M6 exit.
 
-Exit: after a day of normal use the store holds queryable hardware, gaming and AI history; its size and the service's CPU/IO cost are measured and recorded; a restart or crash loses at most a few seconds and never corrupts the store.
+## M6 — Always-on app
 
-## M6 — Analysis & Dashboard
+Cerith runs by itself all day without the user managing processes. Without this, history records nothing in daily use.
 
-ControlCenter becomes the place to look at history.
+- one entry point: the UI app (today `Cerith.WidgetHost`) starts TelemetryService hidden when it is not running, reconnects if it dies, and both are single-instance;
+- optional start with Windows for the current user, off until the user turns it on from the tray;
+- automatic game detection: track the foreground process that presents frames instead of a `--pid` fixed at start-up, so gaming metrics and sessions are recorded without user action;
+- a Cerith icon for the executables and tray;
+- a clear message when the official PresentMon service is missing, with a link to install it;
+- a publish layout that runs from one folder (framework-dependent is fine).
+
+Exit: after one day of normal use with the owner's games and AI tools, without touching Cerith, the history holds hardware, gaming-session and AI data; history size per day, service CPU and the whole app's idle CPU and memory are recorded in `docs/PERFORMANCE.md`. This also closes M5.
+
+## M7 — Analysis & Dashboard
+
+A dashboard window inside the UI app (D-033), opened from the tray and the widget.
 
 - time-range charts for any recorded metric;
 - gaming session list and per-session detail (FPS, frame time, lows, hardware alongside);
-- AI usage trends, model/provider breakdown, quota history, cost estimates with explicit pricing provenance;
+- AI view: quota history per provider, activity events, model/provider breakdown; cost estimates only with explicit pricing provenance;
 - export of a range or session to CSV/JSON;
-- settings for retention and providers.
+- settings for retention, start with Windows and providers.
 
-Exit: a user can answer "what happened in yesterday's session" and "how much AI quota did I use this week" from the app.
+Exit: from the app, a user can answer "what happened in yesterday's session" and "how much AI quota did I use this week".
 
-## M7 — Telemetry breadth
+## M8 — Telemetry breadth
 
 Add sources only with verified semantics (`docs/METRICS.md`, `docs/PROVIDERS_AI_QUOTAS.md`).
 
-- hardware: GPU/CPU temperatures, power, clocks, fan RPM where identity is certain, network and disk throughput;
-- gaming: 0.1% low, frame pacing, presented/displayed distinction, automatic target detection;
+- hardware: CPU temperatures, power and clocks, fan RPM where identity is certain, network and disk throughput; whatever needs elevation is reported as unavailable, never guessed (D-033);
+- gaming: 0.1% low, frame pacing, presented/displayed distinction;
 - AI: revisit evidence-blocked quota providers and activity collectors that became verifiable;
 - system: battery, uptime, per-process top consumers if cheap.
 
-## M8 — Overlay & more surfaces
+## M9 — Overlay & more surfaces
 
 - in-game overlay for a chosen set of metrics, with measured frame-time impact;
-- taskbar surface only if a supportable technique is found (see D-026);
+- taskbar surface only if a supportable technique is found (D-026);
 - detail popup from compact surfaces.
 
-## M9 — Rules, alerts & profiles
+## M10 — Rules, alerts & profiles
 
 - conditions over any metric, including history-based ones;
 - notifications and visual reactions;
 - contextual profiles (gaming, coding, desktop).
 
-## M10 — Visual editor & personalisation
+## M11 — Visual identity, editor & personalisation
 
-- canvas, selection, snap, layers, inspector, undo/redo;
-- themes and presets built on the design tokens;
-- the definitive visual identity is applied here, not earlier.
+- the definitive visual identity from the existing brand concepts, applied to every window;
+- themes and presets built on the design tokens; high-contrast and DPI pass;
+- canvas editor (selection, snap, layers, inspector, undo/redo) only if the configuration dialog proves insufficient.
 
-## M11 — Distribution
+## M12 — Distribution
 
-- installer or package, signing, start with Windows, single-instance behaviour, update path;
+- installer or package, code signing, update path;
 - first-run detection of hardware and AI tools;
-- crash handling and diagnostics a user can send.
-
-Start-with-Windows and single-instance behaviour may land earlier if daily use needs them.
+- optional elevated hardware helper if users need the sensors that require it (D-033);
+- crash handling and a diagnostics bundle a user can send;
+- licence and notice audit of every shipped binary (see D-019 for the open `Mono.Posix` question).
 
 ## Later
 

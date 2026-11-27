@@ -238,3 +238,20 @@ A session is the lifetime of the running game as already defined by D-022: it st
 ## D-032 — AI activity events derived inside the history store (2026-11-14)
 
 The OpenCode collector publishes only its latest activity as eight metrics in one round (one ObservedAt, `occurred_at` last). `HistoryStore` turns each distinct `occurred_at` with a complete Fresh round into one `ai_event` row (source, time, model id, provider id, five token counts), unique on `(source, at)` so repeated polls and restarts add nothing; values from different rounds are never mixed. Limit, stated honestly: activities superseded between two 5 s polls are never observed, so events are observed activity, not complete usage accounting. Schema version 3; events kept 730 days; `HistoryStore.ReadAiEvents`. Quota snapshots need nothing extra: they are ordinary metrics already recorded.
+
+## D-033 — Strategic review: always-on app before the dashboard (2026-11-27)
+
+Reviewed with the Strong tier at the owner's explicit request while the strategic tier was unavailable.
+
+**Finding.** M5 can record everything, but in daily use it records almost nothing: the owner has to start a console TelemetryService and the widget by hand, nothing starts with Windows, and gaming telemetry only works when the service is launched with the game's `--pid`. A dashboard built now would show empty history.
+
+**Decisions.**
+
+1. **New M6 Always-on app**, before the dashboard: the UI app starts the service, both are single-instance, optional per-user start with Windows, automatic game detection from the foreground process that presents frames (moved up from telemetry breadth), executable icon, PresentMon-missing message, one-folder publish. Its exit includes the day-long measurement that closes M5.
+2. **Two processes, not three.** All UI surfaces, including the dashboard, live in the WinUI process that is today `Cerith.WidgetHost`; the empty `Cerith.ControlCenter` project is removed. Reason: each WinUI process costs about 110 MB of working set before showing anything (`docs/PERFORMANCE.md`), and one tray and one entry point are simpler for the user. TelemetryService stays separate so recording survives UI failures and closed windows.
+3. **User context, not elevated, not a Windows service.** AI providers need the user's own local sessions and credentials; a LocalSystem service cannot read them, and Cerith installs no kernel driver. Sensors that require elevation are reported Unavailable. An optional elevated hardware helper is decided in the distribution milestone if users need it.
+4. **M4 closed with known limits.** Its remaining criteria were a hardware-dependent check (144 DPI), cosmetics the owner has deprioritised, and an idle measurement that is more meaningful for the whole app. They are carried forward, not dropped.
+5. **Order after M6:** M7 Analysis & Dashboard, M8 Telemetry breadth, M9 Overlay & surfaces, M10 Rules/alerts/profiles, M11 Visual identity & personalisation (the canvas editor only if the dialog proves insufficient), M12 Distribution.
+
+**Unchanged.** The `MetricId` contract, truthful states, the history design (D-030 to D-032), per-provider isolation and the local-first, no-cloud stance stand.
+
