@@ -12,6 +12,8 @@ Last strategic review: 2026-11-27 (D-033).
 - Architecture: two user-level processes, TelemetryService (headless, records history) and the WinUI app (tray, widget, future dashboard). Not elevated, no Windows service, no driver (`docs/ARCHITECTURE.md`, Processes).
 - The repository is public. CI runs Build and Test, Repository Quality and CodeQL on every PR. `main` is protected by the Protect Main ruleset (PR only, squash, `build` and `hygiene` required).
 
+The owner's goal is a complete build fit for the general public (`docs/ROADMAP.md`, M12).
+
 ## How we work now
 
 The agent workflow was simplified on 2026-11-14 (D-027) and checked with a clean session on a Standard-tier model: short state files, vendor-neutral model tiers, proportional verification, small PRs merged when green. `AGENTS.md` is the single source for process. The previous checkpoint logs (`HANDOFF.md`, `WORKLOG.md`) were removed; their content remains in git history and merged PRs.

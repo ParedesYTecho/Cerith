@@ -256,6 +256,8 @@ Add sources only with verified semantics (`docs/METRICS.md`, `docs/PROVIDERS_AI_
 
 ## M12 — Distribution
 
+Owner goal (2026-11-27): the project ends in a complete build fit for the general public, not only for the owner's machine.
+
 - installer or package, code signing, update path;
 - first-run detection of hardware and AI tools;
 - optional elevated hardware helper if users need the sensors that require it (D-033);
