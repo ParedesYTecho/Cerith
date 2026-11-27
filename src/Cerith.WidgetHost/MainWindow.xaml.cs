@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ public sealed partial class MainWindow : Window
     private MetricSubscription[] _subscriptions = [];
     private Task _readTask = Task.CompletedTask;
     private Task _operation = Task.CompletedTask;
+    private Task _supervision = Task.CompletedTask;
     private MetricComposition _active = MetricComposition.Default;
     private CompositionLoad _baseline = new(CompositionLoadState.Missing, null, null);
     private bool _busy;
@@ -58,6 +60,20 @@ public sealed partial class MainWindow : Window
         Root.Loaded += OnLoaded;
         AppWindow.Closing += OnClosing;
         _tray = new TrayIcon(this, () => _compact, ToggleCompact);
+    }
+
+    internal void BringForward()
+    {
+        if (!_closing) _tray?.Show();
+    }
+
+    private void StartSupervision()
+    {
+        var path = ServiceSupervisor.ResolvePath(Environment.GetCommandLineArgs().Skip(1), AppContext.BaseDirectory);
+        if (File.Exists(path))
+            _supervision = Task.Run(() => new ServiceSupervisor(path).RunAsync(_lifetime.Token));
+        else if (!SingleInstance.IsRunning(SingleInstance.ServiceName))
+            Warn("Telemetry service not found; metrics stay unavailable.");
     }
 
     private static PreparedComposition Prepare(MetricComposition composition)
@@ -305,6 +321,7 @@ public sealed partial class MainWindow : Window
                 Math.Min((int)Math.Ceiling(420d * _scale), _startupDisplay?.WorkArea.Width ?? int.MaxValue),
                 Math.Min((int)Math.Ceiling(620d * _scale), _startupDisplay?.WorkArea.Height ?? int.MaxValue)));
         if (saved?.Compact == true) ToggleCompact();
+        StartSupervision();
         _operation = InitializeAsync();
     }
 
@@ -462,6 +479,11 @@ public sealed partial class MainWindow : Window
             SaveWindowState();
             _tray?.Dispose();
             await StopSubscriptions();
+            // Supervision ends first so it cannot restart the service that is about to be stopped.
+            try { await _supervision; }
+            catch (OperationCanceledException) { }
+            catch (Exception error) { Debug.WriteLine(error); }
+            SingleInstance.Signal(SingleInstance.ServiceName);
             _lifetime.Dispose();
             AppWindow.Closing -= OnClosing;
             Close();
