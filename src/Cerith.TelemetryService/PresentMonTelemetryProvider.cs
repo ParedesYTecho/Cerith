@@ -3,9 +3,11 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cerith.Core;
+using Microsoft.Win32.SafeHandles;
 
 namespace Cerith.TelemetryService;
 
@@ -13,7 +15,13 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 {
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
     private readonly MetricBus _bus;
-    private readonly int? _processId;
+    // Null with an explicit --pid: the target is then fixed for the lifetime of the service.
+    private readonly Func<ForegroundSample?>? _readForeground;
+    private readonly Func<TimeSpan> _clock;
+    private readonly GameTargetSelector _selector = new();
+    private int? _processId;
+    private bool _probation;
+    private SafeProcessHandle? _identity;
     private readonly Func<Process, IPresentMonCapture> _openCapture;
     private readonly Func<Process, string?> _readApplicationName;
     private readonly Func<int, Process> _getProcessById;
@@ -40,13 +48,15 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
     public PresentMonTelemetryProvider(MetricRegistry registry, MetricBus bus, int? processId)
         : this(registry, bus, processId, static process => new PresentMonCapture(process),
-            static process => process.ProcessName)
+            static process => process.ProcessName,
+            readForeground: processId is null ? new ForegroundProbe().TryRead : null)
     {
     }
 
     internal PresentMonTelemetryProvider(MetricRegistry registry, MetricBus bus, int? processId,
         Func<Process, IPresentMonCapture> openCapture, Func<Process, string?>? readApplicationName = null,
-        Func<int, Process>? getProcessById = null)
+        Func<int, Process>? getProcessById = null, Func<ForegroundSample?>? readForeground = null,
+        Func<TimeSpan>? clock = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         _bus = bus ?? throw new ArgumentNullException(nameof(bus));
@@ -55,6 +65,9 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         _getProcessById = getProcessById ?? Process.GetProcessById;
         if (processId is <= 0) throw new ArgumentOutOfRangeException(nameof(processId));
         _processId = processId;
+        _readForeground = processId is null ? readForeground : null;
+        var started = Stopwatch.StartNew();
+        _clock = clock ?? (() => started.Elapsed);
         if (!registry.TryRegister(_fps) || !registry.TryRegister(_frameTime) || !registry.TryRegister(_p1) ||
             !registry.TryRegister(_application))
             throw new InvalidOperationException("PresentMon metric registration failed.");
@@ -65,16 +78,38 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (_readForeground is not null) FollowForeground();
         if (_processId is null) StopTarget();
         else if (!_targetStopped && !_targetIdentityFailed) ReadNext(cancellationToken);
 
-        await PublishAsync(_fps, _lastReading.State, _lastReading.Fps, _lastReading.ErrorCode, cancellationToken)
+        // A process on probation is not yet known to be a game: publish neither its name nor its numbers.
+        var reading = _probation && !_targetStopped ? new PresentMonReading(MetricState.Unavailable) : _lastReading;
+        await PublishAsync(_fps, reading.State, reading.Fps, reading.ErrorCode, cancellationToken)
             .ConfigureAwait(false);
-        await PublishAsync(_frameTime, _lastReading.State, _lastReading.FrameTimeMilliseconds, _lastReading.ErrorCode,
+        await PublishAsync(_frameTime, reading.State, reading.FrameTimeMilliseconds, reading.ErrorCode,
             cancellationToken).ConfigureAwait(false);
-        await PublishAsync(_p1, _lastReading.P1State, _lastReading.P1Fps, _lastReading.P1ErrorCode, cancellationToken)
+        await PublishAsync(_p1, reading.P1State, reading.P1Fps, reading.P1ErrorCode, cancellationToken)
             .ConfigureAwait(false);
         await PublishApplicationAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private void FollowForeground()
+    {
+        var target = _selector.Next(_readForeground!(), !_targetStopped && !_targetIdentityFailed,
+            _lastReading.State == MetricState.Fresh, _clock());
+        _probation = target.Probation;
+        if (target.ProcessId == _processId) return;
+
+        CloseCapture();
+        ReleaseProcess();
+        _processId = target.ProcessId;
+        _targetStopped = false;
+        _targetIdentityFailed = false;
+        _retryAt = default;
+        _lastReading = new PresentMonReading(MetricState.Unavailable);
+        _applicationState = MetricState.Unavailable;
+        _applicationName = null;
+        _applicationErrorCode = null;
     }
 
     private void ReadNext(CancellationToken cancellationToken)
@@ -136,7 +171,16 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         try
         {
             process = _getProcessById(_processId!.Value);
-            _ = process.Handle;
+            // Anti-cheat protected games refuse full access. A limited handle is enough: while it is held,
+            // Windows cannot give the PID to another process.
+            var identity = OpenProcess(SynchronizeAndQueryLimited, false, process.Id);
+            if (identity.IsInvalid)
+            {
+                var error = Marshal.GetLastPInvokeError();
+                identity.Dispose();
+                throw new Win32Exception(error);
+            }
+            _identity = identity;
             _targetProcess = process;
             process = null;
             return true;
@@ -242,8 +286,15 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         _applicationState = MetricState.Stopped;
         _applicationErrorCode = null;
         CloseCapture();
+        ReleaseProcess();
+    }
+
+    private void ReleaseProcess()
+    {
         _targetProcess?.Dispose();
         _targetProcess = null;
+        _identity?.Dispose();
+        _identity = null;
     }
 
     private void RecordFailure(MetricState state, string? errorCode)
@@ -306,14 +357,15 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
 
     private async ValueTask PublishApplicationAsync(CancellationToken cancellationToken)
     {
-        var hasValue = _applicationState == MetricState.Fresh && _applicationName is not null;
+        var state = _probation && !_targetStopped ? MetricState.Unavailable : _applicationState;
+        var hasValue = state == MetricState.Fresh && _applicationName is not null;
         var snapshot = new MetricSnapshot(_application.Id,
             hasValue ? MetricValue.From(_applicationName!) : null,
             DateTimeOffset.UtcNow,
-            _applicationState,
+            state,
             hasValue ? MetricConfidence.Measured : MetricConfidence.Unknown,
             source: "Windows",
-            errorCode: _applicationState == MetricState.Error ? _applicationErrorCode : null);
+            errorCode: state == MetricState.Error ? _applicationErrorCode : null);
         await _bus.PublishAsync(snapshot, cancellationToken).ConfigureAwait(false);
     }
 
@@ -328,7 +380,11 @@ internal sealed class PresentMonTelemetryProvider : IDisposable
         if (_disposed) return;
         _disposed = true;
         CloseCapture();
-        _targetProcess?.Dispose();
-        _targetProcess = null;
+        ReleaseProcess();
     }
+
+    private const uint SynchronizeAndQueryLimited = 0x00100000 | 0x1000;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern SafeProcessHandle OpenProcess(uint access, bool inheritHandle, int processId);
 }

@@ -2,23 +2,17 @@
 
 Only open work is listed. Finished tasks live in git history and merged PRs. Task IDs continue the `CER-M<milestone>-<n>` series.
 
-## CER-M6-002 — Automatic game detection
-
-Status: open, **next task**. Tier: Strong for the design, Standard for the code.
-
-Replace the fixed `--pid` with tracking of the foreground process when it presents frames through PresentMon, switching target when the foreground game changes and releasing it when the game exits. Keep `--pid` as an override. Read D-020 and D-022 first: one target at a time, label only (no PID, path or title in metrics or logs), honest states when nothing is presenting. Desktop apps that present occasionally (browsers, Explorer) must not create sessions; decide and document the rule. Recorded sessions (D-031) then appear without user action.
-
 ## CER-M6-003 — Start with Windows, icon, publish layout
 
-Status: open, after CER-M6-002. Tier: Standard.
+Status: open, **next task**. Tier: Standard.
 
-A per-user start-with-Windows toggle in the tray menu (HKCU Run key or a startup task; off by default). When it is on, quitting the app leaves the service running. A Cerith `.ico` for both executables and the tray, derived from the existing brand mark in `docs/assets`. A `dotnet publish` layout where both executables and their files sit in one folder and the app finds the service there. When the PresentMon service is not installed, the gaming metrics already say so; also show a one-line hint with the official download link in the widget's details view.
+A per-user start-with-Windows toggle in the tray menu (HKCU Run key or a startup task; off by default). When it is on, quitting the app leaves the service running. A Cerith `.ico` for both executables and the tray, derived from the existing brand mark in `docs/assets`. A `dotnet publish` layout where both executables and their files sit in one folder and the app finds the service there. When the PresentMon service is not installed, make the app say so, and show a one-line hint with the official download link in the widget's details view.
 
 ## CER-M6-004 — One day of real use (closes M5 and M6)
 
-Status: open, after CER-M6-002 and 003. Needs the owner's machine; do not disturb their use.
+Status: open, after CER-M6-003. Needs the owner's machine; do not disturb their use.
 
-Run the published app for a day of normal use. Record in `docs/PERFORMANCE.md`: history size per day and rows per hour, service CPU and memory, and the UI app's idle CPU and memory. Check that gaming sessions and AI events were recorded. Tune raw retention if the file is too large.
+Run the published app for a day of normal use. Record in `docs/PERFORMANCE.md`: history size per day and rows per hour, service CPU and memory, and the UI app's idle CPU and memory. Check that gaming sessions and AI events were recorded. Automatic detection (D-034) has not been seen with a real game: check that a played game (ideally also one with anti-cheat) appears as a session and that no desktop or video application does. Tune raw retention if the file is too large.
 
 ## CER-M7-001 — Dashboard history view
 

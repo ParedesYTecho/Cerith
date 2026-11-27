@@ -255,3 +255,8 @@ Reviewed with the Strong tier at the owner's explicit request while the strategi
 
 **Unchanged.** The `MetricId` contract, truthful states, the history design (D-030 to D-032), per-provider isolation and the local-first, no-cloud stance stand.
 
+## D-034 — Automatic game detection: full-screen foreground, then proof by frames (2026-11-27)
+
+Rule and constants are in `docs/METRICS.md` ("Automatic target selection"). Windows offers no documented "this is a game" signal for another process: `SHQueryUserNotificationState` names no process and also reports full-screen video, and `GameConfigStore` is undocumented, keyed by full paths (which Cerith does not read) and misses titles Game Bar never saw. So, like PresentMon's own overlay, Cerith follows the foreground process, filtered by "covers its monitor" and a short exclusion list, and asks PresentMon for proof before publishing anything, so a rejected process never creates a session. One capture is open at a time. Windowed games need `--pid`.
+
+The target's identity is now held with a `SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION` handle instead of `Process.Handle` (full access), which anti-cheat protected games refuse; D-022's guarantee is unchanged because the PID cannot be reused while the handle is open. Amends D-022 ("no automatic detection").
