@@ -62,4 +62,22 @@ public sealed class ServiceSupervisionTests
         Assert.IsTrue(SingleInstance.Signal(name));
         Assert.IsTrue(received.Wait(TimeSpan.FromSeconds(5)));
     }
+
+    [TestMethod]
+    public void DisposeWaitsForARunningSignalCallback()
+    {
+        var name = $@"Local\Cerith.Test.{Guid.NewGuid():N}";
+        using var entered = new ManualResetEventSlim();
+        var finished = false;
+        var instance = SingleInstance.TryAcquire(name, () =>
+        {
+            entered.Set();
+            Thread.Sleep(200);
+            Volatile.Write(ref finished, true);
+        })!;
+        SingleInstance.Signal(name);
+        Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+        instance.Dispose();
+        Assert.IsTrue(Volatile.Read(ref finished));
+    }
 }

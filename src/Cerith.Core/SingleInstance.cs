@@ -57,7 +57,9 @@ public sealed class SingleInstance : IDisposable
 
     public void Dispose()
     {
-        _wait.Unregister(null);
+        // Wait for a callback already running, so it cannot touch state the caller disposes next.
+        using var done = new ManualResetEvent(false);
+        if (_wait.Unregister(done)) done.WaitOne();
         _signal.Dispose();
         _mutex.Dispose();
     }

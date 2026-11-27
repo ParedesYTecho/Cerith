@@ -21,6 +21,9 @@ internal sealed class ServiceSupervisor(string servicePath)
     private static readonly TimeSpan Poll = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StableUptime = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan MaximumDelay = TimeSpan.FromMinutes(5);
+    private Process? _started;
+
+    internal string ServicePath => servicePath;
 
     internal static string ResolvePath(IEnumerable<string> arguments, string appDirectory) =>
         arguments.FirstOrDefault(argument => argument.StartsWith(PathOption, StringComparison.OrdinalIgnoreCase))
@@ -53,11 +56,21 @@ internal sealed class ServiceSupervisor(string servicePath)
         }
     }
 
+    /// <summary>Asks the service to stop. Call after <see cref="RunAsync"/> has ended.</summary>
+    internal async Task StopServiceAsync()
+    {
+        // A service started a moment ago may not be listening yet.
+        for (var attempt = 0; !SingleInstance.Signal(SingleInstance.ServiceName) && attempt < 50
+             && _started is { HasExited: false }; attempt++)
+            await Task.Delay(100).ConfigureAwait(false);
+    }
+
     private void Start()
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo(servicePath)
+            _started?.Dispose();
+            _started = Process.Start(new ProcessStartInfo(servicePath)
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,

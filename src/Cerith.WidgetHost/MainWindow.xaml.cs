@@ -27,6 +27,8 @@ public sealed partial class MainWindow : Window
     private Task _readTask = Task.CompletedTask;
     private Task _operation = Task.CompletedTask;
     private Task _supervision = Task.CompletedTask;
+    private readonly ServiceSupervisor _supervisor =
+        new(ServiceSupervisor.ResolvePath(Environment.GetCommandLineArgs().Skip(1), AppContext.BaseDirectory));
     private MetricComposition _active = MetricComposition.Default;
     private CompositionLoad _baseline = new(CompositionLoadState.Missing, null, null);
     private bool _busy;
@@ -69,9 +71,8 @@ public sealed partial class MainWindow : Window
 
     private void StartSupervision()
     {
-        var path = ServiceSupervisor.ResolvePath(Environment.GetCommandLineArgs().Skip(1), AppContext.BaseDirectory);
-        if (File.Exists(path))
-            _supervision = Task.Run(() => new ServiceSupervisor(path).RunAsync(_lifetime.Token));
+        if (File.Exists(_supervisor.ServicePath))
+            _supervision = Task.Run(() => _supervisor.RunAsync(_lifetime.Token));
         else if (!SingleInstance.IsRunning(SingleInstance.ServiceName))
             Warn("Telemetry service not found; metrics stay unavailable.");
     }
@@ -483,7 +484,8 @@ public sealed partial class MainWindow : Window
             try { await _supervision; }
             catch (OperationCanceledException) { }
             catch (Exception error) { Debug.WriteLine(error); }
-            SingleInstance.Signal(SingleInstance.ServiceName);
+            try { await _supervisor.StopServiceAsync(); }
+            catch (Exception error) { Debug.WriteLine(error); }
             _lifetime.Dispose();
             AppWindow.Closing -= OnClosing;
             Close();

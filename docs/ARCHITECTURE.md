@@ -135,7 +135,7 @@ Two processes, not three. The service stays separate so recording continues when
 
 Both processes run as the signed-in user, not elevated and not as a Windows service: AI providers read the user's own local sessions, and no kernel driver is installed. Sensors that need elevation report Unavailable. An optional elevated hardware helper is a distribution-time decision.
 
-Each process enforces a single instance per user session with a named mutex and a named event (`Cerith.Core.SingleInstance`): signalling the app shows its window, signalling the service stops it cleanly. The UI app starts the service without a window when none is running, restarts it with a doubling delay (up to five minutes) while it keeps exiting early, and stops it on quit. Start with Windows is a per-user setting the user turns on.
+Each process enforces a single instance per user session with a named mutex and a named event (`Cerith.Core.SingleInstance`): signalling the app shows its window, signalling the service stops it cleanly. The UI app starts the service without a window when none is running, restarts it with a doubling delay (up to five minutes) while it keeps exiting early, and stops it on quit; if the app crashes, the service keeps recording and the next launch reuses it. Start with Windows is a per-user setting the user turns on.
 
 ## Provider model
 
